@@ -303,7 +303,7 @@ public class HistogramData {
         double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
         printStream.format(Locale.US, "#[Mean    = %10.3f, StdDeviation   = %10.3f]\n",
                 mean, std_deviation);
-        printStream.format(Locale.US, "#[Max     = %10.3f, Total count = %10d]\n",
+        printStream.format(Locale.US, "#[Max     = %10.3f, Total count    = %10d]\n",
                 getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
         printStream.format(Locale.US, "#[Buckets = %10d, SubBuckets     = %10d]\n",
                 histogram.bucketCount, histogram.subBucketCount);
