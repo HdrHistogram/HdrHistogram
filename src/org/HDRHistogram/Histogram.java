@@ -19,7 +19,7 @@ package org.HDRHistogram;
  * <p>
  * For example, a Histogram could be configured to track the counts of observed integer values between 0 and
  * 3,600,000,000 while maintaining a value precision of 3 significant digits across that range. Value quantization
- * within value the range will thus be no larger than 1/1,000th (or 0.1%) of any value. This example Histogram could
+ * within the range will thus be no larger than 1/1,000th (or 0.1%) of any value. This example Histogram could
  * be used to track and analyze the counts of observed response times ranging between 1 microsecond and 1 hour
  * in magnitude, while maintaining a value resolution of 1 microsecond up to 1 millisecond, a resolution of
  * 1 millisecond (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At it's
@@ -64,7 +64,7 @@ package org.HDRHistogram;
  * "always accurate to 3 decimal points." Such an example Histogram would simply be created with a
  * <b><code>highestTrackableValue</code></b> of 3,600,000,000, and a
  * <b><code>largestValueWithSingleUnitResolution</code></b> of 2,000, and would occupy a fixed,
- * unchanging memory footprint of around 385KB (see "Footprint estimation" below).
+ * unchanging memory footprint of around 369KB (see "Footprint estimation" below).
  * <p>
  * <h3>Synchronization and concurrent access</h3>
  * In the interest of keeping value recording cost to a minimum, Histogram is NOT internally synchronized, and does
@@ -258,15 +258,6 @@ public class Histogram {
 
         histogramData = new HistogramData(this, false);
         rawHistogramData = new HistogramData(this, true);
-    }
-
-    /**
-     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
-     *
-     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
-     */
-    public int getEstimatedFootprintInBytes() {
-        return (1024 + (8 * counts.length));
     }
 
     int countsArrayIndex(final int bucketIndex, final int subBucketIndex, boolean useRawData) {
@@ -475,5 +466,14 @@ public class Histogram {
      */
     public boolean valuesAreEquivalent(long value1, long value2) {
         return (lowestEquivalentValue(value1) == lowestEquivalentValue(value2));
+    }
+
+    /**
+     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
+     *
+     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
+     */
+    public int getEstimatedFootprintInBytes() {
+        return (1024 + (8 * counts.length));
     }
 }
