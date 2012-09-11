@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.Locale;
 
 /**
- * HistogramData provides iteration capabilities for a histogram's data set, as well as access to common
+ * Provides iteration capabilities for a histogram's data set, as well as access to common
  * statistic information.
  *
  */

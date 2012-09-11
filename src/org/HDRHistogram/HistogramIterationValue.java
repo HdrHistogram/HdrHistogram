@@ -10,7 +10,8 @@
 package org.HDRHistogram;
 
 /**
- * Represents a value point iterated through in a Histogram, with associated stats:
+ * Represents a value point iterated through in a Histogram, with associated stats.
+ * <p>
  * <ul>
  * <li><b><code>valueIteratedTo</code></b> :<br> The actual value level that was iterated to by the iterator</li>
  * <br>
@@ -20,7 +21,7 @@ package org.HDRHistogram;
  * exactly match this [lowestEquivalentValue(valueIteratedTo)...highestEquivalentValue(valueIteratedTo)] value
  * range.</li>
  * <br>
- * * <li><b><code>countAddedInThisIterationStep</code></b> :<br> The count of recorded values in the histogram that
+ * <li><b><code>countAddedInThisIterationStep</code></b> :<br> The count of recorded values in the histogram that
  * were added to the totalCountToThisValue (below) as a result on this iteration step. Since multiple iteration
  * steps may occur with overlapping equivalent value ranges, the count may be lower than the count found at
  * the value (e.g. multiple linear steps or percentile levels can occur within a single equivalent value range)</li>
