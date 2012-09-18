@@ -7,7 +7,7 @@
  * @version 1.0.1
  */
 
-package org.HDRHistogram;
+package org.HdrHistogram;
 
 /**
  * Represents a value point iterated through in a Histogram, with associated stats.

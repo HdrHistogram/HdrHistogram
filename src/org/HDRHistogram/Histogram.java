@@ -7,7 +7,7 @@
  * @version 1.0.1
  */
 
-package org.HDRHistogram;
+package org.HdrHistogram;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
@@ -76,11 +76,11 @@ package org.HDRHistogram;
  * logarithmic, and percentile iteration mechanisms, as well as means for iterating through each recorded value or
  * each possible value level.
  * Identical iteration mechanisms are available for the histogram's default (corrected) data
- * set and for it's raw data (see "Corrected and Raw data sets" below) set for the {@link org.HDRHistogram.HistogramData}
+ * set and for it's raw data (see "Corrected and Raw data sets" below) set for the {@link org.HdrHistogram.HistogramData}
  * available through either {@link #getHistogramData()} or {@link #getRawHistogramData()}.
  * The iteration mechanisms all provide {@link HistogramIterationValue} data points along the
  * histogram's iterated data set, and are available for the default (corrected) histogram data set
- * via the following {@link org.HDRHistogram.HistogramData} methods:
+ * via the following {@link org.HdrHistogram.HistogramData} methods:
  * <ul>
  *     <li>{@link HistogramData#percentiles percentiles} : An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the
  *     histogram using a {@link PercentileIterator} </li>

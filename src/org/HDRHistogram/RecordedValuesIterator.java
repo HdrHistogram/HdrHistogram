@@ -7,7 +7,7 @@
  * @version 1.0.1
  */
 
-package org.HDRHistogram;
+package org.HdrHistogram;
 
 import java.util.Iterator;
 
