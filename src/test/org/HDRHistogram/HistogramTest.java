@@ -7,9 +7,9 @@
  * @version 1.0.1
  */
 
-package test.org.HDRHistogram;
+package test.org.HdrHistogram;
 
-import org.HDRHistogram.*;
+import org.HdrHistogram.*;
 import org.junit.*;
 
 /**
