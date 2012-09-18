@@ -80,14 +80,13 @@ public class HistogramData {
     public double getStdDeviation() {
         double mean =  getMean();
         double geometric_deviation_total = 0.0;
-        double std_deviation = 0.0;
         recordedValuesIterator.reset();
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
             Double deviation = (histogram.medianEquivalentValue(iterationValue.getValueIteratedTo()) * 1.0) - mean;
             geometric_deviation_total += (deviation * deviation) * iterationValue.getCountAddedInThisIterationStep();
         }
-        std_deviation = Math.sqrt(geometric_deviation_total / getTotalCount());
+        double std_deviation = Math.sqrt(geometric_deviation_total / getTotalCount());
         return std_deviation;
     }
 
@@ -287,7 +286,7 @@ public class HistogramData {
                     iterationValue.getTotalCountToThisValue());
         }
 
-        // Calculate and output mean snd std. deviation.
+        // Calculate and output mean and std. deviation.
         // Note: mean/std. deviation numbers are very often completely irrelevant when
         // data is extremely non-normal in distribution (e.g. in cases of strong multi-modal
         // response time distribution associated with GC pauses). However, reporting these numbers
