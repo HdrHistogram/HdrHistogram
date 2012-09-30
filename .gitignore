@@ -2,5 +2,5 @@ target
 .idea
 out
 gh-pages
-HDRHistogram.iml
-HDRHistogram.jar
+HdrHistogram.iml
+HdrHistogram.jar
