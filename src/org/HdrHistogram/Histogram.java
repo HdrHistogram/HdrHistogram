@@ -209,13 +209,16 @@ public class Histogram {
     final HistogramData histogramData;
     final HistogramData rawHistogramData;
 
+    final int numberOfSignificantValueDigits;
+    final long highestTrackableValue;
+
     void init() {
         totalRawCount = totalCount = 0;
         maxValue = 0;
     }
 
     /**
-     * Consutruct a Histogram given the Highest value to be tracked and a number of significant decimal digits
+     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is >= 2.
@@ -223,12 +226,15 @@ public class Histogram {
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 6.
      */
-    public Histogram(final long highestTrackableValue, final long numberOfSignificantValueDigits) {
+    public Histogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
 
         // Verify argument validity
-        if ((highestTrackableValue < 2) ||
-                (numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 6))
-            throw new IllegalArgumentException();
+        if (highestTrackableValue < 2)
+            throw new IllegalArgumentException("highestTrackableValue must be >= 2");
+        if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 6))
+            throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
+        this.highestTrackableValue = highestTrackableValue;
+        this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
 
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
@@ -258,6 +264,22 @@ public class Histogram {
 
         histogramData = new HistogramData(this, false);
         rawHistogramData = new HistogramData(this, true);
+    }
+
+    /**
+     * get the configured numberOfSignificantValueDigits
+     * @return numberOfSignificantValueDigits
+     */
+    public int getNumberOfSignificantValueDigits() {
+        return numberOfSignificantValueDigits;
+    }
+
+    /**
+     * get the configured highestTrackableValue
+     * @return highestTrackableValue
+     */
+    public long getHighestTrackableValue() {
+        return highestTrackableValue;
     }
 
     int countsArrayIndex(final int bucketIndex, final int subBucketIndex, boolean useRawData) {

@@ -279,9 +279,10 @@ public class HistogramData {
 
         PercentileIterator iterator = percentileIterator;
         iterator.reset(percentileTicksPerHalfDistance);
+        String percentileFormatString = new String("%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d\n");
         while (iterator.hasNext()) {
             HistogramIterationValue iterationValue = iterator.next();
-            printStream.format(Locale.US, "%10.3f %2.12f %10d\n",
+            printStream.format(Locale.US, percentileFormatString,
                     iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0,
                     iterationValue.getTotalCountToThisValue());
         }
@@ -300,11 +301,14 @@ public class HistogramData {
 
         double mean =  getMean() / outputValueUnitScalingRatio;
         double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
-        printStream.format(Locale.US, "#[Mean    = %10.3f, StdDeviation   = %10.3f]\n",
+        printStream.format(Locale.US,
+                "#[Mean    = %12." + histogram.numberOfSignificantValueDigits + "f, StdDeviation   = %12." +
+                        histogram.numberOfSignificantValueDigits +"f]\n",
                 mean, std_deviation);
-        printStream.format(Locale.US, "#[Max     = %10.3f, Total count    = %10d]\n",
+        printStream.format(Locale.US,
+                "#[Max     = %12." + histogram.numberOfSignificantValueDigits + "f, Total count    = %12d]\n",
                 getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
-        printStream.format(Locale.US, "#[Buckets = %10d, SubBuckets     = %10d]\n",
+        printStream.format(Locale.US, "#[Buckets = %12d, SubBuckets     = %12d]\n",
                 histogram.bucketCount, histogram.subBucketCount);
     }
 
