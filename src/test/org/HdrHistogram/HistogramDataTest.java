@@ -18,7 +18,7 @@ import org.junit.*;
  */
 public class HistogramDataTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // 1 hour in usec units
-    static final long numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
+    static final int numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
     static final Histogram histogram;
 
 
@@ -45,7 +45,16 @@ public class HistogramDataTest {
 
     @Test
     public void testGetMaxValue() throws Exception {
-        Assert.assertEquals(100L * 1000 * 1000, histogram.getHistogramData().getMaxValue());
+        Assert.assertTrue(
+                histogram.valuesAreEquivalent(100L * 1000 * 1000,
+                        histogram.getHistogramData().getMaxValue()));
+    }
+
+    @Test
+    public void testGetMinValue() throws Exception {
+        Assert.assertTrue(
+                histogram.valuesAreEquivalent(1000,
+                        histogram.getHistogramData().getMinValue()));
     }
 
     @Test

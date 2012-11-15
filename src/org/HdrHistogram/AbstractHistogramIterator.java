@@ -61,6 +61,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         this.freshSubBucket = true;
         if (this.currentIterationValue == null)
             this.currentIterationValue = new HistogramIterationValue();
+        currentIterationValue.reset();
     }
 
     /**

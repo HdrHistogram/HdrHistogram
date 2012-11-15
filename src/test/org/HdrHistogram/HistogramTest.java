@@ -17,10 +17,52 @@ import org.junit.*;
  */
 public class HistogramTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
-    static final long numberOfSignificantValueDigits = 3;
+    static final int numberOfSignificantValueDigits = 3;
     static final long testValueLevel = 12340;
 
-    @org.junit.Test
+    @Test
+    public void testConstructionArgumentRanges() throws Exception {
+        Boolean thrown = false;
+        Histogram histogram = null;
+
+        try {
+            // This should throw:
+            histogram = new Histogram(1, numberOfSignificantValueDigits);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+        Assert.assertEquals(histogram, null);
+
+        thrown = false;
+        try {
+            // This should throw:
+            histogram = new Histogram(highestTrackableValue, 6);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+        Assert.assertEquals(histogram, null);
+
+        thrown = false;
+        try {
+            // This should throw:
+            histogram = new Histogram(highestTrackableValue, -1);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+        Assert.assertEquals(histogram, null);
+    }
+
+    @Test
+    public void testConstructionArgumentGets() throws Exception {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals(highestTrackableValue, histogram.getHighestTrackableValue());
+        Assert.assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
+    }
+
+    @Test
     public void testGetEstimatedFootprintInBytes() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         // Estimated size is supposed to be:
@@ -40,7 +82,7 @@ public class HistogramTest {
         Assert.assertEquals(expectedSize, histogram.getEstimatedFootprintInBytes());
     }
 
-    @org.junit.Test
+    @Test
     public void testRecordValue() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
@@ -72,7 +114,7 @@ public class HistogramTest {
         Assert.assertEquals(1L, histogram.getRawHistogramData().getTotalCount());
     }
 
-    @org.junit.Test
+    @Test
     public void testReset() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
@@ -81,7 +123,7 @@ public class HistogramTest {
         Assert.assertEquals(0L, histogram.getHistogramData().getTotalCount());
     }
 
-    @org.junit.Test
+    @Test
     public void testAdd() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Histogram other = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
@@ -90,9 +132,19 @@ public class HistogramTest {
         histogram.add(other);
         Assert.assertEquals(2L, histogram.getHistogramData().getCountAtValue(testValueLevel));
         Assert.assertEquals(2L, histogram.getHistogramData().getTotalCount());
+        Histogram incompatibleOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
+        boolean thrown = false;
+        try {
+            // This should throw:
+            histogram.add(incompatibleOther);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
     }
 
-    @org.junit.Test
+
+    @Test
     public void testSizeOfEquivalentValueRange() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("Size of equivalent range for value 1 is 1",
@@ -107,7 +159,7 @@ public class HistogramTest {
                 8, histogram.sizeOfEquivalentValueRange(10000));
     }
 
-    @org.junit.Test
+    @Test
     public void testLowestEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("The lowest equivalent value to 10007 is 10000",
@@ -116,7 +168,7 @@ public class HistogramTest {
                 10008, histogram.lowestEquivalentValue(10009));
     }
 
-    @org.junit.Test
+    @Test
     public void testHighestEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("The highest equivalent value to 8180 is 8183",
@@ -133,7 +185,7 @@ public class HistogramTest {
                 10015, histogram.highestEquivalentValue(10008));
     }
 
-    @org.junit.Test
+    @Test
     public void testMedianEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("The median equivalent value to 4 is 4",
@@ -148,7 +200,7 @@ public class HistogramTest {
                 10004, histogram.medianEquivalentValue(10007));
     }
 
-    @org.junit.Test
+    @Test
     public void testNextNonEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
 

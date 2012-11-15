@@ -67,6 +67,17 @@ public class HistogramIterationValue {
         this.percentileLevelIteratedTo = percentileReportingLevel;
     }
 
+    void reset() {
+        this.valueIteratedTo = 0;
+        this.valueIteratedFrom = 0;
+        this.countAtValueIteratedTo = 0;
+        this.countAddedInThisIterationStep = 0;
+        this.totalCountToThisValue = 0;
+        this.totalValueToThisValue = 0;
+        this.percentile = 0.0;
+        this.percentileLevelIteratedTo = 0.0;
+    }
+
     HistogramIterationValue(long valueIteratedTo, long valueIteratedFrom, long countAtValueIteratedTo,
                             long countAddedInThisIterationStep, long totalCountToThisValue, long totalValueToThisValue,
                             double percentile, double percentileReportingLevel) {

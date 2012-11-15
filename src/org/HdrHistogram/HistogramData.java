@@ -49,12 +49,32 @@ public class HistogramData {
     }
 
     /**
+     * Get the lowest recorded value level in the histogram
+     *
+     * @return the Min value recorded in the histogram
+     */
+    public long getMinValue() {
+        recordedValuesIterator.reset();
+        long min = 0;
+        if (recordedValuesIterator.hasNext()) {
+            HistogramIterationValue iterationValue = recordedValuesIterator.next();
+            min = iterationValue.getValueIteratedTo();
+        }
+        return histogram.lowestEquivalentValue(min);
+    }
+    /**
      * Get the highest recorded value level in the histogram
      *
      * @return the Max value recorded in the histogram
      */
     public long getMaxValue() {
-        return histogram.maxValue;
+        recordedValuesIterator.reset();
+        long max = 0;
+        while (recordedValuesIterator.hasNext()) {
+            HistogramIterationValue iterationValue = recordedValuesIterator.next();
+            max = iterationValue.getValueIteratedTo();
+        }
+        return histogram.lowestEquivalentValue(max);
     }
 
     /**
@@ -98,24 +118,25 @@ public class HistogramData {
      * histogram all fall.
      */
     public long getValueAtPercentile(final double percentile) {
-        long countAtPercentile = (long)(((percentile / 100.0) * getTotalCount()) + 0.5); // round up
+        double requestedPercentile = Math.min(percentile, 100.0); // Truncate down to 100%
+        long countAtPercentile = (long)(((requestedPercentile / 100.0) * getTotalCount()) + 0.5); // round to nearest
+        countAtPercentile = Math.max(countAtPercentile, 1); // Make sure we at least reach the first recorded entry
         long totalToCurrentIJ = 0;
-        long valueAtIndex = histogram.maxValue;
         for (int i = 0; i < bucketCount; i++) {
             int j = (i == 0) ? 0 : (subBucketCount / 2);
             for (; j < subBucketCount; j++) {
                 totalToCurrentIJ += counts[histogram.countsArrayIndex(i, j, useRawData)];
                 if (totalToCurrentIJ >= countAtPercentile) {
-                    valueAtIndex = j << i;
+                    long valueAtIndex = j << i;
                     return valueAtIndex;
                 }
             }
         }
-        return valueAtIndex; // May reach here if value is an overflow
+        throw new ArrayIndexOutOfBoundsException("percentile value not found in range"); // should not reach here.
     }
 
     /**
-     * Get the pecentile at a given value
+     * Get the percentile at a given value
      *
      * @param value    The value for which the return the associated percentile
      * @return The percentile of values recorded at or below the given percentage in the

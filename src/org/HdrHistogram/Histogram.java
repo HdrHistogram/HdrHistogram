@@ -57,7 +57,7 @@ package org.HdrHistogram;
  * examining, and reporting of distribution by percentiles, linear or logarithmic value buckets, mean and standard
  * deviation, or by any other means that can can be easily added by using the various iteration techniques supported
  * by the Histogram.
- * In order to facilitate the accuracy needed for various post-recording anaylsis techniques, this
+ * In order to facilitate the accuracy needed for various post-recording analysis techniques, this
  * example can maintain where a resolution of ~1 usec or better for times ranging to ~2 msec in magnitude, while at the
  * same time maintaining a resolution of ~1 msec or better for times ranging to ~2 sec, and a resolution
  * of ~1 second or better for values up to 2,000 seconds. This sort of example resolution can be thought of as
@@ -153,8 +153,8 @@ package org.HdrHistogram;
  * distribution when large value measurements may lead to missed samples, imagine a system for which response
  * times samples are taken once every 10 msec to characterize response time distribution.
  * The hypothetical system behaves "perfectly" for 100 seconds (10,000 recorded samples), with each sample
- * showing a 1msec response time value. at each sample for 100 seconds (10,000 logged samples
- * at 1msec each). The hypethetical system then encounters a 100 sec pause during which only a single sample is
+ * showing a 1msec response time value. At each sample for 100 seconds (10,000 logged samples
+ * at 1msec each). The hypothetical system then encounters a 100 sec pause during which only a single sample is
  * recorded (with a 100 second value).
  * The raw data histogram collected for such a hypothetical system (over the 200 second scenario above) would show
  * ~99.99% of results at 1msec or below, which is obviously "not right". The same histogram, corrected with the
@@ -199,7 +199,6 @@ public class Histogram {
     final int subBucketHalfCount;
     final long subBucketMask;
     final long[] counts;
-    long maxValue;
     long totalCount;
     long totalRawCount;
 
@@ -214,7 +213,6 @@ public class Histogram {
 
     void init() {
         totalRawCount = totalCount = 0;
-        maxValue = 0;
     }
 
     /**
@@ -224,14 +222,14 @@ public class Histogram {
      *                              integer that is >= 2.
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 6.
+     *                                       integer between 0 and 5.
      */
     public Histogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
 
         // Verify argument validity
         if (highestTrackableValue < 2)
             throw new IllegalArgumentException("highestTrackableValue must be >= 2");
-        if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 6))
+        if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5))
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
@@ -241,7 +239,7 @@ public class Histogram {
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to
         // provide unit resolution to at least largestValueWithSingleUnitResolution. So figure out
         // largestValueWithSingleUnitResolution's nearest power-of-two (rounded up), and use that:
-        int magnitude = (int) Math.ceil(Math.log(largestValueWithSingleUnitResolution)/Math.log(2.0));
+        int magnitude = (int) Math.ceil(Math.log(largestValueWithSingleUnitResolution)/Math.log(2));
         subBucketMagnitude = (magnitude > 1) ? magnitude : 1;
         subBucketCount = (int) Math.pow(2, subBucketMagnitude);
         subBucketHalfCount = subBucketCount / 2;
@@ -325,8 +323,6 @@ public class Histogram {
         if (logRawValue) {
             totalRawCount++;
         }
-        if (value > maxValue)
-            maxValue = value;
     }
 
     /**
@@ -383,13 +379,14 @@ public class Histogram {
      * @param other The other histogram. highestTrackableValue and largestValueWithSingleUnitResolution must match.
      */
     public void add(final Histogram other) {
-        if ((bucketCount != other.bucketCount) || (subBucketCount != other.subBucketCount))
-            throw new IllegalArgumentException();
+        if ((highestTrackableValue != other.highestTrackableValue) ||
+                (numberOfSignificantValueDigits != other.numberOfSignificantValueDigits) ||
+                (bucketCount != other.bucketCount) ||
+                (subBucketCount != other.subBucketCount))
+            throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
         arrayAdd(counts, other.counts);
         totalRawCount += other.totalRawCount;
         totalCount += other.totalCount;
-        if (maxValue < other.maxValue)
-            maxValue = other.maxValue;
     }
 
     /**
