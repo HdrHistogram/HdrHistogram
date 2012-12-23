@@ -49,7 +49,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
         if (super.hasNext())
             return true;
         // We want one additional last step to 100%
-        if (!reachedLastRecordedValue) {
+        if (!reachedLastRecordedValue && (arrayTotalCount > 0)) {
             percentileLevelToIterateTo = 100.0;
             reachedLastRecordedValue = true;
             return true;

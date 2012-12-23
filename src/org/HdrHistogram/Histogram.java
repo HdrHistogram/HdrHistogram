@@ -41,7 +41,7 @@ package org.HdrHistogram;
  * data values samples.
  * <p>
  * Internally, Histogram data is maintained using a concept somewhat similar to that of floating
- * point number representation: Using a an exponent and a (non-normalized) mantissa to
+ * point number representation: Using a an exponent a (non-normalized) mantissa to
  * support a wide dynamic range at a high but varying (by exponent value) resolution.
  * Histogram uses exponentially increasing bucket value ranges (the parallel of
  * the exponent portion of a floating point number) with each bucket containing
