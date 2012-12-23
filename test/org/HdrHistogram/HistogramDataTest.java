@@ -7,7 +7,7 @@
  * @version 1.0.1
  */
 
-package test.org.HdrHistogram;
+package org.HdrHistogram;
 
 import org.HdrHistogram.*;
 
