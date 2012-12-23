@@ -7,7 +7,7 @@
  * @version 1.0.1
  */
 
-package org.HdrHistogram;
+package org.HdrHistogram.test;
 
 import org.HdrHistogram.*;
 import org.junit.*;
@@ -203,6 +203,6 @@ public class HistogramTest {
     @Test
     public void testNextNonEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
-
+        Assert.assertNotSame(null, histogram);
     }
 }
