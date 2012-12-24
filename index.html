@@ -35,11 +35,13 @@
       <section>
         <h3>HdrHistogram: A High Dynamic Range Histogram.</h3>
 
-<p>A Histogram that supports recording and analyzing sampled data value counts across a configurable integer
+<p>
+    A Histogram that supports recording and analyzing sampled data value counts across a configurable integer
     value range with configurable value precision within the range. Value precision is expressed as the number of
     significant digits in the value recording, and provides control over value quantization behavior across
     the value range and the subsequent value resolution at any given level.</p>
-<p>For example, a <a href="http://giltene.github.com/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/Histogram.html">
+<p>
+    For example, a <a href="http://giltene.github.com/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/Histogram.html">
     Histogram </a> could be configured to track the counts of observed integer values between
     0 and 3,600,000,000 while maintaining a value precision of 3 significant digits across that range.
     Value quantization within the range will thus be no larger than 1/1,000th (or 0.1%) of any value.
@@ -48,11 +50,14 @@
     1 microsecond up to 1 millisecond, a resolution of 1 millisecond (or better) up to one second,
     and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked value (1 hour),
     it would still maintain a resolution of 3.6 seconds (or better).</p>
-<p>The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory footprint is constant,
-    with no allocation operations involved in recording data values or in iterating through them. The memory
-    footprint is fixed regardless of the number of data value samples recorded, and depends solely on the dynamic
-    range and precision chosen. The amount of work involved in recording a sample is constant, and directly
-    computes storage index locations such that no iteration or searching is ever involved in
+<p>
+    HDR Histogram is designed for recoding histograms of value measurements in latency and performance
+    sensitive applications. Measurements show value recording times as low as 3-6 nanoseconds on modern
+    (circa 2012) Intel CPUs. The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory
+    footprint is constant, with no allocation operations involved in recording data values or in iterating through
+    them. The memory footprint is fixed regardless of the number of data value samples recorded, and depends solely
+    on the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
+    directly computes storage index locations such that no iteration or searching is ever involved in
     recording data values.</p>
 
 <h3>Authors, Contributors, and License</h3>
@@ -65,6 +70,8 @@ HdrHistogram was authored by Gil Tene (<a href="https://github.com/giltene" clas
 
 <h3>Support or Contact</h3>
 <p>Don't call me, I won't call you.</p>
+
+      </section>
 
       </footer>
     </div>
