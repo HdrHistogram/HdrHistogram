@@ -207,21 +207,26 @@ package org.HdrHistogram;
  */
 
 public abstract class AbstractHistogram {
-    // Hot-accessed fields during value recording:
+    // "Cold" accessed fields. Not used in the recording code path:
+    final long highestTrackableValue;
+    final int numberOfSignificantValueDigits;
+
+    final int bucketCount;
+    final int subBucketCount;
+    int countsArrayLength;
+
+    final HistogramData histogramData;
+
+    // Bunch "Hot" accessed fields (used in the the value recording code path) here, near the end, so
+    // that they will have a good chance of ending up in the same cache line as the counts array reference
+    // field that subclass implementations will add.
     final int subBucketHalfCountMagnitude;
     final int subBucketHalfCount;
     final long subBucketMask;
     long totalCount;
 
-    final int bucketCount;                      // Number of buckets in "exponent" part
-    final int subBucketCount;                   // Number of buckets in "mantissa" part
-    int countsArrayLength;
 
-    final int numberOfSignificantValueDigits;
-    final long highestTrackableValue;
-
-    final HistogramData histogramData;
-
+    // Abstract, counts-type dependent methods to be provided by subclass implementations:
 
     abstract long getCountAtIndex(int index);
 
@@ -331,8 +336,6 @@ public abstract class AbstractHistogram {
     int getSubBucketIndex(long value, int bucketIndex) {
         return  (int)(value >> bucketIndex);
     }
-
-
 
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
         // Given our knowledge that subBucketCount is a power of two, we can directly dissect the value
