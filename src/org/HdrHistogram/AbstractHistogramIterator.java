@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -16,10 +16,8 @@ import java.util.Iterator;
  * Used for iterating through histogram values.
  */
 abstract class AbstractHistogramIterator implements Iterator<HistogramIterationValue> {
-    Histogram histogram;
+    AbstractHistogram histogram;
     long savedHistogramTotalRawCount;
-    long [] countsArray;
-    boolean rawCounts;
 
     int currentBucketIndex;
     int currentSubBucketIndex;
@@ -41,12 +39,10 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     private boolean freshSubBucket;
     HistogramIterationValue currentIterationValue;
 
-    void resetIterator(final Histogram histogram, boolean rawValues) {
+    void resetIterator(final AbstractHistogram histogram) {
         this.histogram = histogram;
-        this.savedHistogramTotalRawCount = histogram.totalRawCount;
-        this.countsArray = histogram.counts;
-        this.rawCounts = rawValues;
-        this.arrayTotalCount = rawValues ? histogram.totalRawCount : histogram.totalCount;
+        this.savedHistogramTotalRawCount = histogram.totalCount;
+        this.arrayTotalCount = histogram.totalCount;
         this.currentBucketIndex = 0;
         this.currentSubBucketIndex = 0;
         this.currentValueAtIndex = 0;
@@ -71,7 +67,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      * @return true if the iterator has more elements.
      */
     public boolean hasNext() {
-        if (histogram.totalRawCount != savedHistogramTotalRawCount) {
+        if (histogram.totalCount != savedHistogramTotalRawCount) {
             throw new ConcurrentModificationException();
         }
         return (totalCountToCurrentIndex < arrayTotalCount);
@@ -85,7 +81,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     public HistogramIterationValue next() {
         // Move through the sub buckets and buckets until we hit the next  reporting level:
         while (!exhaustedSubBuckets()) {
-            countAtThisValue = countsArray[histogram.countsArrayIndex(currentBucketIndex, currentSubBucketIndex, rawCounts)];
+            countAtThisValue = histogram.getCountAt(currentBucketIndex, currentSubBucketIndex);
             if (freshSubBucket) { // Don't add unless we've incremented since last bucket...
                 totalCountToCurrentIndex += countAtThisValue;
                 totalValueToCurrentIndex += countAtThisValue * histogram.medianEquivalentValue(currentValueAtIndex);
@@ -101,7 +97,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
                 totalCountToPrevIndex = totalCountToCurrentIndex;
                 // move the next percentile reporting level forward:
                 incrementIterationLevel();
-                if (histogram.totalRawCount != savedHistogramTotalRawCount) {
+                if (histogram.totalCount != savedHistogramTotalRawCount) {
                     throw new ConcurrentModificationException();
                 }
                 return currentIterationValue;

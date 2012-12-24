@@ -4,10 +4,10 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
-package org.HdrHistogram.test;
+package test.org.HdrHistogram;
 
 import org.HdrHistogram.*;
 import org.junit.*;
@@ -18,7 +18,8 @@ import org.junit.*;
 public class HistogramTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
     static final int numberOfSignificantValueDigits = 3;
-    static final long testValueLevel = 12340;
+    // static final long testValueLevel = 12340;
+    static final long testValueLevel = 4;
 
     @Test
     public void testConstructionArgumentRanges() throws Exception {
@@ -69,16 +70,16 @@ public class HistogramTest {
         //      (log2RoundedUp((1.0 * highestTrackableValue) / largestValueWithSingleUnitResolution) + 2) *
         //      roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution) *
         //      8 bytes
-        long expectedSize = 1024 +
-                (8 *
-                ((long)(
+        long expectedSize = 256 +
+                ((8 *
+                 ((long)(
                         Math.ceil(
                          Math.log(highestTrackableValue / (2 * Math.pow(10, numberOfSignificantValueDigits)))
                                  / Math.log(2)
                         )
                        + 2)) *
                     (1 << (64 - Long.numberOfLeadingZeros(2 * (long) Math.pow(10, numberOfSignificantValueDigits))))
-                );
+                 ) / 2);
         Assert.assertEquals(expectedSize, histogram.getEstimatedFootprintInBytes());
     }
 
@@ -100,6 +101,8 @@ public class HistogramTest {
     public void testRecordValueWithExpectedInterval() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel, testValueLevel/4);
+        Histogram rawHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        rawHistogram.recordValue(testValueLevel);
         // The data will include corrected samples:
         Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 1 )/4));
         Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 2 )/4));
@@ -107,11 +110,11 @@ public class HistogramTest {
         Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 4 )/4));
         Assert.assertEquals(4L, histogram.getHistogramData().getTotalCount());
         // But the raw data will not:
-        Assert.assertEquals(0L, histogram.getRawHistogramData().getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(0L, histogram.getRawHistogramData().getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(0L, histogram.getRawHistogramData().getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, histogram.getRawHistogramData().getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(1L, histogram.getRawHistogramData().getTotalCount());
+        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 1 )/4));
+        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 2 )/4));
+        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 3 )/4));
+        Assert.assertEquals(1L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 4 )/4));
+        Assert.assertEquals(1L, rawHistogram.getHistogramData().getTotalCount());
     }
 
     @Test

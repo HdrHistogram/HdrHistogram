@@ -4,10 +4,10 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
-package org.HdrHistogram.test;
+package test.org.HdrHistogram;
 
 import org.HdrHistogram.*;
 
@@ -20,25 +20,29 @@ public class HistogramDataTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // 1 hour in usec units
     static final int numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
     static final Histogram histogram;
+    static final Histogram rawHistogram;
 
 
     static {
         histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        rawHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         // Log hypothetical scenario: 100 seconds of "perfect" 1msec results, sampled
         // 100 times per second (10,000 results), followed by a 100 second pause with
         // a single (100 second) recorded result. Recording is done indicating an expected
         // interval between samples of 10 msec:
         for (int i = 0; i < 10000; i++) {
             histogram.recordValue(1000 /* 1 msec */, 10000 /* 10 msec expected interval */);
+            rawHistogram.recordValue(1000 /* 1 msec */);
         }
         histogram.recordValue(100000000L /* 100 sec */, 10000 /* 10 msec expected interval */);
+        rawHistogram.recordValue(100000000L /* 100 sec */);
     }
 
     @Test
     public void testGetTotalCount() throws Exception {
         // The overflow value should count in the total count:
         Assert.assertEquals("Raw total count is 10,001",
-                10001L, histogram.getRawHistogramData().getTotalCount());
+                10001L, rawHistogram.getHistogramData().getTotalCount());
         Assert.assertEquals("Total count is 20,000",
                 20000L, histogram.getHistogramData().getTotalCount());
     }
@@ -63,7 +67,7 @@ public class HistogramDataTest {
         double expectedMean = (1000.0 + 50000000.0)/2; /* avg. 1 msec for half the time, and 50 sec for other half */
         // We expect to see the mean to be accurate to ~3 decimal points (~0.1%):
         Assert.assertEquals("Raw mean is " + expectedRawMean + " +/- 0.1%",
-                expectedRawMean, histogram.getRawHistogramData().getMean(), expectedRawMean * 0.001);
+                expectedRawMean, rawHistogram.getHistogramData().getMean(), expectedRawMean * 0.001);
         Assert.assertEquals("Mean is " + expectedMean + " +/- 0.1%",
                 expectedMean, histogram.getHistogramData().getMean(), expectedMean * 0.001);
     }
@@ -86,7 +90,7 @@ public class HistogramDataTest {
 
         // We expect to see the standard deviations to be accurate to ~3 decimal points (~0.1%):
         Assert.assertEquals("Raw standard deviation is " + expectedRawStdDev + " +/- 0.1%",
-                expectedRawStdDev, histogram.getRawHistogramData().getStdDeviation(), expectedRawStdDev * 0.001);
+                expectedRawStdDev, rawHistogram.getHistogramData().getStdDeviation(), expectedRawStdDev * 0.001);
         Assert.assertEquals("Standard deviation is " + expectedStdDev + " +/- 0.1%",
                 expectedStdDev, histogram.getHistogramData().getStdDeviation(), expectedStdDev * 0.001);
     }
@@ -94,19 +98,19 @@ public class HistogramDataTest {
     @Test
     public void testGetValueAtPercentile() throws Exception {
         Assert.assertEquals("raw 30%'ile is 1 msec +/- 0.1%",
-                1000.0, (double) histogram.getRawHistogramData().getValueAtPercentile(30.0),
+                1000.0, (double) rawHistogram.getHistogramData().getValueAtPercentile(30.0),
                 1000.0 * 0.001);
         Assert.assertEquals("raw 99%'ile is 1 msec +/- 0.1%",
-                1000.0, (double) histogram.getRawHistogramData().getValueAtPercentile(99.0),
+                1000.0, (double) rawHistogram.getHistogramData().getValueAtPercentile(99.0),
                 1000.0 * 0.001);
         Assert.assertEquals("raw 99.99%'ile is 1 msec +/- 0.1%",
-                1000.0, (double) histogram.getRawHistogramData().getValueAtPercentile(99.99)
+                1000.0, (double) rawHistogram.getHistogramData().getValueAtPercentile(99.99)
                 , 1000.0 * 0.001);
         Assert.assertEquals("raw 99.999%'ile is 100 sec +/- 0.1%",
-                100000000.0, (double) histogram.getRawHistogramData().getValueAtPercentile(99.999),
+                100000000.0, (double) rawHistogram.getHistogramData().getValueAtPercentile(99.999),
                 100000000.0 * 0.001);
         Assert.assertEquals("raw 100%'ile is 100 sec +/- 0.1%",
-                100000000.0, (double) histogram.getRawHistogramData().getValueAtPercentile(100.0),
+                100000000.0, (double) rawHistogram.getHistogramData().getValueAtPercentile(100.0),
                 100000000.0 * 0.001);
 
         Assert.assertEquals("30%'ile is 1 msec +/- 0.1%",
@@ -136,7 +140,7 @@ public class HistogramDataTest {
     public void testGetPercentileAtOrBelowValue() throws Exception {
         Assert.assertEquals("Raw percentile at or below 5 msec is 99.99% +/- 0.0001",
                 99.99,
-                histogram.getRawHistogramData().getPercentileAtOrBelowValue(5000), 0.0001);
+                rawHistogram.getHistogramData().getPercentileAtOrBelowValue(5000), 0.0001);
         Assert.assertEquals("Percentile at or below 5 msec is 50% +/- 0.0001%",
                 50.0,
                 histogram.getHistogramData().getPercentileAtOrBelowValue(5000), 0.0001);
@@ -148,9 +152,9 @@ public class HistogramDataTest {
     @Test
     public void testGetCountBetweenValues() throws Exception {
         Assert.assertEquals("Count of raw values between 1 msec and 1 msec is 1",
-                10000, histogram.getRawHistogramData().getCountBetweenValues(1000L, 1000L));
+                10000, rawHistogram.getHistogramData().getCountBetweenValues(1000L, 1000L));
         Assert.assertEquals("Count of raw values between 5 msec and 150 sec is 1",
-                1, histogram.getRawHistogramData().getCountBetweenValues(5000L, 150000000L));
+                1, rawHistogram.getHistogramData().getCountBetweenValues(5000L, 150000000L));
         Assert.assertEquals("Count of values between 5 msec and 150 sec is 10,000",
                 10000, histogram.getHistogramData().getCountBetweenValues(5000L, 150000000L));
     }
@@ -158,11 +162,11 @@ public class HistogramDataTest {
     @Test
     public void testGetCountAtValue() throws Exception {
         Assert.assertEquals("Count of raw values at 10 msec is 0",
-                0, histogram.getRawHistogramData().getCountAtValue(10000L));
+                0, rawHistogram.getHistogramData().getCountAtValue(10000L));
         Assert.assertEquals("Count of values at 10 msec is 0",
                 1, histogram.getHistogramData().getCountAtValue(10000L));
         Assert.assertEquals("Count of raw values at 1 msec is 10,000",
-                10000, histogram.getRawHistogramData().getCountAtValue(1000L));
+                10000, rawHistogram.getHistogramData().getCountAtValue(1000L));
         Assert.assertEquals("Count of values at 1 msec is 10,000",
                 10000, histogram.getHistogramData().getCountAtValue(1000L));
     }
@@ -182,7 +186,7 @@ public class HistogramDataTest {
         // expected covering the range.
 
         // Iterate raw data using linear buckets of 100 msec each.
-        for (HistogramIterationValue v : histogram.getRawHistogramData().linearBucketValues(100000)) {
+        for (HistogramIterationValue v : rawHistogram.getHistogramData().linearBucketValues(100000)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
                 Assert.assertEquals("Raw Linear 100 msec bucket # 0 added a count of 10000",
@@ -227,7 +231,7 @@ public class HistogramDataTest {
     public void testLogarithmicBucketValues() throws Exception {
         int index = 0;
         // Iterate raw data using logarithmic buckets starting at 10 msec.
-        for (HistogramIterationValue v : histogram.getRawHistogramData().logarithmicBucketValues(10000, 2)) {
+        for (HistogramIterationValue v : rawHistogram.getHistogramData().logarithmicBucketValues(10000, 2)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
                 Assert.assertEquals("Raw Logarithmic 10 msec bucket # 0 added a count of 10000",
@@ -265,8 +269,8 @@ public class HistogramDataTest {
     @Test
     public void testRecordedValues() throws Exception {
         int index = 0;
-        // Iterate raw data by stepping through every value that ahs a count recorded:
-        for (HistogramIterationValue v : histogram.getRawHistogramData().recordedValues()) {
+        // Iterate raw data by stepping through every value that has a count recorded:
+        for (HistogramIterationValue v : rawHistogram.getHistogramData().recordedValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
                 Assert.assertEquals("Raw recorded value bucket # 0 added a count of 10000",
@@ -306,7 +310,7 @@ public class HistogramDataTest {
         int index = 0;
         long latestValueAtIndex = 0;
         // Iterate raw data by stepping through every value that ahs a count recorded:
-        for (HistogramIterationValue v : histogram.getRawHistogramData().allValues()) {
+        for (HistogramIterationValue v : rawHistogram.getHistogramData().allValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 1000) {
                 Assert.assertEquals("Raw allValues bucket # 0 added a count of 10000",
@@ -322,7 +326,7 @@ public class HistogramDataTest {
             index++;
         }
         Assert.assertEquals("Count at latest value iterated to is 1",
-                1, histogram.getRawHistogramData().getCountAtValue(latestValueAtIndex));
+                1, rawHistogram.getHistogramData().getCountAtValue(latestValueAtIndex));
 
         index = 0;
         long totalAddedCounts = 0;

@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -29,20 +29,19 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
      * @param logBase the multiplier by which the bucket size is expanded in each iteration step.
      */
     public void reset(final int valueUnitsInFirstBucket, final int logBase) {
-        reset(histogram, rawCounts, valueUnitsInFirstBucket, logBase);
+        reset(histogram, valueUnitsInFirstBucket, logBase);
     }
 
-    private void reset(final Histogram histogram, boolean rawCounts, final int valueUnitsInFirstBucket, final int logBase) {
-        super.resetIterator(histogram, rawCounts);
+    private void reset(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final int logBase) {
+        super.resetIterator(histogram);
         this.logBase = logBase;
         this.valueUnitsInFirstBucket = valueUnitsInFirstBucket;
         this.nextValueReportingLevel = valueUnitsInFirstBucket;
         this.nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
     }
 
-    LogarithmicIterator(final Histogram histogram, boolean rawCounts,
-                               final int valueUnitsInFirstBucket, final int logBase) {
-        reset(histogram, rawCounts, valueUnitsInFirstBucket, logBase);
+    LogarithmicIterator(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final int logBase) {
+        reset(histogram, valueUnitsInFirstBucket, logBase);
     }
 
     @Override

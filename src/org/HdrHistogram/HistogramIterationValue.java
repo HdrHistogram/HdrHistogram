@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -76,14 +76,6 @@ public class HistogramIterationValue {
         this.totalValueToThisValue = 0;
         this.percentile = 0.0;
         this.percentileLevelIteratedTo = 0.0;
-    }
-
-    HistogramIterationValue(long valueIteratedTo, long valueIteratedFrom, long countAtValueIteratedTo,
-                            long countAddedInThisIterationStep, long totalCountToThisValue, long totalValueToThisValue,
-                            double percentile, double percentileReportingLevel) {
-        set(valueIteratedTo, valueIteratedFrom, countAtValueIteratedTo,
-                countAddedInThisIterationStep, totalCountToThisValue, totalValueToThisValue,
-                percentile, percentileReportingLevel);
     }
 
     HistogramIterationValue() {

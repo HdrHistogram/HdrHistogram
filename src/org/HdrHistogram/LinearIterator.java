@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -27,20 +27,18 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
      * @param valueUnitsPerBucket The size (in value units) of each bucket iteration.
      */
     public void reset(final int valueUnitsPerBucket) {
-        reset(histogram, rawCounts, valueUnitsPerBucket);
+        reset(histogram, valueUnitsPerBucket);
     }
 
-    private void reset(final Histogram histogram, boolean rawCounts,
-                 final long valueUnitsPerBucket) {
-        super.resetIterator(histogram, rawCounts);
+    private void reset(final AbstractHistogram histogram, final long valueUnitsPerBucket) {
+        super.resetIterator(histogram);
         this.valueUnitsPerBucket = valueUnitsPerBucket;
         this.nextValueReportingLevel = valueUnitsPerBucket;
         this.nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
     }
 
-    LinearIterator(final Histogram histogram, boolean rawCounts,
-                          final int valueUnitsPerBucket) {
-        reset(histogram, rawCounts, valueUnitsPerBucket);
+    LinearIterator(final AbstractHistogram histogram, final int valueUnitsPerBucket) {
+        reset(histogram, valueUnitsPerBucket);
     }
 
     @Override

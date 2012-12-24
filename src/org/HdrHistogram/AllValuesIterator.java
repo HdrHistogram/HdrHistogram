@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -25,17 +25,17 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
      * Reset iterator for re-use in a fresh iteration over the same histogram data set.
      */
     public void reset() {
-        reset(histogram, rawCounts);
+        reset(histogram);
     }
 
-    private void reset(final Histogram histogram, boolean rawCounts) {
-        super.resetIterator(histogram, rawCounts);
+    private void reset(final AbstractHistogram histogram) {
+        super.resetIterator(histogram);
         visitedSubBucketIndex = -1;
         visitedBucketIndex = -1;
     }
 
-    AllValuesIterator(final Histogram histogram, boolean rawCounts) {
-        reset(histogram, rawCounts);
+    AllValuesIterator(final AbstractHistogram histogram) {
+        reset(histogram);
     }
 
     void incrementIterationLevel() {

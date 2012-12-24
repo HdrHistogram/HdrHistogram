@@ -4,7 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.0.1
+ * @version 1.1.2
  */
 
 package org.HdrHistogram;
@@ -29,19 +29,19 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
      * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
      */
     public void reset(int percentileTicksPerHalfDistance) {
-        reset(histogram, rawCounts, percentileTicksPerHalfDistance);
+        reset(histogram, percentileTicksPerHalfDistance);
     }
 
-    private void reset(final Histogram histogram, boolean rawCounts, final int percentileTicksPerHalfDistance) {
-        super.resetIterator(histogram, rawCounts);
+    private void reset(final AbstractHistogram histogram, final int percentileTicksPerHalfDistance) {
+        super.resetIterator(histogram);
         this.percentileTicksPerHalfDistance = percentileTicksPerHalfDistance;
         this.percentileLevelToIterateTo = 0.0;
         this.percentileLevelToIterateFrom = 0.0;
         this.reachedLastRecordedValue = false;
     }
 
-    PercentileIterator(final Histogram histogram, boolean rawCounts, final int percentileTicksPerHalf) {
-        reset(histogram, rawCounts, percentileTicksPerHalf);
+    PercentileIterator(final AbstractHistogram histogram, final int percentileTicksPerHalf) {
+        reset(histogram, percentileTicksPerHalf);
     }
 
     @Override
