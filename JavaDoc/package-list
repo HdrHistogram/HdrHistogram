@@ -1,2 +1,3 @@
 org.HdrHistogram
-org.HdrHistogram.test
+perf.org.HdrHistogram
+test.org.HdrHistogram
