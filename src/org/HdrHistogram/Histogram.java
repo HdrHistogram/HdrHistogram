@@ -57,7 +57,7 @@ public class Histogram extends AbstractHistogram {
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
     public int getEstimatedFootprintInBytes() {
-        return (256 + (8 * counts.length));
+        return (512 + (8 * counts.length));
     }
 
     /**

@@ -196,7 +196,7 @@ package org.HdrHistogram;
  * <pre><code>
  *     largestValueWithSingleUnitResolution = 2 * (10 ^ numberOfSignificantValueDigits);
  *
- *     expectedHistogramFootprintInBytes = 256 +
+ *     expectedHistogramFootprintInBytes = 512 +
  *          (<primitive type size> / 2) *
  *          (log2RoundedUp((1.0 * highestTrackableValue) / largestValueWithSingleUnitResolution) + 1) *
  *          roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution)

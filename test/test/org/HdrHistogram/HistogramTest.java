@@ -70,7 +70,7 @@ public class HistogramTest {
         //      (log2RoundedUp((1.0 * highestTrackableValue) / largestValueWithSingleUnitResolution) + 2) *
         //      roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution) *
         //      8 bytes
-        long expectedSize = 256 +
+        long expectedSize = 512 +
                 ((8 *
                  ((long)(
                         Math.ceil(
