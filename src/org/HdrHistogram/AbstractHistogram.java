@@ -57,7 +57,7 @@ package org.HdrHistogram;
  * a fixed number (per bucket) set of linear sub-buckets (the parallel of a non-normalized mantissa portion
  * of a floating point number).
  * Both dynamic range and resolution are configurable, with <b><code>highestTrackableValue</code></b>
- * controlling dynamic range, and <b><code>largestValueWithSingleUnitResolution</code></b> controlling
+ * controlling dynamic range, and <b><code>numberOfSignificantValueDigits</code></b> controlling
  * resolution.
  * <p>
  * An common use example of an HDR Histogram would be to record response times in units of
@@ -72,8 +72,8 @@ package org.HdrHistogram;
  * of ~1 second or better for values up to 2,000 seconds. This sort of example resolution can be thought of as
  * "always accurate to 3 decimal points." Such an example Histogram would simply be created with a
  * <b><code>highestTrackableValue</code></b> of 3,600,000,000, and a
- * <b><code>largestValueWithSingleUnitResolution</code></b> of 2,000, and would occupy a fixed,
- * unchanging memory footprint of around 369KB (see "Footprint estimation" below).
+ * <b><code>numberOfSignificantValueDigits</code></b> of 3, and would occupy a fixed,
+ * unchanging memory footprint of around 185KB (see "Footprint estimation" below).
  * <p>
  * <h3>Synchronization and concurrent access</h3>
  * In the interest of keeping value recording cost to a minimum, AbstractHistogram and it's direct implementations
@@ -195,11 +195,12 @@ package org.HdrHistogram;
  * recording counts array. The total footprint can be conservatively estimated by:
  * <pre><code>
  *     largestValueWithSingleUnitResolution = 2 * (10 ^ numberOfSignificantValueDigits);
- *
+ *     subBucketSize = roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution);
+
  *     expectedHistogramFootprintInBytes = 512 +
- *          (<primitive type size> / 2) *
- *          (log2RoundedUp((1.0 * highestTrackableValue) / largestValueWithSingleUnitResolution) + 1) *
- *          roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution)
+ *          ({primitive type size} / 2) *
+ *          (log2RoundedUp((highestTrackableValue) / subBucketSize) + 2) *
+ *          subBucketSize
  *
  * </pre></code>
  * A conservative (high) estimate of a Histogram's footprint in bytes is available via the
@@ -213,7 +214,7 @@ public abstract class AbstractHistogram {
 
     final int bucketCount;
     final int subBucketCount;
-    int countsArrayLength;
+    final int countsArrayLength;
 
     final HistogramData histogramData;
 

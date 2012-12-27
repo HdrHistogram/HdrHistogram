@@ -66,15 +66,24 @@ public class HistogramTest {
     @Test
     public void testGetEstimatedFootprintInBytes() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
-        // Estimated size is supposed to be:
-        //      (log2RoundedUp((1.0 * highestTrackableValue) / largestValueWithSingleUnitResolution) + 2) *
-        //      roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution) *
-        //      8 bytes
+        /*
+        *     largestValueWithSingleUnitResolution = 2 * (10 ^ numberOfSignificantValueDigits);
+        *     subBucketSize = roundedUpToNearestPowerOf2(largestValueWithSingleUnitResolution);
+
+        *     expectedHistogramFootprintInBytes = 512 +
+        *          ({primitive type size} / 2) *
+        *          (log2RoundedUp((highestTrackableValue) / subBucketSize) + 2) *
+        *          subBucketSize
+        */
+        long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
+        int subBucketCountMagnitude = (int) Math.ceil(Math.log(largestValueWithSingleUnitResolution)/Math.log(2));
+        int subBucketSize = (int) Math.pow(2, (subBucketCountMagnitude));
+
         long expectedSize = 512 +
                 ((8 *
                  ((long)(
                         Math.ceil(
-                         Math.log(highestTrackableValue / (2 * Math.pow(10, numberOfSignificantValueDigits)))
+                         Math.log(highestTrackableValue / subBucketSize)
                                  / Math.log(2)
                         )
                        + 2)) *
