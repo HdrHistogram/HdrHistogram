@@ -9,6 +9,9 @@
 
 package org.HdrHistogram;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+
 /**
  * <h3>A High Dynamic Range (HDR) Histogram using an <b><code>int</code></b> count type </h3>
  * <p>
@@ -55,5 +58,10 @@ public class IntHistogram extends AbstractHistogram {
     public IntHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(highestTrackableValue, numberOfSignificantValueDigits);
         counts = new int[countsArrayLength];
+    }
+
+    private void readObject(ObjectInputStream o)
+            throws IOException, ClassNotFoundException {
+        o.defaultReadObject();
     }
 }

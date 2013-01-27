@@ -11,6 +11,10 @@ package test.org.HdrHistogram;
 
 import org.HdrHistogram.*;
 import org.junit.*;
+import java.io.*;
+import java.util.zip.Deflater;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * JUnit test for {@link Histogram}
@@ -217,4 +221,77 @@ public class HistogramTest {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertNotSame(null, histogram);
     }
+
+    void testAbstractSerialization(AbstractHistogram histogram) throws Exception {
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 10);
+        histogram.recordValue(histogram.getHighestTrackableValue() - 1, 31);
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out = null;
+        ByteArrayInputStream bis = null;
+        ObjectInput in = null;
+        AbstractHistogram newHistogram = null;
+        try {
+            out = new ObjectOutputStream(bos);
+            out.writeObject(histogram);
+            Deflater compresser = new Deflater();
+            compresser.setInput(bos.toByteArray());
+            compresser.finish();
+            byte [] compressedOutput = new byte[1024*1024];
+            int compressedDataLength = compresser.deflate(compressedOutput);
+            System.out.println("Serialized form of " + histogram.getClass() + " with highestTrackableValue = " +
+                    histogram.getHighestTrackableValue() + "\n and a numberOfSignificantValueDigits = " +
+                    histogram.getNumberOfSignificantValueDigits() + " is " + bos.toByteArray().length +
+                    " bytes long. Compressed form is " + compressedDataLength + " bytes long.");
+            System.out.println("   (estimated footprint was " + histogram.getEstimatedFootprintInBytes() + " bytes)");
+            bis = new ByteArrayInputStream(bos.toByteArray());
+            in = new ObjectInputStream(bis);
+            newHistogram = (AbstractHistogram) in.readObject();
+        } finally {
+            if (out != null) out.close();
+            bos.close();
+            if (in !=null) in.close();
+            if (bis != null) bis.close();
+        }
+        Assert.assertNotSame(null, newHistogram);
+        Assert.assertEquals(histogram.getHistogramData().getCountAtValue(testValueLevel),
+                newHistogram.getHistogramData().getCountAtValue(testValueLevel));
+        Assert.assertEquals(histogram.getHistogramData().getCountAtValue(testValueLevel * 10),
+                newHistogram.getHistogramData().getCountAtValue(testValueLevel * 10));
+        Assert.assertEquals(histogram, newHistogram);
+        Assert.assertEquals(histogram.getHistogramData().getTotalCount(),
+                newHistogram.getHistogramData().getTotalCount());
+
+    }
+
+    @Test
+    public void testSerialization() throws Exception {
+        Histogram histogram = new Histogram(highestTrackableValue, 3);
+        testAbstractSerialization(histogram);
+        IntHistogram intHistogram = new IntHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(intHistogram);
+        ShortHistogram shortHistogram = new ShortHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(shortHistogram);
+        histogram = new Histogram(highestTrackableValue, 2);
+        testAbstractSerialization(histogram);
+        intHistogram = new IntHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(intHistogram);
+        shortHistogram = new ShortHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(shortHistogram);
+    }
+
+    @Test
+    public void testOverflow() throws Exception {
+        ShortHistogram histogram = new ShortHistogram(highestTrackableValue, 2);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 10);
+        Assert.assertFalse(histogram.hasOverflowed());
+        // This should overflow a ShortHistogram:
+        histogram.recordValue(histogram.getHighestTrackableValue() - 1, 500);
+        Assert.assertTrue(histogram.hasOverflowed());
+
+    }
+
+
+
 }

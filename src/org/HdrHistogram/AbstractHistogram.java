@@ -207,23 +207,25 @@ package org.HdrHistogram;
  * {@link #getEstimatedFootprintInBytes()} method.
  */
 
-public abstract class AbstractHistogram {
+import java.io.*;
+
+public abstract class AbstractHistogram implements Serializable {
     // "Cold" accessed fields. Not used in the recording code path:
-    final long highestTrackableValue;
-    final int numberOfSignificantValueDigits;
+    long highestTrackableValue;
+    int numberOfSignificantValueDigits;
 
-    final int bucketCount;
-    final int subBucketCount;
-    final int countsArrayLength;
+    int bucketCount;
+    int subBucketCount;
+    int countsArrayLength;
 
-    final HistogramData histogramData;
+    HistogramData histogramData;
 
     // Bunch "Hot" accessed fields (used in the the value recording code path) here, near the end, so
     // that they will have a good chance of ending up in the same cache line as the counts array reference
     // field that subclass implementations will add.
-    final int subBucketHalfCountMagnitude;
-    final int subBucketHalfCount;
-    final long subBucketMask;
+    int subBucketHalfCountMagnitude;
+    int subBucketHalfCount;
+    long subBucketMask;
     long totalCount;
 
 
@@ -254,12 +256,15 @@ public abstract class AbstractHistogram {
      *                                       integer between 0 and 5.
      */
     public AbstractHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-
         // Verify argument validity
         if (highestTrackableValue < 2)
             throw new IllegalArgumentException("highestTrackableValue must be >= 2");
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5))
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
+        init(highestTrackableValue, numberOfSignificantValueDigits, 0);
+    }
+
+    private void init(final long highestTrackableValue, final int numberOfSignificantValueDigits, long totalCount) {
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
 
@@ -285,7 +290,7 @@ public abstract class AbstractHistogram {
 
         countsArrayLength = (bucketCount + 1) * (subBucketCount / 2);
 
-        totalCount = 0;
+        this.totalCount = totalCount;
 
         histogramData = new HistogramData(this);
     }
@@ -339,12 +344,9 @@ public abstract class AbstractHistogram {
     }
 
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
-        // Given our knowledge that subBucketCount is a power of two, we can directly dissect the value
-        // into bucket and sub-bucket parts:
-
+        // Dissect the value into bucket and sub-bucket parts, and derive index into counts array:
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-
         int countsIndex = countsArrayIndex(bucketIndex, subBucketIndex);
         incrementCountAtIndex(countsIndex);
         totalCount++;
@@ -411,6 +413,44 @@ public abstract class AbstractHistogram {
             throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
         arrayAdd(this, other);
         totalCount += other.totalCount;
+    }
+
+    /**
+     * Determine if this histogram had any of it's value counts overflow.
+     * Since counts are kept in fixed integer form with potentially limited range (e.g. int and short), a
+     * specific value range count could potentially overflow, leading to an inaccurate and misleading histogram
+     * representation. This method accurately determines whether or not an overflow condition has happened in an
+     * IntHistogram or ShortHistogram.
+     *
+     * @return True if this histogram has had a count value overflow.
+     */
+    public boolean hasOverflowed() {
+        // On overflow, the totalCount accumulated counter will (always) not match the total of counts
+        long totalCounted = 0;
+        for (int i = 0; i < countsArrayLength; i++) {
+            totalCounted += getCountAtIndex(i);
+        }
+        return (totalCounted != totalCount);
+    }
+
+    /**
+     * Determine if this histogram is equivalent to another.
+     *
+     * @param other the other histogram to compare to
+     * @return True if this histogram are equivalent with the other.
+     */
+    public boolean equals(Object other){
+        if ( this == other ) return true;
+        if ( !(other instanceof AbstractHistogram) ) return false;
+        AbstractHistogram that = (AbstractHistogram)other;
+        if ((highestTrackableValue != that.highestTrackableValue) ||
+                (numberOfSignificantValueDigits != that.numberOfSignificantValueDigits))
+            return false;
+        if (countsArrayLength != that.countsArrayLength)
+            return false;
+        if (totalCount != that.totalCount)
+            return false;
+        return true;
     }
 
     /**
@@ -500,5 +540,23 @@ public abstract class AbstractHistogram {
      */
     public boolean valuesAreEquivalent(long value1, long value2) {
         return (lowestEquivalentValue(value1) == lowestEquivalentValue(value2));
+    }
+
+    private static final long serialVersionUID = 42L;
+
+    private void writeObject(ObjectOutputStream o)
+            throws IOException
+    {
+        o.writeLong(highestTrackableValue);
+        o.writeInt(numberOfSignificantValueDigits);
+        o.writeLong(totalCount); // Needed because overflow situations may lead this to differ from counts totals
+    }
+
+    private void readObject(ObjectInputStream o)
+            throws IOException, ClassNotFoundException {
+        final long highestTrackableValue = o.readLong();
+        final int numberOfSignificantValueDigits = o.readInt();
+        final long totalCount = o.readLong();
+        init(highestTrackableValue, numberOfSignificantValueDigits, totalCount);
     }
 }

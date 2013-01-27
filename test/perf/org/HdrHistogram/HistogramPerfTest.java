@@ -20,13 +20,29 @@ public class HistogramPerfTest {
     static final int numberOfSignificantValueDigits = 3;
     static final long testValueLevel = 12340;
     static final long warmupLoopLength = 50000;
-    static final long timingLoopCount = 200000000L;
+    static final long timingLoopCount = 400000000L;
 
     void recordLoopWithExpectedInterval(Histogram histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValue(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
+    long LeadingZerosSpeedLoop(long loopCount) {
+        long sum = 0;
+        for (long i = 0; i < loopCount; i++) {
+            // long val = testValueLevel + (i & 0x8000);
+            long val = testValueLevel;
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+            sum += Long.numberOfLeadingZeros(val);
+        }
+        return sum;
+    }
 
     public void testRawRecordingSpeedAtExpectedInterval(long expectedInterval) throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
@@ -61,7 +77,42 @@ public class HistogramPerfTest {
     @Test
     public void testRawRecordingSpeed() throws Exception {
         testRawRecordingSpeedAtExpectedInterval(1000000000);
-        testRawRecordingSpeedAtExpectedInterval(10000);
+        // testRawRecordingSpeedAtExpectedInterval(10000);
+    }
+
+    @Test
+    public void testLeadingZerosSpeed() throws Exception {
+        System.out.println("\nTiming LeadingZerosSpeed :");
+        long startTime = System.nanoTime();
+        LeadingZerosSpeedLoop(warmupLoopLength);
+        long endTime = System.nanoTime();
+        long deltaUsec = (endTime - startTime) / 1000L;
+        long rate = 1000000 * warmupLoopLength / deltaUsec;
+        System.out.println("Warmup:\n" + warmupLoopLength + " Leading Zero loops completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+        // Wait a bit to make sure compiler had a cache to do it's stuff:
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+        startTime = System.nanoTime();
+        LeadingZerosSpeedLoop(timingLoopCount);
+        endTime = System.nanoTime();
+        deltaUsec = (endTime - startTime) / 1000L;
+        rate = 1000000 * timingLoopCount / deltaUsec;
+        System.out.println("Hot code timing:");
+        System.out.println(timingLoopCount + " Leading Zero loops completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+    }
+
+    public static void main(String[] args) {
+        try {
+            HistogramPerfTest test = new HistogramPerfTest();
+            test.testLeadingZerosSpeed();
+            Thread.sleep(1000000);
+        } catch (Exception e) {
+            System.out.println("Exception: " + e);
+        }
     }
 
 }
