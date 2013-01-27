@@ -174,22 +174,22 @@ package org.HdrHistogram;
  * distribution. Only ~50% of results will be at 1msec or below, with the remaining 50% coming from the
  * auto-generated value records covering the missing increments spread between 10msec and 100 sec.
  * <p>
- * The raw and default (corrected) data sets will differ only if at least one value recorded with the
- * <b><code>recordValue</code></b> method was greater than it's associated
- * <b><code>expectedIntervalBetweenValueSamples</code></b> parameter. The raw and default (corrected) data set
- * will be identical in contents if all values recorded via
- * the <b><code>recordValue</code></b> were smaller than their associated (and optional)
- * <b><code>expectedIntervalBetweenValueSamples</code></b> parameters.
- * <p>
- * While both the raw and corrected histogram data are tracked and accessible, it is the
- * (default) corrected numbers that would typically be consulted and reported. When used for response time
- * characterization, the default (corrected) data set will tend to much more accurately reflect the response time
- * distribution that a random, uncoordinated request would have experienced.
+ * Data sets recorded with and without an <b><code>expectedIntervalBetweenValueSamples</code></b> parameter will
+ * differ only if at least one value recorded with the <b><code>recordValue</code></b> method was greater than it's
+ * associated <b><code>expectedIntervalBetweenValueSamples</code></b> parameter.
+ * Data sets recorded with an <b><code>expectedIntervalBetweenValueSamples</code></b> parameter will be identical
+ * to ones recorded without it if all values recorded via the <b><code>recordValue</code></b> calls were smaller
+ * than their associated (and optional) <b><code>expectedIntervalBetweenValueSamples</code></b> parameters.
+ *
+ * When used for response time characterization, the recording with the optional
+ * </code></b>expectedIntervalBetweenValueSamples</code></b> parameter will tend to produce data sets that would
+ * much more accurately reflect the response time distribution that a random, uncoordinated request would have
+ * experienced.
  * <p>
  * <h3>Footprint estimation</h3>
  * Due to it's dynamic range representation, Histogram is relatively efficient in memory space requirements given
  * the accuracy and dynamic range it covers. Still, it is useful to be able to estimate the memory footprint involved
- * for a given <b><code>highestTrackableValue</code></b> and <b><code>largestValueWithSingleUnitResolution</code></b>
+ * for a given <b><code>highestTrackableValue</code></b> and <b><code>numberOfSignificantValueDigits</code></b>
  * combination. Beyond a relatively small fixed-size footprint used for internal fields and stats (which can be
  * estimated as "fixed at well less than 1KB"), the bulk of a Histogram's storage is taken up by it's data value
  * recording counts array. The total footprint can be conservatively estimated by:
