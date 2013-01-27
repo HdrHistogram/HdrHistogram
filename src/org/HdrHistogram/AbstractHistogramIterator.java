@@ -104,7 +104,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
             }
             incrementSubBucket();
         }
-        // Should not reach here.
+        // Should not reach here. But possible for overflowed histograms under certain conditions
         throw new ArrayIndexOutOfBoundsException();
     }
 

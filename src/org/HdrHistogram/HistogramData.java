@@ -297,36 +297,48 @@ public class HistogramData {
         PercentileIterator iterator = percentileIterator;
         iterator.reset(percentileTicksPerHalfDistance);
         String percentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d\n";
-        while (iterator.hasNext()) {
-            HistogramIterationValue iterationValue = iterator.next();
-            printStream.format(Locale.US, percentileFormatString,
-                    iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0,
-                    iterationValue.getTotalCountToThisValue());
+        try {
+            while (iterator.hasNext()) {
+                HistogramIterationValue iterationValue = iterator.next();
+                printStream.format(Locale.US, percentileFormatString,
+                        iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0,
+                        iterationValue.getTotalCountToThisValue());
+            }
+
+
+            // Calculate and output mean and std. deviation.
+            // Note: mean/std. deviation numbers are very often completely irrelevant when
+            // data is extremely non-normal in distribution (e.g. in cases of strong multi-modal
+            // response time distribution associated with GC pauses). However, reporting these numbers
+            // can be very useful for contrasting with the detailed percentile distribution
+            // reported by outputPercentileDistribution(). It is not at all surprising to find
+            // percentile distributions where results fall many tens or even hundreds of standard
+            // deviations away from the mean - such results simply indicate that the data sampled
+            // exhibits a very non-normal distribution, highlighting situations for which the std.
+            // deviation metric is a useless indicator.
+            //
+
+            double mean =  getMean() / outputValueUnitScalingRatio;
+            double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
+            printStream.format(Locale.US,
+                    "#[Mean    = %12." + histogram.numberOfSignificantValueDigits + "f, StdDeviation   = %12." +
+                            histogram.numberOfSignificantValueDigits +"f]\n",
+                    mean, std_deviation);
+            printStream.format(Locale.US,
+                    "#[Max     = %12." + histogram.numberOfSignificantValueDigits + "f, Total count    = %12d]\n",
+                    getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
+            printStream.format(Locale.US, "#[Buckets = %12d, SubBuckets     = %12d]\n",
+                    histogram.bucketCount, histogram.subBucketCount);
+
+        } catch (ArrayIndexOutOfBoundsException e) {
+            // Overflow conditions on histograms can lead to ArrayIndexOutOfBoundsException on iterations:
+            if (histogram.hasOverflowed()) {
+                printStream.format(Locale.US, "# Histogram counts indicate OVERFLOW values");
+            } else {
+                // Re-throw if reason is not a known overflow:
+                throw e;
+            }
         }
-
-        // Calculate and output mean and std. deviation.
-        // Note: mean/std. deviation numbers are very often completely irrelevant when
-        // data is extremely non-normal in distribution (e.g. in cases of strong multi-modal
-        // response time distribution associated with GC pauses). However, reporting these numbers
-        // can be very useful for contrasting with the detailed percentile distribution
-        // reported by outputPercentileDistribution(). It is not at all surprising to find
-        // percentile distributions where results fall many tens or even hundreds of standard
-        // deviations away from the mean - such results simply indicate that the data sampled
-        // exhibits a very non-normal distribution, highlighting situations for which the std.
-        // deviation metric is a useless indicator.
-        //
-
-        double mean =  getMean() / outputValueUnitScalingRatio;
-        double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
-        printStream.format(Locale.US,
-                "#[Mean    = %12." + histogram.numberOfSignificantValueDigits + "f, StdDeviation   = %12." +
-                        histogram.numberOfSignificantValueDigits +"f]\n",
-                mean, std_deviation);
-        printStream.format(Locale.US,
-                "#[Max     = %12." + histogram.numberOfSignificantValueDigits + "f, Total count    = %12d]\n",
-                getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
-        printStream.format(Locale.US, "#[Buckets = %12d, SubBuckets     = %12d]\n",
-                histogram.bucketCount, histogram.subBucketCount);
     }
 
     // Percentile iterator support:

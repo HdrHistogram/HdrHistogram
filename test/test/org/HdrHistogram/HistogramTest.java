@@ -289,7 +289,8 @@ public class HistogramTest {
         // This should overflow a ShortHistogram:
         histogram.recordValue(histogram.getHighestTrackableValue() - 1, 500);
         Assert.assertTrue(histogram.hasOverflowed());
-
+        System.out.println("Histogram percentile output should show overflow:");
+        histogram.getHistogramData().outputPercentileDistribution(System.out, 5, 100.0);
     }
 
 
