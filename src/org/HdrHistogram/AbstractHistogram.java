@@ -9,6 +9,8 @@
 
 package org.HdrHistogram;
 
+import java.io.*;
+
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
  * <p>
@@ -206,8 +208,6 @@ package org.HdrHistogram;
  * A conservative (high) estimate of a Histogram's footprint in bytes is available via the
  * {@link #getEstimatedFootprintInBytes()} method.
  */
-
-import java.io.*;
 
 public abstract class AbstractHistogram implements Serializable {
     // "Cold" accessed fields. Not used in the recording code path:
