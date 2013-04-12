@@ -115,13 +115,13 @@
   
   <path id="hdrhistogram.module.sourcepath">
     <dirset dir="${module.hdrhistogram.basedir}">
-      <include name="src"/>
+      <include name="src/main/java"/>
     </dirset>
   </path>
   
   <path id="hdrhistogram.module.test.sourcepath">
     <dirset dir="${module.hdrhistogram.basedir}">
-      <include name="test"/>
+      <include name="src/test/java"/>
     </dirset>
   </path>
   
@@ -157,7 +157,7 @@
     </javac>
     
     <copy todir="${hdrhistogram.testoutput.dir}">
-      <fileset dir="${module.hdrhistogram.basedir}/test">
+      <fileset dir="${module.hdrhistogram.basedir}/src/test/java">
         <patternset refid="compiler.resources"/>
         <type type="file"/>
       </fileset>
