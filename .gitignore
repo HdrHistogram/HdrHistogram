@@ -3,3 +3,6 @@ target
 out
 gh-pages
 HdrHistogram.iml
+.classpath
+.project
+.settings
