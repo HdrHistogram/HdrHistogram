@@ -33,7 +33,7 @@ import java.io.ObjectOutputStream;
  * {@link org.HdrHistogram.IntHistogram} and {@link org.HdrHistogram.ShortHistogram} implementations of
  * {@link org.HdrHistogram.AbstractHistogram}.
  * <p>
- * See description in {@link org.HdrHistogram.AbstractHistogram} for details.
+ * See package description for {@link org.HdrHistogram} for details.
  */
 
 public class Histogram extends AbstractHistogram {

@@ -15,7 +15,7 @@ import java.io.ObjectInputStream;
 /**
  * <h3>An internally synchronized High Dynamic Range (HDR) Histogram using a <b><code>long</code></b> count type </h3>
  * <p>
- * See description in {@link org.HdrHistogram.AbstractHistogram} for details.
+ * See package description for {@link org.HdrHistogram} for details.
  */
 
 public class SynchronizedHistogram extends AbstractHistogram {
