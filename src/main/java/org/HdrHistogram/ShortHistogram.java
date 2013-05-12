@@ -19,6 +19,7 @@ import java.io.ObjectInputStream;
  */
 
 public class ShortHistogram extends AbstractHistogram {
+    long totalCount;
     final short[] counts;
 
     long getCountAtIndex(int index) {
@@ -35,6 +36,19 @@ public class ShortHistogram extends AbstractHistogram {
 
     void clearCounts() {
         java.util.Arrays.fill(counts, (short) 0);
+        totalCount = 0;
+    }
+
+    long getTotalCount() {
+        return totalCount;
+    }
+
+    void setTotalCount(long totalCount) {
+        this.totalCount = totalCount;
+    }
+
+    void incrementTotalCount() {
+        totalCount++;
     }
 
     /**

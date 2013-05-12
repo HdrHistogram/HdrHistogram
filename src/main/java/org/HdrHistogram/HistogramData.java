@@ -41,7 +41,7 @@ public class HistogramData {
      * @return the total recorded value count in the (corrected) histogram data
      */
     public long getTotalCount() {
-        return histogram.totalCount;
+        return histogram.getTotalCount();
     }
 
     /**

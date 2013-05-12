@@ -226,7 +226,7 @@ public abstract class AbstractHistogram implements Serializable {
     int subBucketHalfCountMagnitude;
     int subBucketHalfCount;
     long subBucketMask;
-    long totalCount;
+    // long totalCount;
 
 
     // Abstract, counts-type dependent methods to be provided by subclass implementations:
@@ -236,6 +236,12 @@ public abstract class AbstractHistogram implements Serializable {
     abstract void incrementCountAtIndex(int index);
 
     abstract void addToCountAtIndex(int index, long value);
+
+    abstract long getTotalCount();
+
+    abstract void setTotalCount(long totalCount);
+
+    abstract void incrementTotalCount();
 
     abstract void clearCounts();
 
@@ -290,7 +296,7 @@ public abstract class AbstractHistogram implements Serializable {
 
         countsArrayLength = (bucketCount + 1) * (subBucketCount / 2);
 
-        this.totalCount = totalCount;
+        setTotalCount(totalCount);
 
         histogramData = new HistogramData(this);
     }
@@ -349,7 +355,7 @@ public abstract class AbstractHistogram implements Serializable {
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         int countsIndex = countsArrayIndex(bucketIndex, subBucketIndex);
         incrementCountAtIndex(countsIndex);
-        totalCount++;
+        incrementTotalCount();
     }
 
     /**
@@ -397,7 +403,6 @@ public abstract class AbstractHistogram implements Serializable {
      */
     public void reset() {
         clearCounts();
-        totalCount = 0;
     }
 
     /**
@@ -412,7 +417,7 @@ public abstract class AbstractHistogram implements Serializable {
                 (subBucketCount != other.subBucketCount))
             throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
         arrayAdd(this, other);
-        totalCount += other.totalCount;
+        setTotalCount(getTotalCount() + other.getTotalCount());
     }
 
     /**
@@ -430,7 +435,7 @@ public abstract class AbstractHistogram implements Serializable {
         for (int i = 0; i < countsArrayLength; i++) {
             totalCounted += getCountAtIndex(i);
         }
-        return (totalCounted != totalCount);
+        return (totalCounted != getTotalCount());
     }
 
     /**
@@ -448,7 +453,7 @@ public abstract class AbstractHistogram implements Serializable {
             return false;
         if (countsArrayLength != that.countsArrayLength)
             return false;
-        if (totalCount != that.totalCount)
+        if (getTotalCount() != that.getTotalCount())
             return false;
         return true;
     }
@@ -549,7 +554,7 @@ public abstract class AbstractHistogram implements Serializable {
     {
         o.writeLong(highestTrackableValue);
         o.writeInt(numberOfSignificantValueDigits);
-        o.writeLong(totalCount); // Needed because overflow situations may lead this to differ from counts totals
+        o.writeLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
     }
 
     private void readObject(ObjectInputStream o)

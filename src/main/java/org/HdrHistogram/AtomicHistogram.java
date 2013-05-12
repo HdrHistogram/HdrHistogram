@@ -11,32 +11,36 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.concurrent.atomic.*;
 
 /**
- * <h3>A High Dynamic Range (HDR) Histogram using an <b><code>int</code></b> count type </h3>
+ * <h3>A High Dynamic Range (HDR) Histogram using atomic <b><code>long</code></b> count type </h3>
  * <p>
  * See description in {@link org.HdrHistogram.AbstractHistogram} for details.
  */
 
-public class IntHistogram extends AbstractHistogram {
-    long totalCount;
-    final int[] counts;
+public class AtomicHistogram extends AbstractHistogram {
+    static final AtomicLongFieldUpdater totalCountUpdater =
+            AtomicLongFieldUpdater.newUpdater(AtomicHistogram.class, "totalCount");
+    volatile long totalCount;
+    final AtomicLongArray counts;
 
     long getCountAtIndex(int index) {
-        return counts[index];
+        return counts.get(index);
     }
 
     void incrementCountAtIndex(int index) {
-        counts[index]++;
+        counts.incrementAndGet(index);
     }
 
     void addToCountAtIndex(int index, long value) {
-        counts[index] += value;
+        counts.addAndGet(index, value);
     }
 
     void clearCounts() {
-        java.util.Arrays.fill(counts, 0);
-        totalCount = 0;
+        for (int i = 0; i < counts.length(); i++)
+            counts.lazySet(i, 0);
+        totalCountUpdater.set(this, 0);
     }
 
     long getTotalCount() {
@@ -44,11 +48,11 @@ public class IntHistogram extends AbstractHistogram {
     }
 
     void setTotalCount(long totalCount) {
-        this.totalCount = totalCount;
+        totalCountUpdater.set(this, totalCount);
     }
 
     void incrementTotalCount() {
-        totalCount++;
+        totalCountUpdater.incrementAndGet(this);
     }
 
     /**
@@ -57,7 +61,7 @@ public class IntHistogram extends AbstractHistogram {
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
     public int getEstimatedFootprintInBytes() {
-        return (512 + (4 * counts.length));
+        return (512 + (8 * counts.length()));
     }
 
     /**
@@ -69,9 +73,9 @@ public class IntHistogram extends AbstractHistogram {
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public IntHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+    public AtomicHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(highestTrackableValue, numberOfSignificantValueDigits);
-        counts = new int[countsArrayLength];
+        counts = new AtomicLongArray(countsArrayLength);
     }
 
     private void readObject(ObjectInputStream o)

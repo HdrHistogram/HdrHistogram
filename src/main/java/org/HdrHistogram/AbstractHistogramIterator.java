@@ -41,8 +41,8 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
 
     void resetIterator(final AbstractHistogram histogram) {
         this.histogram = histogram;
-        this.savedHistogramTotalRawCount = histogram.totalCount;
-        this.arrayTotalCount = histogram.totalCount;
+        this.savedHistogramTotalRawCount = histogram.getTotalCount();
+        this.arrayTotalCount = histogram.getTotalCount();
         this.currentBucketIndex = 0;
         this.currentSubBucketIndex = 0;
         this.currentValueAtIndex = 0;
@@ -67,7 +67,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      * @return true if the iterator has more elements.
      */
     public boolean hasNext() {
-        if (histogram.totalCount != savedHistogramTotalRawCount) {
+        if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
             throw new ConcurrentModificationException();
         }
         return (totalCountToCurrentIndex < arrayTotalCount);
@@ -97,7 +97,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
                 totalCountToPrevIndex = totalCountToCurrentIndex;
                 // move the next percentile reporting level forward:
                 incrementIterationLevel();
-                if (histogram.totalCount != savedHistogramTotalRawCount) {
+                if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
                     throw new ConcurrentModificationException();
                 }
                 return currentIterationValue;
