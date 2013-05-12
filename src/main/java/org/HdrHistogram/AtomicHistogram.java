@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.*;
  */
 
 public class AtomicHistogram extends AbstractHistogram {
-    static final AtomicLongFieldUpdater totalCountUpdater =
+    static final AtomicLongFieldUpdater<AtomicHistogram> totalCountUpdater =
             AtomicLongFieldUpdater.newUpdater(AtomicHistogram.class, "totalCount");
     volatile long totalCount;
     final AtomicLongArray counts;
