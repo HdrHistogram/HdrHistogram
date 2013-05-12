@@ -22,7 +22,7 @@ public class HistogramPerfTest {
     static final long warmupLoopLength = 50000;
     static final long timingLoopCount = 400000000L;
 
-    void recordLoopWithExpectedInterval(Histogram histogram, long loopCount, long expectedInterval) {
+    void recordLoopWithExpectedInterval(AbstractHistogram histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValue(testValueLevel + (i & 0x8000), expectedInterval);
     }
@@ -44,8 +44,8 @@ public class HistogramPerfTest {
         return sum;
     }
 
-    public void testRawRecordingSpeedAtExpectedInterval(long expectedInterval) throws Exception {
-        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+    public void testRawRecordingSpeedAtExpectedInterval(String label, AbstractHistogram histogram,
+                                                        long expectedInterval) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
         long startTime = System.nanoTime();
@@ -53,7 +53,7 @@ public class HistogramPerfTest {
         long endTime = System.nanoTime();
         long deltaUsec = (endTime - startTime) / 1000L;
         long rate = 1000000 * warmupLoopLength / deltaUsec;
-        System.out.println("Warmup:\n" + warmupLoopLength + " value recordings completed in " +
+        System.out.println(label + "Warmup: " + warmupLoopLength + " value recordings completed in " +
                 deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
         histogram.reset();
         // Wait a bit to make sure compiler had a cache to do it's stuff:
@@ -66,21 +66,38 @@ public class HistogramPerfTest {
         endTime = System.nanoTime();
         deltaUsec = (endTime - startTime) / 1000L;
         rate = 1000000 * timingLoopCount / deltaUsec;
-        System.out.println("Hot code timing:");
-        System.out.println(timingLoopCount + " value recordings completed in " +
+        System.out.println(label + "Hot code timing:");
+        System.out.println(label + timingLoopCount + " value recordings completed in " +
                 deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
         rate = 1000000 * histogram.getHistogramData().getTotalCount() / deltaUsec;
-        System.out.println(histogram.getHistogramData().getTotalCount() + " raw recorded entries completed in " +
+        System.out.println(label + histogram.getHistogramData().getTotalCount() + " raw recorded entries completed in " +
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
     @Test
     public void testRawRecordingSpeed() throws Exception {
-        testRawRecordingSpeedAtExpectedInterval(1000000000);
-        // testRawRecordingSpeedAtExpectedInterval(10000);
+        AbstractHistogram histogram;
+        histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming Histogram:");
+        testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000);
     }
 
     @Test
+    public void testRawSyncronizedRecordingSpeed() throws Exception {
+        AbstractHistogram histogram;
+        histogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming SynchronizedHistogram:");
+        testRawRecordingSpeedAtExpectedInterval("SynchronizedHistogram: ", histogram, 1000000000);
+    }
+
+    @Test
+    public void testRawAtomicRecordingSpeed() throws Exception {
+        AbstractHistogram histogram;
+        histogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming AtomicHistogram:");
+        testRawRecordingSpeedAtExpectedInterval("AtomicHistogram: ", histogram, 1000000000);
+    }
+
     public void testLeadingZerosSpeed() throws Exception {
         System.out.println("\nTiming LeadingZerosSpeed :");
         long startTime = System.nanoTime();
