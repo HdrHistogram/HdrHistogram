@@ -44,6 +44,13 @@ public class SynchronizedHistogram extends AbstractHistogram {
             totalCount = 0;
         }
     }
+    
+    public SynchronizedHistogram copy() {
+      SynchronizedHistogram copy = new SynchronizedHistogram(
+          highestTrackableValue, numberOfSignificantValueDigits);
+      copy.add(this);
+      return copy;
+    }
 
     long getTotalCount() {
         return totalCount;

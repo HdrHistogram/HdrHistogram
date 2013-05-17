@@ -38,6 +38,12 @@ public class IntHistogram extends AbstractHistogram {
         java.util.Arrays.fill(counts, 0);
         totalCount = 0;
     }
+    
+    public IntHistogram copy() {
+      IntHistogram copy = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+      copy.add(this);
+      return copy;
+    }
 
     long getTotalCount() {
         return totalCount;

@@ -56,6 +56,12 @@ public class Histogram extends AbstractHistogram {
         java.util.Arrays.fill(counts, 0);
         totalCount = 0;
     }
+    
+    public Histogram copy() {
+      Histogram copy = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+      copy.add(this);
+      return copy;
+    }
 
     long getTotalCount() {
         return totalCount;

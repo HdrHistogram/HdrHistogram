@@ -38,6 +38,12 @@ public class ShortHistogram extends AbstractHistogram {
         java.util.Arrays.fill(counts, (short) 0);
         totalCount = 0;
     }
+    
+    public ShortHistogram copy() {
+      ShortHistogram copy = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+      copy.add(this);
+      return copy;
+    }
 
     long getTotalCount() {
         return totalCount;
