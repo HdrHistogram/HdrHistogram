@@ -20,7 +20,9 @@ public class HistogramPerfTest {
     static final int numberOfSignificantValueDigits = 3;
     static final long testValueLevel = 12340;
     static final long warmupLoopLength = 50000;
-    static final long timingLoopCount = 400000000L;
+    static final long rawtimingLoopCount = 400000000L;
+    static final long synchronizedTimingLoopCount = 40000000L; // 1/10th the regular count.
+    static final long atomicTimingLoopCount = 80000000L; // 1/5th the regular count.
 
     void recordLoopWithExpectedInterval(AbstractHistogram histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
@@ -45,7 +47,7 @@ public class HistogramPerfTest {
     }
 
     public void testRawRecordingSpeedAtExpectedInterval(String label, AbstractHistogram histogram,
-                                                        long expectedInterval) throws Exception {
+                                                        long expectedInterval, long timingLoopCount) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
         long startTime = System.nanoTime();
@@ -79,7 +81,7 @@ public class HistogramPerfTest {
         AbstractHistogram histogram;
         histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming Histogram:");
-        testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000);
+        testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000, rawtimingLoopCount);
     }
 
     @Test
@@ -87,7 +89,7 @@ public class HistogramPerfTest {
         AbstractHistogram histogram;
         histogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming SynchronizedHistogram:");
-        testRawRecordingSpeedAtExpectedInterval("SynchronizedHistogram: ", histogram, 1000000000);
+        testRawRecordingSpeedAtExpectedInterval("SynchronizedHistogram: ", histogram, 1000000000, synchronizedTimingLoopCount);
     }
 
     @Test
@@ -95,7 +97,7 @@ public class HistogramPerfTest {
         AbstractHistogram histogram;
         histogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming AtomicHistogram:");
-        testRawRecordingSpeedAtExpectedInterval("AtomicHistogram: ", histogram, 1000000000);
+        testRawRecordingSpeedAtExpectedInterval("AtomicHistogram: ", histogram, 1000000000, atomicTimingLoopCount);
     }
 
     public void testLeadingZerosSpeed() throws Exception {
@@ -113,12 +115,12 @@ public class HistogramPerfTest {
         } catch (InterruptedException e) {
         }
         startTime = System.nanoTime();
-        LeadingZerosSpeedLoop(timingLoopCount);
+        LeadingZerosSpeedLoop(rawtimingLoopCount);
         endTime = System.nanoTime();
         deltaUsec = (endTime - startTime) / 1000L;
-        rate = 1000000 * timingLoopCount / deltaUsec;
+        rate = 1000000 * rawtimingLoopCount / deltaUsec;
         System.out.println("Hot code timing:");
-        System.out.println(timingLoopCount + " Leading Zero loops completed in " +
+        System.out.println(rawtimingLoopCount + " Leading Zero loops completed in " +
                 deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
     }
 
