@@ -30,8 +30,7 @@ import java.io.*;
  * See package description for {@link org.HdrHistogram} for details.
  *
  */
-
-public abstract class AbstractHistogram implements Serializable {
+abstract class AbstractHistogramColdFields{
     // "Cold" accessed fields. Not used in the recording code path:
     long highestTrackableValue;
     int numberOfSignificantValueDigits;
@@ -41,7 +40,8 @@ public abstract class AbstractHistogram implements Serializable {
     int countsArrayLength;
 
     HistogramData histogramData;
-
+}
+public abstract class AbstractHistogram extends AbstractHistogramColdFields implements Serializable {
     // Bunch "Hot" accessed fields (used in the the value recording code path) here, near the end, so
     // that they will have a good chance of ending up in the same cache line as the counts array reference
     // field that subclass implementations will add.
