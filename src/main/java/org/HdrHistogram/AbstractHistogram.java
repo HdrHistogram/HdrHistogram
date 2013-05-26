@@ -1,15 +1,35 @@
 /**
- * Histogram.java
+ * AbstractHistogram.java
  * Written by Gil Tene of Azul Systems, and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
  * @author Gil Tene
- * @version 1.1.2
+ * @version 1.1.5
  */
 
 package org.HdrHistogram;
 
 import java.io.*;
+
+/**
+ * This non-public AbstractHistogramBase super-class separation is meant to bunch "cold" fields
+ * separately from "hot" fields, in an attempt to force the JVM to place the (hot) fields
+ * commonly used in the value recording code paths close together.
+ * Subclass boundaries tend to be strongly control memory layout decisions in most practical
+ * JVM implementations, making this an effective method for control filed grouping layout.
+ */
+
+abstract class AbstractHistogramBase {
+    // "Cold" accessed fields. Not used in the recording code path:
+    long highestTrackableValue;
+    int numberOfSignificantValueDigits;
+
+    int bucketCount;
+    int subBucketCount;
+    int countsArrayLength;
+
+    HistogramData histogramData;
+}
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
@@ -30,26 +50,16 @@ import java.io.*;
  * See package description for {@link org.HdrHistogram} for details.
  *
  */
-abstract class AbstractHistogramColdFields{
-    // "Cold" accessed fields. Not used in the recording code path:
-    long highestTrackableValue;
-    int numberOfSignificantValueDigits;
 
-    int bucketCount;
-    int subBucketCount;
-    int countsArrayLength;
-
-    HistogramData histogramData;
-}
-public abstract class AbstractHistogram extends AbstractHistogramColdFields implements Serializable {
-    // Bunch "Hot" accessed fields (used in the the value recording code path) here, near the end, so
-    // that they will have a good chance of ending up in the same cache line as the counts array reference
-    // field that subclass implementations will add.
+public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable {
+    // "Hot" accessed fields (used in the the value recording code path) are bunched here, such
+    // that they will have a good chance of ending up in the same cache line as the totalCounts and
+    // counts array reference fields that subclass implementations will typically add.
     int subBucketHalfCountMagnitude;
     int subBucketHalfCount;
     long subBucketMask;
-    // long totalCount;
-
+    // Sub-classes will typically add a totalCount field and a counts array field, which will likely be laid out
+    // right around here due to the subclass layout rules in most practical JVM implementations.
 
     // Abstract, counts-type dependent methods to be provided by subclass implementations:
 
