@@ -42,6 +42,12 @@ public class AtomicHistogram extends AbstractHistogram {
             counts.lazySet(i, 0);
         totalCountUpdater.set(this, 0);
     }
+    
+    public AtomicHistogram copy() {
+      AtomicHistogram copy = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+      copy.add(this);
+      return copy;
+    }
 
     long getTotalCount() {
         return totalCount;
