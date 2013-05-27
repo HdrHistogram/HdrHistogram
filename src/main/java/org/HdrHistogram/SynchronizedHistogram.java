@@ -11,6 +11,7 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * <h3>An internally synchronized High Dynamic Range (HDR) Histogram using a <b><code>long</code></b> count type </h3>
@@ -44,12 +45,29 @@ public class SynchronizedHistogram extends AbstractHistogram {
             totalCount = 0;
         }
     }
-    
+
+    public synchronized void add(final AbstractHistogram other) {
+        // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (identityCount < other.identityCount) {
+            synchronized (this) {
+                synchronized (other) {
+                    super.add(other);
+                }
+            }
+        } else {
+            synchronized (other) {
+                synchronized (this) {
+                    super.add(other);
+                }
+            }
+        }
+    }
+
     public SynchronizedHistogram copy() {
-      SynchronizedHistogram copy = new SynchronizedHistogram(
-          highestTrackableValue, numberOfSignificantValueDigits);
-      copy.add(this);
-      return copy;
+        SynchronizedHistogram copy = new SynchronizedHistogram(
+                highestTrackableValue, numberOfSignificantValueDigits);
+        copy.add(this);
+        return copy;
     }
 
     long getTotalCount() {

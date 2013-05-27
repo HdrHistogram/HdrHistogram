@@ -10,6 +10,7 @@
 package org.HdrHistogram;
 
 import java.io.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This non-public AbstractHistogramBase super-class separation is meant to bunch "cold" fields
@@ -20,7 +21,11 @@ import java.io.*;
  */
 
 abstract class AbstractHistogramBase {
+    static AtomicLong constructionIdentityCount = new AtomicLong(0);
+
     // "Cold" accessed fields. Not used in the recording code path:
+    long identityCount;
+
     long highestTrackableValue;
     int numberOfSignificantValueDigits;
 
@@ -106,6 +111,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throw new IllegalArgumentException("highestTrackableValue must be >= 2");
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5))
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
+        identityCount = constructionIdentityCount.getAndIncrement();
         init(highestTrackableValue, numberOfSignificantValueDigits, 0);
     }
 
