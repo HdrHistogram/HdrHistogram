@@ -112,7 +112,7 @@ public class HistogramTest {
     @org.junit.Test
     public void testRecordValueWithExpectedInterval() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
-        histogram.recordValue(testValueLevel, testValueLevel/4);
+        histogram.recordValueWithExpectedInterval(testValueLevel, testValueLevel/4);
         Histogram rawHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         rawHistogram.recordValue(testValueLevel);
         // The data will include corrected samples:
@@ -224,7 +224,7 @@ public class HistogramTest {
     void testAbstractSerialization(AbstractHistogram histogram) throws Exception {
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
-        histogram.recordValue(histogram.getHighestTrackableValue() - 1, 31);
+        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 31);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = null;
         ByteArrayInputStream bis = null;
@@ -292,7 +292,7 @@ public class HistogramTest {
         histogram.recordValue(testValueLevel * 10);
         Assert.assertFalse(histogram.hasOverflowed());
         // This should overflow a ShortHistogram:
-        histogram.recordValue(histogram.getHighestTrackableValue() - 1, 500);
+        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 500);
         Assert.assertTrue(histogram.hasOverflowed());
         System.out.println("Histogram percentile output should show overflow:");
         histogram.getHistogramData().outputPercentileDistribution(System.out, 5, 100.0);
@@ -303,35 +303,35 @@ public class HistogramTest {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
-        histogram.recordValue(histogram.getHighestTrackableValue() - 1, 31);
+        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 31);
         
         assertEqual(histogram, histogram.copy());
   
         IntHistogram intHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         intHistogram.recordValue(testValueLevel);
         intHistogram.recordValue(testValueLevel * 10);
-        intHistogram.recordValue(intHistogram.getHighestTrackableValue() - 1, 31);
+        intHistogram.recordValueWithExpectedInterval(intHistogram.getHighestTrackableValue() - 1, 31);
         
         assertEqual(intHistogram, intHistogram.copy());
   
         ShortHistogram shortHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         shortHistogram.recordValue(testValueLevel);
         shortHistogram.recordValue(testValueLevel * 10);
-        shortHistogram.recordValue(shortHistogram.getHighestTrackableValue() - 1, 31);
+        shortHistogram.recordValueWithExpectedInterval(shortHistogram.getHighestTrackableValue() - 1, 31);
         
         assertEqual(shortHistogram, shortHistogram.copy());
   
         AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         atomicHistogram.recordValue(testValueLevel);
         atomicHistogram.recordValue(testValueLevel * 10);
-        atomicHistogram.recordValue(atomicHistogram.getHighestTrackableValue() - 1, 31);
+        atomicHistogram.recordValueWithExpectedInterval(atomicHistogram.getHighestTrackableValue() - 1, 31);
         
         assertEqual(atomicHistogram, atomicHistogram.copy());
   
         SynchronizedHistogram syncHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         syncHistogram.recordValue(testValueLevel);
         syncHistogram.recordValue(testValueLevel * 10);
-        syncHistogram.recordValue(syncHistogram.getHighestTrackableValue() - 1, 31);
+        syncHistogram.recordValueWithExpectedInterval(syncHistogram.getHighestTrackableValue() - 1, 31);
         
         assertEqual(syncHistogram, syncHistogram.copy());
     }

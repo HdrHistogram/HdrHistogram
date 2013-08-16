@@ -111,7 +111,7 @@
  * or
  * <br><code>
  * <pre>
- * for (HistogramIterationValue v : histogram.getRawHistogramData().linearBucketValues(<i>valueUnitsPerBucket</i>)) {
+ * for (HistogramIterationValue v : histogram.getHistogramData().linearBucketValues(<i>valueUnitsPerBucket</i>)) {
  *     ...
  * }
  * </pre>

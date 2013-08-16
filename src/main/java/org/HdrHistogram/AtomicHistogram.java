@@ -25,40 +25,66 @@ public class AtomicHistogram extends AbstractHistogram {
     volatile long totalCount;
     final AtomicLongArray counts;
 
-    long getCountAtIndex(int index) {
+    @Override
+    long getCountAtIndex(final int index) {
         return counts.get(index);
     }
 
-    void incrementCountAtIndex(int index) {
+    @Override
+    void incrementCountAtIndex(final int index) {
         counts.incrementAndGet(index);
     }
 
-    void addToCountAtIndex(int index, long value) {
+    @Override
+    void addToCountAtIndex(final int index, final long value) {
         counts.addAndGet(index, value);
     }
 
+    @Override
     void clearCounts() {
         for (int i = 0; i < counts.length(); i++)
             counts.lazySet(i, 0);
         totalCountUpdater.set(this, 0);
     }
-    
+
+    /**
+     * @inheritDoc
+     */
+    @Override
     public AtomicHistogram copy() {
       AtomicHistogram copy = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public AtomicHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
+        AtomicHistogram toHistogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return toHistogram;
+    }
+
+    @Override
     long getTotalCount() {
         return totalCount;
     }
 
-    void setTotalCount(long totalCount) {
+    @Override
+    void setTotalCount(final long totalCount) {
         totalCountUpdater.set(this, totalCount);
     }
 
+    @Override
     void incrementTotalCount() {
         totalCountUpdater.incrementAndGet(this);
+    }
+
+    @Override
+    void addToTotalCount(long value) {
+        totalCountUpdater.addAndGet(this, value);
     }
 
     /**
@@ -66,6 +92,7 @@ public class AtomicHistogram extends AbstractHistogram {
      *
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
+    @Override
     public int getEstimatedFootprintInBytes() {
         return (512 + (8 * counts.length()));
     }
@@ -84,7 +111,7 @@ public class AtomicHistogram extends AbstractHistogram {
         counts = new AtomicLongArray(countsArrayLength);
     }
 
-    private void readObject(ObjectInputStream o)
+    private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }

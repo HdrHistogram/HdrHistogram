@@ -23,22 +23,26 @@ public class SynchronizedHistogram extends AbstractHistogram {
     long totalCount;
     final long[] counts;
 
-    long getCountAtIndex(int index) {
+    @Override
+    long getCountAtIndex(final int index) {
         return counts[index];
     }
 
-    void incrementCountAtIndex(int index) {
+    @Override
+    void incrementCountAtIndex(final int index) {
         synchronized (this) {
             counts[index]++;
         }
     }
 
-    void addToCountAtIndex(int index, long value) {
+    @Override
+    void addToCountAtIndex(final int index, final long value) {
         synchronized (this) {
             counts[index] += value;
         }
     }
 
+    @Override
     void clearCounts() {
         synchronized (this) {
             java.util.Arrays.fill(counts, 0);
@@ -46,6 +50,10 @@ public class SynchronizedHistogram extends AbstractHistogram {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
     public synchronized void add(final AbstractHistogram other) {
         // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
         if (identityCount < other.identityCount) {
@@ -63,6 +71,10 @@ public class SynchronizedHistogram extends AbstractHistogram {
         }
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
     public SynchronizedHistogram copy() {
         SynchronizedHistogram copy = new SynchronizedHistogram(
                 highestTrackableValue, numberOfSignificantValueDigits);
@@ -70,19 +82,39 @@ public class SynchronizedHistogram extends AbstractHistogram {
         return copy;
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public SynchronizedHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
+        SynchronizedHistogram toHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return toHistogram;
+    }
+
+    @Override
     long getTotalCount() {
         return totalCount;
     }
 
-    void setTotalCount(long totalCount) {
+    @Override
+    void setTotalCount(final long totalCount) {
         synchronized (this) {
            this.totalCount = totalCount;
         }
     }
 
+    @Override
     void incrementTotalCount() {
         synchronized (this) {
             totalCount++;
+        }
+    }
+
+    @Override
+    void addToTotalCount(long value) {
+        synchronized (this) {
+            totalCount += value;
         }
     }
 
@@ -91,6 +123,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
      *
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
+    @Override
     public int getEstimatedFootprintInBytes() {
         return (512 + (8 * counts.length));
     }
@@ -109,7 +142,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
         counts = new long[countsArrayLength];
     }
 
-    private void readObject(ObjectInputStream o)
+    private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }

@@ -26,7 +26,7 @@ public class HistogramPerfTest {
 
     void recordLoopWithExpectedInterval(AbstractHistogram histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
-            histogram.recordValue(testValueLevel + (i & 0x8000), expectedInterval);
+            histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
     long LeadingZerosSpeedLoop(long loopCount) {

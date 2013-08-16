@@ -80,6 +80,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     abstract void incrementTotalCount();
 
+    abstract void addToTotalCount(long value);
+
     abstract void clearCounts();
     
     /**
@@ -88,6 +90,30 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return A distinct copy of this histogram.
      */
     abstract public AbstractHistogram copy();
+
+    /**
+     * Get a copy of this histogram, corrected for coordinated omission.
+     * <p>
+     * To compensate for the loss of sampled values when a recorded value is larger than the expected
+     * interval between value samples, the new histogram will include an auto-generated additional series of
+     * decreasingly-smaller (down to the expectedIntervalBetweenValueSamples) value records for each count found
+     * in the current histogram that is larger than the expectedIntervalBetweenValueSamples.
+     *
+     * Note: This is a post-correction method, as opposed to the at-recording correction method provided
+     * by {@link #recordValueWithExpectedInterval(long, long) recordValueWithExpectedInterval}. The two
+     * methods are mutually exclusive, and only one of the two should be be used on a given data set to correct
+     * for the same coordinated omission issue.
+     * by
+     * <p>
+     * See notes in the description of the Histogram calls for an illustration of why this corrective behavior is
+     * important.
+     *
+     * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
+     *                                           auto-generated value records as appropriate if value is larger
+     *                                           than expectedIntervalBetweenValueSamples
+     * @throws ArrayIndexOutOfBoundsException
+     */
+    abstract public AbstractHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples);
 
     /**
      * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
@@ -194,6 +220,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return  (int)(value >> bucketIndex);
     }
 
+    private void recordCountAtValue(final long count, final long value) throws ArrayIndexOutOfBoundsException {
+        // Dissect the value into bucket and sub-bucket parts, and derive index into counts array:
+        int bucketIndex = getBucketIndex(value);
+        int subBucketIndex = getSubBucketIndex(value, bucketIndex);
+        int countsIndex = countsArrayIndex(bucketIndex, subBucketIndex);
+        addToCountAtIndex(countsIndex, count);
+        addToTotalCount(count);
+    }
+
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
         // Dissect the value into bucket and sub-bucket parts, and derive index into counts array:
         int bucketIndex = getBucketIndex(value);
@@ -203,15 +238,30 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         incrementTotalCount();
     }
 
+
+    private void recordValueWithCountAndExpectedInterval(final long value, final long count,
+                                                         final long expectedIntervalBetweenValueSamples) throws ArrayIndexOutOfBoundsException {
+        recordCountAtValue(count, value);
+        if (expectedIntervalBetweenValueSamples <=0)
+            return;
+        for (long missingValue = value - expectedIntervalBetweenValueSamples;
+             missingValue >= expectedIntervalBetweenValueSamples;
+             missingValue -= expectedIntervalBetweenValueSamples) {
+            recordCountAtValue(count, missingValue);
+        }
+    }
+
     /**
      * Record a value in the histogram.
      * <p>
      * To compensate for the loss of sampled values when a recorded value is larger than the expected
      * interval between value samples, Histogram will auto-generate an additional series of decreasingly-smaller
-     * (down to the expectedIntervalBetweenValueSamples) value records. In addition to the default, "corrected"
-     * histogram representation containing potential auto-generated value records, the Histogram keeps track of
-     * "raw" histogram data containing no such corrections. This data set is available via the
-     * <b><code>getRawData</code></b> method.
+     * (down to the expectedIntervalBetweenValueSamples) value records.
+     * <p>
+     * Note: This is a at-recording correction method, as opposed to the post-recording correction method provided
+     * by {@link #copyCorrectedForCoordinatedOmission(long) getHistogramCorrectedForCoordinatedOmission}.
+     * The two methods are mutually exclusive, and only one of the two should be be used on a given data set to correct
+     * for the same coordinated omission issue.
      * <p>
      * See notes in the description of the Histogram calls for an illustration of why this corrective behavior is
      * important.
@@ -222,15 +272,36 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                                           than expectedIntervalBetweenValueSamples
      * @throws ArrayIndexOutOfBoundsException
      */
+    public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples) throws ArrayIndexOutOfBoundsException {
+        recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
+    }
+
+    /**
+     * @deprecated
+     *
+     * Record a value in the histogram. This deprecated method has identical behavior to
+     * <b><code>recordValueWithExpectedInterval()</code></b>. It was renamed to avoid ambiguity.
+     *
+     * @param value The value to record
+     * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
+     *                                           auto-generated value records as appropriate if value is larger
+     *                                           than expectedIntervalBetweenValueSamples
+     * @throws ArrayIndexOutOfBoundsException
+     */
     public void recordValue(final long value, final long expectedIntervalBetweenValueSamples) throws ArrayIndexOutOfBoundsException {
-        recordSingleValue(value);
-        if (expectedIntervalBetweenValueSamples <=0)
-            return;
-        for (long missingValue = value - expectedIntervalBetweenValueSamples;
-             missingValue >= expectedIntervalBetweenValueSamples;
-             missingValue -= expectedIntervalBetweenValueSamples) {
-            recordSingleValue(missingValue);
-        }
+        recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
+    }
+
+
+    /**
+     * Record a value in the histogram (adding to the value's current count)
+     *
+     * @param value The value to be recorded
+     * @param count The number of occurrences of this value to record
+     * @throws ArrayIndexOutOfBoundsException
+     */
+    public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
+        recordCountAtValue(count, value);
     }
 
     /**
@@ -263,6 +334,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
         arrayAdd(this, other);
         setTotalCount(getTotalCount() + other.getTotalCount());
+    }
+
+    void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram, final long expectedIntervalBetweenValueSamples) {
+        final AbstractHistogram toHistogram = this;
+
+        for (HistogramIterationValue v : fromHistogram.getHistogramData().recordedValues()) {
+            toHistogram.recordValueWithCountAndExpectedInterval(v.getValueIteratedTo(),
+                    v.getCountAtValueIteratedTo(), expectedIntervalBetweenValueSamples);
+        }
     }
 
     /**

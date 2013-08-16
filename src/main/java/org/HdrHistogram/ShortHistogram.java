@@ -22,39 +22,64 @@ public class ShortHistogram extends AbstractHistogram {
     long totalCount;
     final short[] counts;
 
-    long getCountAtIndex(int index) {
+    @Override
+    long getCountAtIndex(final int index) {
         return counts[index];
     }
 
-    void incrementCountAtIndex(int index) {
+    @Override
+    void incrementCountAtIndex(final int index) {
         counts[index]++;
     }
 
-    void addToCountAtIndex(int index, long value) {
+    @Override
+    void addToCountAtIndex(final int index, final long value) {
         counts[index] += value;
     }
 
+    @Override
     void clearCounts() {
         java.util.Arrays.fill(counts, (short) 0);
         totalCount = 0;
     }
-    
-    public ShortHistogram copy() {
+
+    /**
+     * @inheritDoc
+     */
+    @Override    public ShortHistogram copy() {
       ShortHistogram copy = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public ShortHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
+        ShortHistogram toHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return toHistogram;
+    }
+
+    @Override
     long getTotalCount() {
         return totalCount;
     }
 
-    void setTotalCount(long totalCount) {
+    @Override
+    void setTotalCount(final long totalCount) {
         this.totalCount = totalCount;
     }
 
+    @Override
     void incrementTotalCount() {
         totalCount++;
+    }
+
+    @Override
+    void addToTotalCount(long value) {
+        totalCount += value;
     }
 
     /**
@@ -62,6 +87,7 @@ public class ShortHistogram extends AbstractHistogram {
      *
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
+    @Override
     public int getEstimatedFootprintInBytes() {
         return (512 + (2 * counts.length));
     }
@@ -80,7 +106,7 @@ public class ShortHistogram extends AbstractHistogram {
         counts = new short[countsArrayLength];
     }
 
-    private void readObject(ObjectInputStream o)
+    private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }

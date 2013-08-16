@@ -22,39 +22,65 @@ public class IntHistogram extends AbstractHistogram {
     long totalCount;
     final int[] counts;
 
-    long getCountAtIndex(int index) {
+    @Override
+    long getCountAtIndex(final int index) {
         return counts[index];
     }
 
-    void incrementCountAtIndex(int index) {
+    @Override
+    void incrementCountAtIndex(final int index) {
         counts[index]++;
     }
 
-    void addToCountAtIndex(int index, long value) {
+    @Override
+    void addToCountAtIndex(final int index, final long value) {
         counts[index] += value;
     }
 
+    @Override
     void clearCounts() {
         java.util.Arrays.fill(counts, 0);
         totalCount = 0;
     }
-    
+
+    /**
+     * @inheritDoc
+     */
+    @Override
     public IntHistogram copy() {
       IntHistogram copy = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
 
+    /**
+     * @inheritDoc
+     */
+    @Override
+    public IntHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
+        IntHistogram toHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return toHistogram;
+    }
+
+    @Override
     long getTotalCount() {
         return totalCount;
     }
 
-    void setTotalCount(long totalCount) {
+    @Override
+    void setTotalCount(final long totalCount) {
         this.totalCount = totalCount;
     }
 
+    @Override
     void incrementTotalCount() {
         totalCount++;
+    }
+
+    @Override
+    void addToTotalCount(long value) {
+        totalCount += value;
     }
 
     /**
@@ -62,6 +88,7 @@ public class IntHistogram extends AbstractHistogram {
      *
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
+    @Override
     public int getEstimatedFootprintInBytes() {
         return (512 + (4 * counts.length));
     }
@@ -80,7 +107,7 @@ public class IntHistogram extends AbstractHistogram {
         counts = new int[countsArrayLength];
     }
 
-    private void readObject(ObjectInputStream o)
+    private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }

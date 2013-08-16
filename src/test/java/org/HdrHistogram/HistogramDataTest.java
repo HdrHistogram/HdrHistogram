@@ -21,6 +21,7 @@ public class HistogramDataTest {
     static final int numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
     static final Histogram histogram;
     static final Histogram rawHistogram;
+    static final Histogram postCorrectedHistogram;
 
 
     static {
@@ -31,11 +32,40 @@ public class HistogramDataTest {
         // a single (100 second) recorded result. Recording is done indicating an expected
         // interval between samples of 10 msec:
         for (int i = 0; i < 10000; i++) {
-            histogram.recordValue(1000 /* 1 msec */, 10000 /* 10 msec expected interval */);
+            histogram.recordValueWithExpectedInterval(1000 /* 1 msec */, 10000 /* 10 msec expected interval */);
             rawHistogram.recordValue(1000 /* 1 msec */);
         }
-        histogram.recordValue(100000000L /* 100 sec */, 10000 /* 10 msec expected interval */);
+        histogram.recordValueWithExpectedInterval(100000000L /* 100 sec */, 10000 /* 10 msec expected interval */);
         rawHistogram.recordValue(100000000L /* 100 sec */);
+
+        postCorrectedHistogram = rawHistogram.copyCorrectedForCoordinatedOmission(10000 /* 10 msec expected interval */);
+    }
+
+    @Test
+    public void testPreVsPostCorrectionValues()  {
+        // Loop both ways (one would be enough, but good practice just for fun:
+
+        Assert.assertEquals("pre and post corrected count totals ",
+                histogram.getTotalCount(), postCorrectedHistogram.getTotalCount());
+
+        // The following comparison loops would have worked in a perfect accuracy world, but since post
+        // correction is done based on the value extracted from the bucket, and the during-recording is done
+        // based on the actual (not pixelized) value, there will be subtle differences due to roundoffs:
+
+        //        for (HistogramIterationValue v : histogram.getHistogramData().allValues()) {
+        //            long preCorrectedCount = v.getCountAtValueIteratedTo();
+        //            long postCorrectedCount = postCorrectedHistogram.getHistogramData().getCountAtValue(v.getValueIteratedTo());
+        //            Assert.assertEquals("pre and post corrected count at value " + v.getValueIteratedTo(),
+        //                    preCorrectedCount, postCorrectedCount);
+        //        }
+        //
+        //        for (HistogramIterationValue v : postCorrectedHistogram.getHistogramData().allValues()) {
+        //            long preCorrectedCount = v.getCountAtValueIteratedTo();
+        //            long postCorrectedCount = histogram.getHistogramData().getCountAtValue(v.getValueIteratedTo());
+        //            Assert.assertEquals("pre and post corrected count at value " + v.getValueIteratedTo(),
+        //                    preCorrectedCount, postCorrectedCount);
+        //        }
+
     }
 
     @Test
@@ -162,9 +192,9 @@ public class HistogramDataTest {
     @Test
     public void testGetCountAtValue() throws Exception {
         Assert.assertEquals("Count of raw values at 10 msec is 0",
-                0, rawHistogram.getHistogramData().getCountAtValue(10000L));
+                0, rawHistogram.getHistogramData().getCountBetweenValues(10000L, 10010L));
         Assert.assertEquals("Count of values at 10 msec is 0",
-                1, histogram.getHistogramData().getCountAtValue(10000L));
+                1, histogram.getHistogramData().getCountBetweenValues(10000L, 10010L));
         Assert.assertEquals("Count of raw values at 1 msec is 10,000",
                 10000, rawHistogram.getHistogramData().getCountAtValue(1000L));
         Assert.assertEquals("Count of values at 1 msec is 10,000",
