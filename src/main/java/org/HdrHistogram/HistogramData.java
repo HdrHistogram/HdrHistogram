@@ -280,6 +280,21 @@ public class HistogramData {
     /**
      * Produce textual representation of the value distribution of histogram data by percentile. The distribution is
      * output with exponentially increasing resolution, with each exponentially decreasing half-distance containing
+     * five (5) percentile reporting tick points.
+     *
+     * @param printStream    Stream into which the distribution will be output
+     * <p>
+     * @param outputValueUnitScalingRatio    The scaling factor by which to divide histogram recorded values units in
+     *                                     output
+     */
+    public void outputPercentileDistribution(final PrintStream printStream,
+                                             final Double outputValueUnitScalingRatio) {
+        outputPercentileDistribution(printStream, 5, outputValueUnitScalingRatio);
+    }
+
+    /**
+     * Produce textual representation of the value distribution of histogram data by percentile. The distribution is
+     * output with exponentially increasing resolution, with each exponentially decreasing half-distance containing
      * <i>dumpTicksPerHalf</i> percentile reporting tick points.
      *
      * @param printStream    Stream into which the distribution will be output

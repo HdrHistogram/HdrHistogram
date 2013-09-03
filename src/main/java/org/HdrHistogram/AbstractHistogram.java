@@ -324,19 +324,42 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     /**
      * Add the contents of another histogram to this one
      *
-     * @param other The other histogram. highestTrackableValue and largestValueWithSingleUnitResolution must match.
+     * @param fromHistogram The other histogram. highestTrackableValue and largestValueWithSingleUnitResolution must match.
      */
-    public void add(final AbstractHistogram other) {
-        if ((highestTrackableValue != other.highestTrackableValue) ||
-                (numberOfSignificantValueDigits != other.numberOfSignificantValueDigits) ||
-                (bucketCount != other.bucketCount) ||
-                (subBucketCount != other.subBucketCount))
+    public void add(final AbstractHistogram fromHistogram) {
+        if ((highestTrackableValue != fromHistogram.highestTrackableValue) ||
+                (numberOfSignificantValueDigits != fromHistogram.numberOfSignificantValueDigits) ||
+                (bucketCount != fromHistogram.bucketCount) ||
+                (subBucketCount != fromHistogram.subBucketCount))
             throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
-        arrayAdd(this, other);
-        setTotalCount(getTotalCount() + other.getTotalCount());
+        arrayAdd(this, fromHistogram);
+        setTotalCount(getTotalCount() + fromHistogram.getTotalCount());
     }
 
-    void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram, final long expectedIntervalBetweenValueSamples) {
+    /**
+     * Add the contents of another histogram to this one, while correcting the incoming data for coordinated omission.
+     * <p>
+     * To compensate for the loss of sampled values when a recorded value is larger than the expected
+     * interval between value samples, the values added will include an auto-generated additional series of
+     * decreasingly-smaller (down to the expectedIntervalBetweenValueSamples) value records for each count found
+     * in the current histogram that is larger than the expectedIntervalBetweenValueSamples.
+     *
+     * Note: This is a post-recording correction method, as opposed to the at-recording correction method provided
+     * by {@link #recordValueWithExpectedInterval(long, long) recordValueWithExpectedInterval}. The two
+     * methods are mutually exclusive, and only one of the two should be be used on a given data set to correct
+     * for the same coordinated omission issue.
+     * by
+     * <p>
+     * See notes in the description of the Histogram calls for an illustration of why this corrective behavior is
+     * important.
+     *
+     * @param fromHistogram The other histogram. highestTrackableValue and largestValueWithSingleUnitResolution must match.
+     * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
+     *                                           auto-generated value records as appropriate if value is larger
+     *                                           than expectedIntervalBetweenValueSamples
+     * @throws ArrayIndexOutOfBoundsException
+     */
+    public void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram, final long expectedIntervalBetweenValueSamples) {
         final AbstractHistogram toHistogram = this;
 
         for (HistogramIterationValue v : fromHistogram.getHistogramData().recordedValues()) {

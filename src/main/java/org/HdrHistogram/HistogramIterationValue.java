@@ -56,7 +56,7 @@ public class HistogramIterationValue {
     // Set is all-or-nothing to avoid the potential for accidental omission of some values...
     void set(long valueIteratedTo, long valueIteratedFrom, long countAtValueIteratedTo,
              long countInThisIterationStep, long totalCountToThisValue, long totalValueToThisValue,
-             double percentile, double percentileReportingLevel) {
+             double percentile, double percentileLevelIteratedTo) {
         this.valueIteratedTo = valueIteratedTo;
         this.valueIteratedFrom = valueIteratedFrom;
         this.countAtValueIteratedTo = countAtValueIteratedTo;
@@ -64,7 +64,7 @@ public class HistogramIterationValue {
         this.totalCountToThisValue = totalCountToThisValue;
         this.totalValueToThisValue = totalValueToThisValue;
         this.percentile = percentile;
-        this.percentileLevelIteratedTo = percentileReportingLevel;
+        this.percentileLevelIteratedTo = percentileLevelIteratedTo;
     }
 
     void reset() {
