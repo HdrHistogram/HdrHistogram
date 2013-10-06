@@ -34,7 +34,10 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
         visitedBucketIndex = -1;
     }
 
-    AllValuesIterator(final AbstractHistogram histogram) {
+    /**
+     * @param histogram The histogram this iterator will operate on
+     */
+    public AllValuesIterator(final AbstractHistogram histogram) {
         reset(histogram);
     }
 

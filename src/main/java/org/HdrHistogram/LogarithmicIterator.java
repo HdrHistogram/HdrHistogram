@@ -40,7 +40,12 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
         this.nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
     }
 
-    LogarithmicIterator(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final int logBase) {
+    /**
+     * @param histogram The histogram this iterator will operate on
+     * @param valueUnitsInFirstBucket the size (in value units) of the first value bucket step
+     * @param logBase the multiplier by which the bucket size is expanded in each iteration step.
+     */
+    public LogarithmicIterator(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final int logBase) {
         reset(histogram, valueUnitsInFirstBucket, logBase);
     }
 

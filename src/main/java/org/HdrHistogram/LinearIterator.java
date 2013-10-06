@@ -37,7 +37,11 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
         this.nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
     }
 
-    LinearIterator(final AbstractHistogram histogram, final int valueUnitsPerBucket) {
+    /**
+     * @param histogram The histogram this iterator will operate on
+     * @param valueUnitsPerBucket The size (in value units) of each bucket iteration.
+     */
+    public LinearIterator(final AbstractHistogram histogram, final int valueUnitsPerBucket) {
         reset(histogram, valueUnitsPerBucket);
     }
 

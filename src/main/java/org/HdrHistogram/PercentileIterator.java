@@ -40,8 +40,12 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
         this.reachedLastRecordedValue = false;
     }
 
-    PercentileIterator(final AbstractHistogram histogram, final int percentileTicksPerHalf) {
-        reset(histogram, percentileTicksPerHalf);
+    /**
+     * @param histogram The histogram this iterator will operate on
+     * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
+     */
+    public PercentileIterator(final AbstractHistogram histogram, final int percentileTicksPerHalfDistance) {
+        reset(histogram, percentileTicksPerHalfDistance);
     }
 
     @Override

@@ -34,7 +34,10 @@ public class RecordedValuesIterator extends AbstractHistogramIterator implements
         visitedBucketIndex = -1;
     }
 
-    RecordedValuesIterator(final AbstractHistogram histogram) {
+    /**
+     * @param histogram The histogram this iterator will operate on
+     */
+    public RecordedValuesIterator(final AbstractHistogram histogram) {
         reset(histogram);
     }
 
