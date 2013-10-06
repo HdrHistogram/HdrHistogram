@@ -1,7 +1,7 @@
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 [excerpt from the Histogram JavaDoc]
 
-AbstractHistogram supports the recording and analyzing sampled data value
+HdrHistogram supports the recording and analyzing sampled data value
 counts across a configurable integer value range with configurable value
 precision within the range. Value precision is expressed as the number of
 significant digits in the value recording, and provides control over value

@@ -1,22 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.hdrhistogram</groupId>
-    <artifactId>hdrhistogram</artifactId>
-    <version>1.0-SNAPSHOT</version>
+
+    <groupId>org.HdrHistogram</groupId>
+    <artifactId>HdrHistogram</artifactId>
+    <version>1.0.1-SNAPSHOT</version>
+
     <name>HdrHistogram</name>
+
+    <url>http://giltene.github.io/HdrHistogram/</url>
+
+    <description>
+        HdrHistogram supports the recording and analyzing sampled data value
+        counts across a configurable integer value range with configurable value
+        precision within the range. Value precision is expressed as the number of
+        significant digits in the value recording, and provides control over value
+        quantization behavior across the value range and the subsequent value
+        resolution at any given level.
+    </description>
+
+    <licenses>
+        <license>
+            <comments>
+                * This code was Written by Gil Tene of Azul Systems, and released to the
+                * public domain, as explained at http://creativecommons.org/publicdomain/zero/1.0/
+            </comments>
+            <name>Public Domain, per Creative Commons CC0</name>
+            <url>http://creativecommons.org/publicdomain/zero/1.0/</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>giltene</id>
+            <name>Gil Tene</name>
+            <url>https://github.com/giltene</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/giltene/HdrHistogram</url>
+        <connection>scm:git:git://github.com/giltene/HdrHistogram.git</connection>
+        <developerConnection>scm:git:git@github.com:giltene/HdrHistogram.git</developerConnection>
+    </scm>
+
+    <issueManagement>
+        <url>https://github.com/giltene/HdrHistogram/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+
     <packaging>jar</packaging>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.10</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -39,4 +77,15 @@
             </plugin>
         </plugins>
     </build>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.10</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
 </project>
