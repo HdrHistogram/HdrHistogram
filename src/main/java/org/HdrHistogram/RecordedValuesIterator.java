@@ -38,11 +38,13 @@ public class RecordedValuesIterator extends AbstractHistogramIterator implements
         reset(histogram);
     }
 
+    @Override
     void incrementIterationLevel() {
         visitedSubBucketIndex = currentSubBucketIndex;
         visitedBucketIndex = currentBucketIndex;
     }
 
+    @Override
     boolean reachedIterationLevel() {
         long currentIJCount = histogram.getCountAt(currentBucketIndex, currentSubBucketIndex);
         return (currentIJCount != 0) &&

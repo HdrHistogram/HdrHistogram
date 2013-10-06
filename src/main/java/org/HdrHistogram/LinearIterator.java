@@ -46,6 +46,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
         return (super.hasNext() || (countAtThisValue != 0));
     }
 
+    @Override
     void incrementIterationLevel() {
         nextValueReportingLevel += valueUnitsPerBucket;
         nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
@@ -56,6 +57,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
         return nextValueReportingLevel;
     }
 
+    @Override
     boolean reachedIterationLevel() {
         return (currentValueAtIndex >= nextValueReportingLevelLowestEquivalent);
     }

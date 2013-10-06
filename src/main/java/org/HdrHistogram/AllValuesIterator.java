@@ -38,11 +38,13 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
         reset(histogram);
     }
 
+    @Override
     void incrementIterationLevel() {
         visitedSubBucketIndex = currentSubBucketIndex;
         visitedBucketIndex = currentBucketIndex;
     }
 
+    @Override
     boolean reachedIterationLevel() {
         return (visitedSubBucketIndex != currentSubBucketIndex) || (visitedBucketIndex != currentBucketIndex);
     }

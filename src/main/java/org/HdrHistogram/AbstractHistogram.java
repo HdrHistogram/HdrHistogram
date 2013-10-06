@@ -205,13 +205,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return getCountAtIndex(countsArrayIndex(bucketIndex, subBucketIndex));
     }
 
-    private static void arrayAdd(AbstractHistogram toHistogram, AbstractHistogram fromHistogram) {
+    private static void arrayAdd(final AbstractHistogram toHistogram, final AbstractHistogram fromHistogram) {
         if (fromHistogram.countsArrayLength != toHistogram.countsArrayLength) throw new IndexOutOfBoundsException();
         for (int i = 0; i < fromHistogram.countsArrayLength; i++)
             toHistogram.addToCountAtIndex(i, fromHistogram.getCountAtIndex(i));
     }
 
-    int getBucketIndex(long value) {
+    int getBucketIndex(final long value) {
         int pow2ceiling = 64 - Long.numberOfLeadingZeros(value | subBucketMask); // smallest power of 2 containing value
         return  pow2ceiling - (subBucketHalfCountMagnitude + 1);
     }
@@ -423,7 +423,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The given value
      * @return The lowest value that is equivalent to the given value within the histogram's resolution.
      */
-    public long sizeOfEquivalentValueRange(long value) {
+    public long sizeOfEquivalentValueRange(final long value) {
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long distanceToNextValue =
@@ -439,7 +439,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The given value
      * @return The lowest value that is equivalent to the given value within the histogram's resolution.
      */
-    public long lowestEquivalentValue(long value) {
+    public long lowestEquivalentValue(final long value) {
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long thisValueBaseLevel = subBucketIndex << bucketIndex;
@@ -454,7 +454,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The given value
      * @return The highest value that is equivalent to the given value within the histogram's resolution.
      */
-    public long highestEquivalentValue(long value) {
+    public long highestEquivalentValue(final long value) {
         return nextNonEquivalentValue(value) - 1;
     }
 
@@ -466,7 +466,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The given value
      * @return The value lies in the middle (rounded up) of the range of values equivalent the given value.
      */
-    public long medianEquivalentValue(long value) {
+    public long medianEquivalentValue(final long value) {
         return (lowestEquivalentValue(value) + (sizeOfEquivalentValueRange(value) >> 1));
     }
 
@@ -478,7 +478,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The given value
      * @return The next value that is not equivalent to the given value within the histogram's resolution.
      */
-    public long nextNonEquivalentValue(long value) {
+    public long nextNonEquivalentValue(final long value) {
         return lowestEquivalentValue(value) + sizeOfEquivalentValueRange(value);
     }
 
@@ -491,13 +491,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value2 second value to compare
      * @return True if values are equivalent with the histogram's resolution.
      */
-    public boolean valuesAreEquivalent(long value1, long value2) {
+    public boolean valuesAreEquivalent(final long value1, final long value2) {
         return (lowestEquivalentValue(value1) == lowestEquivalentValue(value2));
     }
 
     private static final long serialVersionUID = 42L;
 
-    private void writeObject(ObjectOutputStream o)
+    private void writeObject(final ObjectOutputStream o)
             throws IOException
     {
         o.writeLong(highestTrackableValue);
@@ -505,7 +505,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         o.writeLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
     }
 
-    private void readObject(ObjectInputStream o)
+    private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         final long highestTrackableValue = o.readLong();
         final int numberOfSignificantValueDigits = o.readInt();

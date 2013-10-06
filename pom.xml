@@ -4,7 +4,7 @@
     <groupId>org.hdrhistogram</groupId>
     <artifactId>hdrhistogram</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>HDRHistogram</name>
+    <name>HdrHistogram</name>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

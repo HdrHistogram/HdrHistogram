@@ -27,7 +27,7 @@ public class HistogramData {
     final int bucketCount;
     final int subBucketCount;
 
-    HistogramData(AbstractHistogram histogram) {
+    HistogramData(final AbstractHistogram histogram) {
         this.histogram = histogram;
         this.percentileIterator = new PercentileIterator(histogram, 1);
         this.recordedValuesIterator = new RecordedValuesIterator(histogram);

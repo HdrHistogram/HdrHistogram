@@ -13,6 +13,8 @@ import org.HdrHistogram.*;
 
 import org.junit.*;
 
+import java.util.Locale;
+
 /**
  * JUnit test for {@link HistogramData}
  */
@@ -203,7 +205,25 @@ public class HistogramDataTest {
 
     @Test
     public void testPercentiles() throws Exception {
-
+        for (HistogramIterationValue v : histogram.getHistogramData().percentiles(5 /* ticks per half */)) {
+            Assert.assertEquals("Value at Iterated-to Percentile is the same as the matching getValueAtPercentile():\n" +
+                    "getPercentileLevelIteratedTo = " + v.getPercentileLevelIteratedTo() +
+                    "\ngetValueIteratedTo = " + v.getValueIteratedTo() +
+                    "\ngetValueIteratedFrom = " + v.getValueIteratedFrom() +
+                    "\ngetValueAtPercentile(getPercentileLevelIteratedTo()) = " +
+                    histogram.getHistogramData().getValueAtPercentile(v.getPercentileLevelIteratedTo()) +
+                    "\ngetPercentile = " + v.getPercentile() +
+                    "\ngetValueAtPercentile(getPercentile())" +
+                    histogram.getHistogramData().getValueAtPercentile(v.getPercentile()) +
+                    "\nequivalent1 = " +
+                    histogram.highestEquivalentValue(histogram.getHistogramData().getValueAtPercentile(v.getPercentileLevelIteratedTo())) +
+                    "\nequivalent2 = " +
+                    histogram.highestEquivalentValue(histogram.getHistogramData().getValueAtPercentile(v.getPercentile())) +
+                    "\n"
+                    ,
+                    v.getValueIteratedTo(),
+                    histogram.highestEquivalentValue(histogram.getHistogramData().getValueAtPercentile(v.getPercentile())));
+        }
     }
 
     @Test

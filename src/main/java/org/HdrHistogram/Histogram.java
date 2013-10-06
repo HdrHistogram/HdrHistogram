@@ -97,7 +97,7 @@ public class Histogram extends AbstractHistogram {
     }
 
     @Override
-    void addToTotalCount(long value) {
+    void addToTotalCount(final long value) {
         totalCount += value;
     }
 

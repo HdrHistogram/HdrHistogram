@@ -119,7 +119,6 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
 
     abstract boolean reachedIterationLevel();
 
-
     double getPercentileIteratedTo() {
         return (100.0 * (double) totalCountToCurrentIndex) / arrayTotalCount;
     }

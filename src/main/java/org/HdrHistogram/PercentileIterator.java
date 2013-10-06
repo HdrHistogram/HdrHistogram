@@ -28,7 +28,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
      *
      * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
      */
-    public void reset(int percentileTicksPerHalfDistance) {
+    public void reset(final int percentileTicksPerHalfDistance) {
         reset(histogram, percentileTicksPerHalfDistance);
     }
 
@@ -57,6 +57,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
         return false;
     }
 
+    @Override
     void incrementIterationLevel() {
         percentileLevelToIterateFrom = percentileLevelToIterateTo;
         long percentileReportingTicks =
@@ -66,6 +67,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
         percentileLevelToIterateTo += 100.0 / percentileReportingTicks;
     }
 
+    @Override
     boolean reachedIterationLevel() {
         if (countAtThisValue == 0)
             return false;
