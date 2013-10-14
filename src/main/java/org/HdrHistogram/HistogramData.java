@@ -306,17 +306,25 @@ public class HistogramData {
     public void outputPercentileDistribution(final PrintStream printStream,
                                              final int percentileTicksPerHalfDistance,
                                              final Double outputValueUnitScalingRatio) {
-        printStream.println("Value, Percentile, TotalCountIncludingThisValue\n");
+        printStream.println("Value, Percentile, TotalCountIncludingThisValue, 1/(1-Percentile)\n");
 
         PercentileIterator iterator = percentileIterator;
         iterator.reset(percentileTicksPerHalfDistance);
-        String percentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d\n";
+        String percentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d %12.2f\n";
+        String lastLinePercentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d\n";
         try {
             while (iterator.hasNext()) {
                 HistogramIterationValue iterationValue = iterator.next();
-                printStream.format(Locale.US, percentileFormatString,
-                        iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0,
-                        iterationValue.getTotalCountToThisValue());
+                if (iterationValue.getPercentileLevelIteratedTo() != 100.0D) {
+                    printStream.format(Locale.US, percentileFormatString,
+                            iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0D,
+                            iterationValue.getTotalCountToThisValue(),
+                            1/(1.0D - (iterationValue.getPercentileLevelIteratedTo()/100.0D)) );
+                } else {
+                    printStream.format(Locale.US, lastLinePercentileFormatString,
+                            iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio, iterationValue.getPercentileLevelIteratedTo()/100.0D,
+                            iterationValue.getTotalCountToThisValue());
+                }
             }
 
 
