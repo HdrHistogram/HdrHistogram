@@ -306,11 +306,11 @@ public class HistogramData {
     public void outputPercentileDistribution(final PrintStream printStream,
                                              final int percentileTicksPerHalfDistance,
                                              final Double outputValueUnitScalingRatio) {
-        printStream.println("Value, Percentile, TotalCountIncludingThisValue, 1/(1-Percentile)\n");
+        printStream.format("%12s %14s %10s %14s\n\n", "Value", "Percentile", "TotalCount", "1/(1-Percentile)");
 
         PercentileIterator iterator = percentileIterator;
         iterator.reset(percentileTicksPerHalfDistance);
-        String percentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d %12.2f\n";
+        String percentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d %14.2f\n";
         String lastLinePercentileFormatString = "%12." + histogram.numberOfSignificantValueDigits + "f %2.12f %10d\n";
         try {
             while (iterator.hasNext()) {
