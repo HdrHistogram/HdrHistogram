@@ -8,8 +8,9 @@
 
 package org.HdrHistogram;
 
-import org.HdrHistogram.*;
+import static org.junit.Assert.assertTrue;
 
+import org.HdrHistogram.*;
 import org.junit.*;
 
 import java.util.Locale;
@@ -166,6 +167,16 @@ public class HistogramDataTest {
                 100000000.0, (double) histogram.getHistogramData().getValueAtPercentile(100.0),
                 100000000.0 * 0.001);
     }
+    
+    @Test
+    public void testGetValueAtPercentileForLargeHistogram() {
+        long largestValue = 1000000000000L;
+        Histogram h = new Histogram(largestValue, 5);
+        h.recordValue(largestValue);
+         
+        assertTrue(h.getHistogramData().getValueAtPercentile(100.0) > 0); 
+    }
+
 
     @Test
     public void testGetPercentileAtOrBelowValue() throws Exception {

@@ -128,4 +128,9 @@ public class Histogram extends AbstractHistogram {
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }
+
+    static long valueFromIndex(int bucketIndex, int subBucketIndex)
+    {
+        return ((long) subBucketIndex) << bucketIndex;
+    }
 }

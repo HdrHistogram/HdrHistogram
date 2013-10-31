@@ -8,6 +8,8 @@
 
 package org.HdrHistogram;
 
+import static org.HdrHistogram.Histogram.valueFromIndex;
+
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 
@@ -146,6 +148,6 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
             nextSubBucketIndex = histogram.subBucketHalfCount;
             nextBucketIndex++;
         }
-        nextValueAtIndex = nextSubBucketIndex << nextBucketIndex;
+        nextValueAtIndex = valueFromIndex(nextBucketIndex, nextSubBucketIndex);
     }
 }
