@@ -122,7 +122,7 @@ public class HistogramData {
             for (; j < subBucketCount; j++) {
                 totalToCurrentIJ += histogram.getCountAt(i, j);
                 if (totalToCurrentIJ >= countAtPercentile) {
-                    long valueAtIndex = j << i;
+                    long valueAtIndex = (long) j << i;
                     return valueAtIndex;
                 }
             }
