@@ -8,6 +8,8 @@
 
 package org.HdrHistogram;
 
+import static org.HdrHistogram.Histogram.valueFromIndex;
+
 import java.io.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -441,7 +443,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public long lowestEquivalentValue(final long value) {
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-        long thisValueBaseLevel = subBucketIndex << bucketIndex;
+        long thisValueBaseLevel = valueFromIndex(bucketIndex, subBucketIndex);
         return thisValueBaseLevel;
     }
 

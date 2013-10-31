@@ -9,6 +9,8 @@
 package org.HdrHistogram;
 
 
+import static org.HdrHistogram.Histogram.valueFromIndex;
+
 import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.Locale;
@@ -122,7 +124,7 @@ public class HistogramData {
             for (; j < subBucketCount; j++) {
                 totalToCurrentIJ += histogram.getCountAt(i, j);
                 if (totalToCurrentIJ >= countAtPercentile) {
-                    long valueAtIndex = (long) j << i;
+                    long valueAtIndex = valueFromIndex(i, j);
                     return valueAtIndex;
                 }
             }
@@ -174,10 +176,10 @@ public class HistogramData {
         // Compute the sub-bucket-rounded values for low and high:
         int lowBucketIndex = histogram.getBucketIndex(lowValue);
         int lowSubBucketIndex = histogram.getSubBucketIndex(lowValue, lowBucketIndex);
-        long valueAtlowValue = lowSubBucketIndex << lowBucketIndex;
+        long valueAtlowValue = valueFromIndex(lowBucketIndex, lowSubBucketIndex);
         int highBucketIndex = histogram.getBucketIndex(highValue);
         int highSubBucketIndex = histogram.getSubBucketIndex(highValue, highBucketIndex);
-        long valueAtHighValue = highSubBucketIndex << highBucketIndex;
+        long valueAtHighValue = valueFromIndex(highBucketIndex, highSubBucketIndex);
 
         if ((lowBucketIndex >= bucketCount) || (highBucketIndex >= bucketCount))
             throw new ArrayIndexOutOfBoundsException();
@@ -185,7 +187,7 @@ public class HistogramData {
         for (int i = lowBucketIndex; i <= highBucketIndex; i++) {
             int j = (i == 0) ? 0 : (subBucketCount / 2);
             for (; j < subBucketCount; j++) {
-                long valueAtIndex = j << i;
+                long valueAtIndex = valueFromIndex(i, j);
                 if (valueAtIndex > valueAtHighValue)
                     return count;
                 if (valueAtIndex >= valueAtlowValue)
