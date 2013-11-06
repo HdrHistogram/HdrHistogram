@@ -124,6 +124,29 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     abstract public int getEstimatedFootprintInBytes();
 
     /**
+     * Copy this histogram into the target histogram, overwriting it's contents.
+     *
+     * @param targetHistogram
+     * @return A distinct copy of this histogram.
+     */
+    public void copyInto(AbstractHistogram targetHistogram) {
+        targetHistogram.reset();
+        targetHistogram.add(this);
+    }
+
+    /**
+     * Copy this histogram, corrected for coordinated omission, into the target histogram, overwriting it's contents.
+     * (see {@link #copyCorrectedForCoordinatedOmission} for more detailed explanation about how correction is applied)
+     *
+     * @param targetHistogram
+     * @param expectedIntervalBetweenValueSamples
+     */
+    public void copyIntoCorrectedForCoordinatedOmission(AbstractHistogram targetHistogram, final long expectedIntervalBetweenValueSamples) {
+        targetHistogram.reset();
+        targetHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+    }
+
+    /**
      * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive

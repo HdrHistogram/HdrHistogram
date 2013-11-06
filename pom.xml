@@ -4,7 +4,7 @@
 
     <groupId>org.HdrHistogram</groupId>
     <artifactId>HdrHistogram</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
 
     <name>HdrHistogram</name>
 
