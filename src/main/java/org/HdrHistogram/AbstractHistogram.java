@@ -146,6 +146,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         targetHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
     }
 
+
+    /**
+     * provide an overrideable point for initializing the state of TotalCount. Useful for
+     * implementations that would represent totalCount as something other than a primitive value
+     * (e.g. AtomicHistogram).
+     */
+    void initTotalCount() {
+    }
+
     /**
      * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits
      *
@@ -162,6 +171,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5))
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
         identityCount = constructionIdentityCount.getAndIncrement();
+        initTotalCount();
         init(highestTrackableValue, numberOfSignificantValueDigits, 0);
     }
 
@@ -535,5 +545,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int numberOfSignificantValueDigits = o.readInt();
         final long totalCount = o.readLong();
         init(highestTrackableValue, numberOfSignificantValueDigits, totalCount);
+        setTotalCount(totalCount);
     }
 }
