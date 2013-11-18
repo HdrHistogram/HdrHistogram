@@ -46,7 +46,7 @@ public class ShortHistogram extends AbstractHistogram {
      * @inheritDoc
      */
     @Override    public ShortHistogram copy() {
-      ShortHistogram copy = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+      ShortHistogram copy = new ShortHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
@@ -56,7 +56,7 @@ public class ShortHistogram extends AbstractHistogram {
      */
     @Override
     public ShortHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        ShortHistogram toHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        ShortHistogram toHistogram = new ShortHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }

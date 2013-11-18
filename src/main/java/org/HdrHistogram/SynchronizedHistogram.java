@@ -76,7 +76,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
     @Override
     public SynchronizedHistogram copy() {
         SynchronizedHistogram copy = new SynchronizedHistogram(
-                highestTrackableValue, numberOfSignificantValueDigits);
+                lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         copy.add(this);
         return copy;
     }
@@ -86,7 +86,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
      */
     @Override
     public SynchronizedHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        SynchronizedHistogram toHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        SynchronizedHistogram toHistogram = new SynchronizedHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }

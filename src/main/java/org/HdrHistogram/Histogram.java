@@ -65,7 +65,7 @@ public class Histogram extends AbstractHistogram {
      */
     @Override
     public Histogram copy() {
-      Histogram copy = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+      Histogram copy = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
@@ -75,7 +75,7 @@ public class Histogram extends AbstractHistogram {
      */
     @Override
     public Histogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        Histogram toHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        Histogram toHistogram = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }

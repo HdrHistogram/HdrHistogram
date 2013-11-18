@@ -47,7 +47,7 @@ public class IntHistogram extends AbstractHistogram {
      */
     @Override
     public IntHistogram copy() {
-      IntHistogram copy = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+      IntHistogram copy = new IntHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
       copy.add(this);
       return copy;
     }
@@ -57,7 +57,7 @@ public class IntHistogram extends AbstractHistogram {
      */
     @Override
     public IntHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        IntHistogram toHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        IntHistogram toHistogram = new IntHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }

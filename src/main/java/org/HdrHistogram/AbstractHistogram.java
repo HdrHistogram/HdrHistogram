@@ -156,20 +156,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits. The
-     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
-     *
-     * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is >= 2.
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
-     */
-    public AbstractHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        this(1, highestTrackableValue, numberOfSignificantValueDigits);
-    }
-
-    /**
      * Construct a Histogram given the Lowest and Highest values to be tracked and a number of significant
      * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
