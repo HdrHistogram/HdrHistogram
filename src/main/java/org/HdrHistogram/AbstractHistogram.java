@@ -8,8 +8,6 @@
 
 package org.HdrHistogram;
 
-import static org.HdrHistogram.Histogram.valueFromIndex;
-
 import java.io.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,6 +26,7 @@ abstract class AbstractHistogramBase {
     long identityCount;
 
     long highestTrackableValue;
+    long lowestTrackableValue;
     int numberOfSignificantValueDigits;
 
     int bucketCount;
@@ -62,6 +61,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     // that they will have a good chance of ending up in the same cache line as the totalCounts and
     // counts array reference fields that subclass implementations will typically add.
     int subBucketHalfCountMagnitude;
+    int unitMagnitude;
     int subBucketHalfCount;
     long subBucketMask;
     // Sub-classes will typically add a totalCount field and a counts array field, which will likely be laid out
@@ -156,7 +156,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits
+     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits. The
+     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is >= 2.
@@ -165,21 +166,49 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                                       integer between 0 and 5.
      */
     public AbstractHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        // Verify argument validity
-        if (highestTrackableValue < 2)
-            throw new IllegalArgumentException("highestTrackableValue must be >= 2");
-        if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5))
-            throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
-        identityCount = constructionIdentityCount.getAndIncrement();
-        initTotalCount();
-        init(highestTrackableValue, numberOfSignificantValueDigits, 0);
+        this(1, highestTrackableValue, numberOfSignificantValueDigits);
     }
 
-    private void init(final long highestTrackableValue, final int numberOfSignificantValueDigits, long totalCount) {
+    /**
+     * Construct a Histogram given the Lowest and Highest values to be tracked and a number of significant
+     * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
+     * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
+     * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
+     * proper value for lowestTrackableValue would be 1000.
+     *
+     * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
+     *                             Must be a positive integer that is >= 1. May be internally rounded down to nearest
+     *                             power of 2.
+     * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
+     *                              integer that is >= (2 * lowestTrackableValue).
+     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
+     *                                       maintain value resolution and separation. Must be a non-negative
+     *                                       integer between 0 and 5.
+     */
+    public AbstractHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+        // Verify argument validity
+        if (lowestTrackableValue < 1) {
+            throw new IllegalArgumentException("lowestTrackableValue must be >= 1");
+        }
+        if (highestTrackableValue < 2 * lowestTrackableValue) {
+            throw new IllegalArgumentException("highestTrackableValue must be >= 2 * lowestTrackableValue");
+        }
+        if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5)) {
+            throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
+        }
+        identityCount = constructionIdentityCount.getAndIncrement();
+        initTotalCount();
+        init(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits, 0);
+    }
+
+    private void init(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits, long totalCount) {
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
+        this.lowestTrackableValue = lowestTrackableValue;
 
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
+
+        unitMagnitude = (int) Math.floor(Math.log(lowestTrackableValue)/Math.log(2));
 
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to
         // provide unit resolution to at least largestValueWithSingleUnitResolution. So figure out
@@ -188,10 +217,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         subBucketHalfCountMagnitude = ((subBucketCountMagnitude > 1) ? subBucketCountMagnitude : 1) - 1;
         subBucketCount = (int) Math.pow(2, (subBucketHalfCountMagnitude + 1));
         subBucketHalfCount = subBucketCount / 2;
-        subBucketMask = subBucketCount - 1;
+        subBucketMask = (subBucketCount - 1) << unitMagnitude;
+
 
         // determine exponent range needed to support the trackable value with no overflow:
-        long trackableValue = subBucketCount - 1;
+        long trackableValue = (subBucketCount - 1) << unitMagnitude;
         int bucketsNeeded = 1;
         while (trackableValue < highestTrackableValue) {
             trackableValue <<= 1;
@@ -206,12 +236,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         histogramData = new HistogramData(this);
     }
 
+
     /**
-     * get the configured numberOfSignificantValueDigits
-     * @return numberOfSignificantValueDigits
+     * get the configured lowestTrackableValue
+     * @return lowestTrackableValue
      */
-    public int getNumberOfSignificantValueDigits() {
-        return numberOfSignificantValueDigits;
+    public long getLowestTrackableValue() {
+        return lowestTrackableValue;
     }
 
     /**
@@ -221,6 +252,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public long getHighestTrackableValue() {
         return highestTrackableValue;
     }
+
+    /**
+     * get the configured numberOfSignificantValueDigits
+     * @return numberOfSignificantValueDigits
+     */
+    public int getNumberOfSignificantValueDigits() {
+        return numberOfSignificantValueDigits;
+    }
+
 
     private int countsArrayIndex(final int bucketIndex, final int subBucketIndex) {
         assert(subBucketIndex < subBucketCount);
@@ -247,11 +287,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     int getBucketIndex(final long value) {
         int pow2ceiling = 64 - Long.numberOfLeadingZeros(value | subBucketMask); // smallest power of 2 containing value
-        return  pow2ceiling - (subBucketHalfCountMagnitude + 1);
+        return  pow2ceiling - unitMagnitude - (subBucketHalfCountMagnitude + 1);
     }
 
     int getSubBucketIndex(long value, int bucketIndex) {
-        return  (int)(value >> bucketIndex);
+        return  (int)(value >> (bucketIndex + unitMagnitude));
     }
 
     private void recordCountAtValue(final long count, final long value) throws ArrayIndexOutOfBoundsException {
@@ -461,7 +501,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long distanceToNextValue =
-                (1 << ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex));
+                (1 << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
         return distanceToNextValue;
     }
 
@@ -476,7 +516,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public long lowestEquivalentValue(final long value) {
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-        long thisValueBaseLevel = valueFromIndex(bucketIndex, subBucketIndex);
+        long thisValueBaseLevel = valueFromIndex(bucketIndex, subBucketIndex, unitMagnitude);
         return thisValueBaseLevel;
     }
 
@@ -534,6 +574,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private void writeObject(final ObjectOutputStream o)
             throws IOException
     {
+        o.writeLong(lowestTrackableValue);
         o.writeLong(highestTrackableValue);
         o.writeInt(numberOfSignificantValueDigits);
         o.writeLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
@@ -541,10 +582,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
+        final long lowestTrackableValue = o.readLong();
         final long highestTrackableValue = o.readLong();
         final int numberOfSignificantValueDigits = o.readInt();
         final long totalCount = o.readLong();
-        init(highestTrackableValue, numberOfSignificantValueDigits, totalCount);
+        init(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits, totalCount);
         setTotalCount(totalCount);
+    }
+
+
+    static final long valueFromIndex(int bucketIndex, int subBucketIndex, int unitMagnitude)
+    {
+        return ((long) subBucketIndex) << ( bucketIndex + unitMagnitude);
     }
 }

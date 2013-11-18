@@ -22,25 +22,65 @@ public class HistogramDataTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // 1 hour in usec units
     static final int numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
     static final Histogram histogram;
+    static final Histogram scaledHistogram;
     static final Histogram rawHistogram;
+    static final Histogram scaledRawHistogram;
     static final Histogram postCorrectedHistogram;
+    static final Histogram postCorrectedScaledHistogram;
 
 
     static {
         histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        scaledHistogram = new Histogram(1000, highestTrackableValue * 512, numberOfSignificantValueDigits);
         rawHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        scaledRawHistogram = new Histogram(1000, highestTrackableValue * 512, numberOfSignificantValueDigits);
         // Log hypothetical scenario: 100 seconds of "perfect" 1msec results, sampled
         // 100 times per second (10,000 results), followed by a 100 second pause with
         // a single (100 second) recorded result. Recording is done indicating an expected
         // interval between samples of 10 msec:
         for (int i = 0; i < 10000; i++) {
             histogram.recordValueWithExpectedInterval(1000 /* 1 msec */, 10000 /* 10 msec expected interval */);
+            scaledHistogram.recordValueWithExpectedInterval(1000 * 512 /* 1 msec */, 10000 * 512 /* 10 msec expected interval */);
             rawHistogram.recordValue(1000 /* 1 msec */);
+            scaledRawHistogram.recordValue(1000 * 512/* 1 msec */);
         }
         histogram.recordValueWithExpectedInterval(100000000L /* 100 sec */, 10000 /* 10 msec expected interval */);
+        scaledHistogram.recordValueWithExpectedInterval(100000000L * 512 /* 100 sec */, 10000 * 512 /* 10 msec expected interval */);
         rawHistogram.recordValue(100000000L /* 100 sec */);
+        scaledRawHistogram.recordValue(100000000L * 512 /* 100 sec */);
 
         postCorrectedHistogram = rawHistogram.copyCorrectedForCoordinatedOmission(10000 /* 10 msec expected interval */);
+        postCorrectedScaledHistogram = scaledRawHistogram.copyCorrectedForCoordinatedOmission(10000 * 512 /* 10 msec expected interval */);
+    }
+
+    @Test
+    public void testScalingEquivalence() {
+        Assert.assertEquals("averages should be equivalent",
+                histogram.getHistogramData().getMean() * 512,
+                scaledHistogram.getHistogramData().getMean(), scaledHistogram.getHistogramData().getMean() * 0.000001);
+        Assert.assertEquals("total count should be the same",
+                histogram.getHistogramData().getTotalCount(),
+                scaledHistogram.getHistogramData().getTotalCount());
+        Assert.assertEquals("99%'iles should be equivalent",
+                histogram.getHistogramData().getValueAtPercentile(99.0) * 512,
+                scaledHistogram.getHistogramData().getValueAtPercentile(99.0));
+        Assert.assertEquals("Max should be equivalent",
+                histogram.getHistogramData().getMaxValue() * 512,
+                scaledHistogram.getHistogramData().getMaxValue());
+        // Same for post-corrected:
+        Assert.assertEquals("averages should be equivalent",
+                histogram.getHistogramData().getMean() * 512,
+                scaledHistogram.getHistogramData().getMean(), scaledHistogram.getHistogramData().getMean() * 0.000001);
+        Assert.assertEquals("total count should be the same",
+                postCorrectedHistogram.getHistogramData().getTotalCount(),
+                postCorrectedScaledHistogram.getHistogramData().getTotalCount());
+        Assert.assertEquals("99%'iles should be equivalent",
+                postCorrectedHistogram.getHistogramData().getValueAtPercentile(99.0) * 512,
+                postCorrectedScaledHistogram.getHistogramData().getValueAtPercentile(99.0));
+        Assert.assertEquals("Max should be equivalent",
+                postCorrectedHistogram.getHistogramData().getMaxValue() * 512,
+                postCorrectedScaledHistogram.getHistogramData().getMaxValue());
+
     }
 
     @Test

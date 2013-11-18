@@ -61,8 +61,11 @@ public class HistogramTest {
     @Test
     public void testConstructionArgumentGets() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals(1, histogram.getLowestTrackableValue());
         Assert.assertEquals(highestTrackableValue, histogram.getHighestTrackableValue());
         Assert.assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
+        Histogram histogram2 = new Histogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals(1000, histogram2.getLowestTrackableValue());
     }
 
     @Test
@@ -174,6 +177,21 @@ public class HistogramTest {
     }
 
     @Test
+    public void testScaledSizeOfEquivalentValueRange() {
+        Histogram histogram = new Histogram(1024, highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals("Size of equivalent range for value 1 * 1024 is 1 * 1024",
+                1 * 1024, histogram.sizeOfEquivalentValueRange(1 * 1024));
+        Assert.assertEquals("Size of equivalent range for value 2500 * 1024 is 2 * 1024",
+                2 * 1024, histogram.sizeOfEquivalentValueRange(2500 * 1024));
+        Assert.assertEquals("Size of equivalent range for value 8191 * 1024 is 4 * 1024",
+                4 * 1024, histogram.sizeOfEquivalentValueRange(8191 * 1024));
+        Assert.assertEquals("Size of equivalent range for value 8192 * 1024 is 8 * 1024",
+                8 * 1024, histogram.sizeOfEquivalentValueRange(8192 * 1024));
+        Assert.assertEquals("Size of equivalent range for value 10000 * 1024 is 8 * 1024",
+                8 * 1024, histogram.sizeOfEquivalentValueRange(10000 * 1024));
+    }
+
+    @Test
     public void testLowestEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("The lowest equivalent value to 10007 is 10000",
@@ -182,8 +200,36 @@ public class HistogramTest {
                 10008, histogram.lowestEquivalentValue(10009));
     }
 
+
+    @Test
+    public void testScaledLowestEquivalentValue() {
+        Histogram histogram = new Histogram(1024, highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals("The lowest equivalent value to 10007 * 1024 is 10000 * 1024",
+                10000 * 1024, histogram.lowestEquivalentValue(10007 * 1024));
+        Assert.assertEquals("The lowest equivalent value to 10009 * 1024 is 10008 * 1024",
+                10008 * 1024, histogram.lowestEquivalentValue(10009 * 1024));
+    }
+
     @Test
     public void testHighestEquivalentValue() {
+        Histogram histogram = new Histogram(1024, highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals("The highest equivalent value to 8180 * 1024 is 8183 * 1024 + 1023",
+                8183 * 1024 + 1023, histogram.highestEquivalentValue(8180 * 1024));
+        Assert.assertEquals("The highest equivalent value to 8187 * 1024 is 8191 * 1024 + 1023",
+                8191 * 1024 + 1023, histogram.highestEquivalentValue(8191 * 1024));
+        Assert.assertEquals("The highest equivalent value to 8193 * 1024 is 8199 * 1024 + 1023",
+                8199 * 1024 + 1023, histogram.highestEquivalentValue(8193 * 1024));
+        Assert.assertEquals("The highest equivalent value to 9995 * 1024 is 9999 * 1024 + 1023",
+                9999 * 1024 + 1023, histogram.highestEquivalentValue(9995 * 1024));
+        Assert.assertEquals("The highest equivalent value to 10007 * 1024 is 10007 * 1024 + 1023",
+                10007 * 1024 + 1023, histogram.highestEquivalentValue(10007 * 1024));
+        Assert.assertEquals("The highest equivalent value to 10008 * 1024 is 10015 * 1024 + 1023",
+                10015 * 1024 + 1023, histogram.highestEquivalentValue(10008 * 1024));
+    }
+
+
+    @Test
+    public void testScaledHighestEquivalentValue() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("The highest equivalent value to 8180 is 8183",
                 8183, histogram.highestEquivalentValue(8180));
@@ -212,6 +258,21 @@ public class HistogramTest {
                 8002, histogram.medianEquivalentValue(8000));
         Assert.assertEquals("The median equivalent value to 10007 is 10004",
                 10004, histogram.medianEquivalentValue(10007));
+    }
+
+    @Test
+    public void testScaledMedianEquivalentValue() {
+        Histogram histogram = new Histogram(1024, highestTrackableValue, numberOfSignificantValueDigits);
+        Assert.assertEquals("The median equivalent value to 4 * 1024 is 4 * 1024 + 512",
+                4 * 1024 + 512, histogram.medianEquivalentValue(4 * 1024));
+        Assert.assertEquals("The median equivalent value to 5 * 1024 is 5 * 1024 + 512",
+                5 * 1024 + 512, histogram.medianEquivalentValue(5 * 1024));
+        Assert.assertEquals("The median equivalent value to 4000 * 1024 is 4001 * 1024",
+                4001 * 1024, histogram.medianEquivalentValue(4000 * 1024));
+        Assert.assertEquals("The median equivalent value to 8000 * 1024 is 8002 * 1024",
+                8002 * 1024, histogram.medianEquivalentValue(8000 * 1024));
+        Assert.assertEquals("The median equivalent value to 10007 * 1024 is 10004 * 1024",
+                10004 * 1024, histogram.medianEquivalentValue(10007 * 1024));
     }
 
     @Test

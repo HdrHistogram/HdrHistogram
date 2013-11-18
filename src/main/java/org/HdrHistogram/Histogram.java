@@ -110,8 +110,10 @@ public class Histogram extends AbstractHistogram {
         return (512 + (8 * counts.length));
     }
 
+
     /**
-     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits
+     * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits. The
+     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is >= 2.
@@ -120,17 +122,32 @@ public class Histogram extends AbstractHistogram {
      *                                       integer between 0 and 5.
      */
     public Histogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        super(highestTrackableValue, numberOfSignificantValueDigits);
+        this(1, highestTrackableValue, numberOfSignificantValueDigits);
+    }
+
+    /**
+     * Construct a Histogram given the Lowest and Highest values to be tracked and a number of significant
+     * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
+     * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
+     * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
+     * proper value for lowestTrackableValue would be 1000.
+     *
+     * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
+     *                             Must be a positive integer that is >= 1. May be internally rounded down to nearest
+     *                             power of 2.
+     * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
+     *                              integer that is >= (2 * lowestTrackableValue).
+     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
+     *                                       maintain value resolution and separation. Must be a non-negative
+     *                                       integer between 0 and 5.
+     */
+    public Histogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+        super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         counts = new long[countsArrayLength];
     }
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
-    }
-
-    static long valueFromIndex(int bucketIndex, int subBucketIndex)
-    {
-        return ((long) subBucketIndex) << bucketIndex;
     }
 }
