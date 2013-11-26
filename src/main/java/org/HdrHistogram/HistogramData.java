@@ -249,7 +249,7 @@ public class HistogramData {
      * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using
      * a {@link LogarithmicIterator}
      */
-    public LogarithmicBucketValues logarithmicBucketValues(final int valueUnitsInFirstBucket, final int logBase) {
+    public LogarithmicBucketValues logarithmicBucketValues(final int valueUnitsInFirstBucket, final double logBase) {
         return new LogarithmicBucketValues(histogram, valueUnitsInFirstBucket, logBase);
     }
 
@@ -417,10 +417,10 @@ public class HistogramData {
     public class LogarithmicBucketValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
         final int valueUnitsInFirstBucket;
-        final int logBase;
+        final double logBase;
 
         private LogarithmicBucketValues(final AbstractHistogram histogram,
-                                        final int valueUnitsInFirstBucket, final int logBase) {
+                                        final int valueUnitsInFirstBucket, final double logBase) {
             this.histogram = histogram;
             this.valueUnitsInFirstBucket = valueUnitsInFirstBucket;
             this.logBase = logBase;
