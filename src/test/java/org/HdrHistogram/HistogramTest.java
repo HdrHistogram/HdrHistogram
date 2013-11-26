@@ -357,6 +357,19 @@ public class HistogramTest {
         System.out.println("Histogram percentile output should show overflow:");
         histogram.getHistogramData().outputPercentileDistribution(System.out, 5, 100.0);
     }
+
+    @Test
+    public void testReestablishTotalCount() throws Exception {
+        ShortHistogram histogram = new ShortHistogram(highestTrackableValue, 2);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 10);
+        Assert.assertFalse(histogram.hasOverflowed());
+        // This should overflow a ShortHistogram:
+        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 500);
+        Assert.assertTrue(histogram.hasOverflowed());
+        histogram.reestablishTotalCount();
+        Assert.assertFalse(histogram.hasOverflowed());
+    }
     
     @Test
     public void testCopy() throws Exception {

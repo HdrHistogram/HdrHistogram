@@ -127,7 +127,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Copy this histogram into the target histogram, overwriting it's contents.
      *
      * @param targetHistogram
-     * @return A distinct copy of this histogram.
      */
     public void copyInto(AbstractHistogram targetHistogram) {
         targetHistogram.reset();
@@ -444,6 +443,41 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             totalCounted += getCountAtIndex(i);
         }
         return (totalCounted != getTotalCount());
+    }
+
+    /**
+     * Reestablish the internal notion of totalCount by recalculating it from recorded values.
+     *
+     * Implementations of AbstractHistogram may maintain a separately tracked notion of totalCount,
+     * which is useful for concurrent modification tracking, overflow detection, and speed of execution
+     * in iteration. This separately tracked totalCount can get into a state that is inconsistent with
+     * the currently recorded value counts under various concurrent modification and overflow conditions.
+     *
+     * Applying this method will override internal indications of potential overflows and concurrent
+     * modification, and will reestablish a self-consistent representation of the histogram data
+     * based purely on the current internal representation of recorded counts.
+     * <p>
+     * In cases of concurrent modifications such as during copying, or due to racy multi-threaded
+     * updates on non-atomic or non-synchronized variants, which can result in potential loss
+     * of counts and an inconsistent (indicating potential overflow) internal state, calling this
+     * method on a histogram will reestablish a consistent internal state based on the potentially
+     * lossy counts representations.
+     * <p>
+     * Note that this method is not synchronized against concurrent modification in any way,
+     * and will only reliably reestablish consistent internal state when no concurrent modification
+     * of the histogram is performed while it executes.
+     * <p>
+     * Note that in the cases of actual overflow conditions (which can result in negative counts)
+     * this self consistent view may be very wrong, and not just slightly lossy.
+     *
+     */
+    public void reestablishTotalCount() {
+        // On overflow, the totalCount accumulated counter will (always) not match the total of counts
+        long totalCounted = 0;
+        for (int i = 0; i < countsArrayLength; i++) {
+            totalCounted += getCountAtIndex(i);
+        }
+        setTotalCount(totalCounted);
     }
 
     /**
