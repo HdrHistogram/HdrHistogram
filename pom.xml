@@ -10,7 +10,7 @@
 
     <groupId>org.hdrhistogram</groupId>
     <artifactId>HdrHistogram</artifactId>
-    <version>1.0.8-SNAPSHOT</version>
+    <version>1.0.8</version>
 
     <name>HdrHistogram</name>
 
