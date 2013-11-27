@@ -249,7 +249,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private int countsArrayIndex(final int bucketIndex, final int subBucketIndex) {
         assert(subBucketIndex < subBucketCount);
-        assert(bucketIndex < bucketCount);
         assert(bucketIndex == 0 || (subBucketIndex >= subBucketHalfCount));
         // Calculate the index for the first entry in the bucket:
         // (The following is the equivalent of ((bucketIndex + 1) * subBucketHalfCount) ):
