@@ -14,7 +14,7 @@
 
     <name>HdrHistogram</name>
 
-    <url>http://giltene.github.io/HdrHistogram/</url>
+    <url>http://hdrhistogram.github.io/HdrHistogram/</url>
 
     <description>
         HdrHistogram supports the recording and analyzing sampled data value
@@ -45,14 +45,14 @@
     </developers>
 
     <scm>
-        <url>scm:git:git://github.com/giltene/HdrHistogram.git</url>
-        <connection>scm:git:git://github.com/giltene/HdrHistogram.git</connection>
-        <developerConnection>scm:git:git@github.com:giltene/HdrHistogram.git</developerConnection>
+        <url>scm:git:git://github.com/HdrHistogram/HdrHistogram.git</url>
+        <connection>scm:git:git://github.com/HdrHistogram/HdrHistogram.git</connection>
+        <developerConnection>scm:git:git@github.com:HdrHistogram/HdrHistogram.git</developerConnection>
     </scm>
 
 
     <issueManagement>
-        <url>https://github.com/giltene/HdrHistogram/issues</url>
+        <url>https://github.com/HdrHistogram/HdrHistogram/issues</url>
         <system>GitHub Issues</system>
     </issueManagement>
 
