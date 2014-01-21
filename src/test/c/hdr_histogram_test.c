@@ -13,6 +13,11 @@
 #include <hdr_histogram.h>
 #include "minunit.h"
 
+bool compare_percentile(int64_t a, double b, double variation)
+{
+    return fabs(a - b) <= b * variation;
+}
+
 int tests_run = 0;
 
 static struct hdr_histogram* raw_histogram = NULL;
@@ -102,11 +107,6 @@ static char* test_get_min_value()
     mu_assert("hdr_histogram_min(cor_histogram) != 1000", hdr_histogram_min(cor_histogram) == 1000L);
 
     return 0;
-}
-
-bool compare_percentile(int64_t a, double b, double variation)
-{
-    return fabs(a - b) <= b * variation;
 }
 
 static char* test_percentiles()
