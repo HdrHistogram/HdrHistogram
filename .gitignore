@@ -8,4 +8,9 @@ HdrHistogram.iml
 .settings
 release.properties
 pom.xml.releaseBackup
-
+/bin
+alltests
+format_example
+*.a
+.sconsign.dblite
+*.o
