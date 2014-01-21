@@ -106,7 +106,6 @@ static char* test_get_min_value()
 
 bool compare_percentile(int64_t a, double b, double variation)
 {
-    double value = (double) a;
     return fabs(a - b) <= b * variation;
 }
 
@@ -114,30 +113,30 @@ static char* test_percentiles()
 {
     load_histograms();
 
-    mu_assert("Value at 30% not 1000.0", 
+    mu_assert("Value at 30% not 1000.0",
               compare_percentile(hdr_histogram_value_at_percentile(raw_histogram, 30.0), 1000.0, 0.001));
-    mu_assert("Value at 99% not 1000.0", 
+    mu_assert("Value at 99% not 1000.0",
               compare_percentile(hdr_histogram_value_at_percentile(raw_histogram, 99.0), 1000.0, 0.001));
-    mu_assert("Value at 99.99% not 1000.0", 
+    mu_assert("Value at 99.99% not 1000.0",
               compare_percentile(hdr_histogram_value_at_percentile(raw_histogram, 99.99), 1000.0, 0.001));
-    mu_assert("Value at 99.999% not 100000000.0", 
+    mu_assert("Value at 99.999% not 100000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(raw_histogram, 99.999), 100000000.0, 0.001));
-    mu_assert("Value at 100% not 100000000.0", 
+    mu_assert("Value at 100% not 100000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(raw_histogram, 100.0), 100000000.0, 0.001));
 
-    mu_assert("Value at 30% not 1000.0", 
+    mu_assert("Value at 30% not 1000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 30.0), 1000.0, 0.001));
-    mu_assert("Value at 50% not 1000.0", 
+    mu_assert("Value at 50% not 1000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 50.0), 1000.0, 0.001));
-    mu_assert("Value at 75% not 50000000.0", 
+    mu_assert("Value at 75% not 50000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 75.0), 50000000.0, 0.001));
-    mu_assert("Value at 90% not 80000000.0", 
+    mu_assert("Value at 90% not 80000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 90.0), 80000000.0, 0.001));
-    mu_assert("Value at 99% not 98000000.0", 
+    mu_assert("Value at 99% not 98000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 99.0), 98000000.0, 0.001));
-    mu_assert("Value at 99.999% not 100000000.0", 
+    mu_assert("Value at 99.999% not 100000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 99.999), 100000000.0, 0.001));
-    mu_assert("Value at 100% not 100000000.0", 
+    mu_assert("Value at 100% not 100000000.0",
               compare_percentile(hdr_histogram_value_at_percentile(cor_histogram, 100.0), 100000000.0, 0.001));
 
     return 0;
