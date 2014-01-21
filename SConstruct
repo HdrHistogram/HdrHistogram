@@ -5,11 +5,10 @@
 import os
 
 env = Environment()
-#env['ENV']['TERM'] = os.environ['TERM']
 env['ENV']['PATH'] = os.environ['PATH']
 env["CC"]  = "clang"
 env["CPPPATH"] = []
-env["CPPFLAGS"] = ['-g']
+env["CPPFLAGS"] = ['-g', '-Wall']
 
 bin = env.Clone()
 bin["CPPDEFINES"] = ['__LZCNT__']
