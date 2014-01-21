@@ -96,7 +96,7 @@ static int64_t highest_equivalent_value(struct hdr_histogram* h, int64_t value)
 
 static int64_t median_equivalent_value(struct hdr_histogram* h, int64_t value)
 {
-    return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);    
+    return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);
 }
 
 //////////////////////////////////// Memory ///////////////////////////////////
@@ -273,7 +273,7 @@ double hdr_histogram_stddev(struct hdr_histogram* h)
     double geometric_dev_total = 0.0;
 
     struct hdr_histogram_iter iter;
-    hdr_histogram_iter_init(&iter, h);    
+    hdr_histogram_iter_init(&iter, h);
 
     while (hdr_histogram_iter_next(&iter))
     {
@@ -296,7 +296,7 @@ bool hdr_histogram_values_are_equivalent(struct hdr_histogram* h, int64_t a, int
 
 static bool has_next(struct hdr_histogram_iter* iter)
 {
-    return iter->count_to_index < iter->h->total_count;   
+    return iter->count_to_index < iter->h->total_count;
 }
 
 void hdr_histogram_iter_init(struct hdr_histogram_iter* itr, struct hdr_histogram* h)
@@ -383,7 +383,7 @@ bool hdr_histogram_percentiles_next(struct hdr_histogram_percentiles* percentile
 
             return true;
         }
-    } 
+    }
     while (hdr_histogram_iter_next(&percentiles->iter));
 
     return true;
@@ -420,7 +420,7 @@ void hdr_histogram_percentiles_print(struct hdr_histogram* h, FILE* stream, int3
     double max    = hdr_histogram_max(h)    / value_scale;
 
     fprintf(stream, "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n", mean, stddev);
-    fprintf(stream, "#[Max     = %12.3f, Total count    = %12ld]\n", max, h->total_count);
+    fprintf(stream, "#[Max     = %12.3f, Total count    = %12lld]\n", max, h->total_count);
     fprintf(stream, "#[Buckets = %12d, SubBuckets     = %12d]\n", h->bucket_count, h->sub_bucket_count);
 
     fflush(stream);
