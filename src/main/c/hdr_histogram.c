@@ -96,7 +96,7 @@ static int64_t highest_equivalent_value(struct hdr_histogram* h, int64_t value)
 
 static int64_t median_equivalent_value(struct hdr_histogram* h, int64_t value)
 {
-    return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);    
+    return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);
 }
 
 //////////////////////////////////// Memory ///////////////////////////////////
@@ -273,7 +273,7 @@ double hdr_histogram_stddev(struct hdr_histogram* h)
     double geometric_dev_total = 0.0;
 
     struct hdr_histogram_iter iter;
-    hdr_histogram_iter_init(&iter, h);    
+    hdr_histogram_iter_init(&iter, h);
 
     while (hdr_histogram_iter_next(&iter))
     {
@@ -296,7 +296,7 @@ bool hdr_histogram_values_are_equivalent(struct hdr_histogram* h, int64_t a, int
 
 static bool has_next(struct hdr_histogram_iter* iter)
 {
-    return iter->count_to_index < iter->h->total_count;   
+    return iter->count_to_index < iter->h->total_count;
 }
 
 void hdr_histogram_iter_init(struct hdr_histogram_iter* itr, struct hdr_histogram* h)
@@ -383,27 +383,56 @@ bool hdr_histogram_percentiles_next(struct hdr_histogram_percentiles* percentile
 
             return true;
         }
-    } 
+    }
     while (hdr_histogram_iter_next(&percentiles->iter));
 
     return true;
 }
 
-static void format_line_string(char* str, int len, int significant_figures)
+static void format_line_string(char* str, int len, int significant_figures, format_type format)
 {
-    const char* format = "%s%d%s";
-    snprintf(str, len, format, "%12.", significant_figures, "f %12f %12d %12.2f\n");
+    const char* format_str = "%s%d%s";
+
+    switch (format)
+    {
+        case CSV:
+            snprintf(str, len, format_str, "%.", significant_figures, "f,%f,%d,%.2f\n");
+            break;
+        case CLASSIC:
+            snprintf(str, len, format_str, "%12.", significant_figures, "f %12f %12d %12.2f\n");
+            break;
+        default:
+            snprintf(str, len, format_str, "%12.", significant_figures, "f %12f %12d %12.2f\n");
+    }
 }
 
-void hdr_histogram_percentiles_print(struct hdr_histogram* h, FILE* stream, int32_t ticks_per_half_distance, double value_scale)
+static const char* format_head_string(format_type format)
+{
+    switch (format)
+    {
+        case CSV:
+            return "%s,%s,%s,%s\n";
+        case CLASSIC:
+            return "%12s %12s %12s %12s\n\n";
+        default:
+            return "%12s %12s %12s %12s\n\n";
+    }
+}
+
+void hdr_histogram_percentiles_print(struct hdr_histogram* h,
+                                     FILE* stream,
+                                     int32_t ticks_per_half_distance,
+                                     double value_scale,
+                                     format_type format)
 {
     char line_format[25];
-    format_line_string(line_format, 25, h->significant_figures);
+    format_line_string(line_format, 25, h->significant_figures, format);
+    const char* head_format = format_head_string(format);
 
     struct hdr_histogram_percentiles percentiles;
     hdr_histogram_percentiles_init(&percentiles, h, ticks_per_half_distance);
 
-    fprintf(stream, "%12s %12s %12s %12s\n\n", "Value", "Percentile", "TotalCount", "1/(1-Percentile)");
+    fprintf(stream, head_format, "Value", "Percentile", "TotalCount", "1/(1-Percentile)");
 
     while (hdr_histogram_percentiles_next(&percentiles))
     {
@@ -415,13 +444,16 @@ void hdr_histogram_percentiles_print(struct hdr_histogram* h, FILE* stream, int3
         fprintf(stream, line_format, value, percentile, total_count, inverted_percentile);
     }
 
-    double mean   = hdr_histogram_mean(h)   / value_scale;
-    double stddev = hdr_histogram_stddev(h) / value_scale;
-    double max    = hdr_histogram_max(h)    / value_scale;
+    if (CLASSIC == format)
+    {
+        double mean   = hdr_histogram_mean(h)   / value_scale;
+        double stddev = hdr_histogram_stddev(h) / value_scale;
+        double max    = hdr_histogram_max(h)    / value_scale;
 
-    fprintf(stream, "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n", mean, stddev);
-    fprintf(stream, "#[Max     = %12.3f, Total count    = %12ld]\n", max, h->total_count);
-    fprintf(stream, "#[Buckets = %12d, SubBuckets     = %12d]\n", h->bucket_count, h->sub_bucket_count);
+        fprintf(stream, "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n", mean, stddev);
+        fprintf(stream, "#[Max     = %12.3f, Total count    = %12lld]\n", max, h->total_count);
+        fprintf(stream, "#[Buckets = %12d, SubBuckets     = %12d]\n", h->bucket_count, h->sub_bucket_count);
+    }
 
     fflush(stream);
 }

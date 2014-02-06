@@ -2,11 +2,11 @@
  * hdr_histogram.h
  * Written by Michael Barker and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
- * 
+ *
  * This code follows the Plan 9 approach to header declaration.  In order
  * to maintain fast builds does not define it's dependent headers.
  * They should be included manually by the user.  This code requires:
- * 
+ *
  * - #include <stdint.h>
  * - #include <stdbool.h>
  * - #include <stdio.h>
@@ -32,7 +32,7 @@ struct hdr_histogram
 /**
  * Allocate the memory and initialise the hdr_histogram.
  *
- * Due to the size of the histogram being the result of some reasonably 
+ * Due to the size of the histogram being the result of some reasonably
  * involved math on the input parameters this function it is tricky to stack allocate.
  * The histogram is allocated in a single contigious block so can be delete via free,
  * without any structure specific destructor.
@@ -113,9 +113,16 @@ void hdr_histogram_percentiles_init(struct hdr_histogram_percentiles* percentile
                                     int32_t ticks_per_half_distance);
 
 bool hdr_histogram_percentiles_next(struct hdr_histogram_percentiles* percentiles);
-void hdr_histogram_percentiles_print(struct hdr_histogram* h, 
-                                     FILE* stream, 
+
+typedef enum {
+    CLASSIC,
+    CSV
+} format_type;
+
+void hdr_histogram_percentiles_print(struct hdr_histogram* h,
+                                     FILE* stream,
                                      int32_t ticks_per_half_distance,
-                                     double value_scale);
+                                     double value_scale,
+                                     format_type format);
 
 #endif
