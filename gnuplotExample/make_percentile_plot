@@ -1,0 +1,81 @@
+#!/bin/sh
+#
+#  * Written by Gil Tene of Azul Systems, and released to the public domain,
+#  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
+#
+# This script uses gnuplot to plot the percentile distribution in the
+# input files provided. run with "-h" option for an expected usage description.
+#
+# The script assumes the input files contain ".hgrm" formatted output such
+# as the one provided by HdrHistogram. The 4th column in the input files is
+# expected to be the value of 1/(1-percentile) (for a given percentile),
+# and the 1st column in the input files is expected to be the value at the
+# given percentile.
+#
+
+reading_SLA_NAME=0
+reading_OUTPUT_NAME=0
+helpFlagFound=0
+SLA_NAME=
+FILES=
+OUTPUT_FILENAME=
+
+for var in $@; do
+	if [ $reading_SLA_NAME -eq 1 ]; then
+		SLA_NAME=$var
+		reading_SLA_NAME=0
+	elif [ $reading_OUTPUT_NAME -eq 1 ]; then
+		OUTPUT_FILENAME=$var
+		reading_OUTPUT_NAME=0
+	elif [ $var = "-h" ]; then
+		helpFlagFound=1
+	elif [ $var = "-o" ]; then
+		reading_OUTPUT_NAME=1
+	elif [ $var = "-s" ]; then
+		reading_SLA_NAME=1
+	else
+		FILES="$FILES $var"
+	fi
+done
+
+
+if [ $helpFlagFound -eq 1 ]; then
+	echo "Usage: make_percentile_plot [-o output_file] [-s sla_file] histogram_file ..."
+	exit -1
+fi
+
+echo "1.0	0.0	0%" > ./xlabels.dat
+echo "10.0	0.0	90%" >> ./xlabels.dat
+echo "100.0	0.0	99%" >> ./xlabels.dat
+echo "1000.0	0.0	99.9%" >> ./xlabels.dat
+echo "10000.0	0.0	99.99%" >> ./xlabels.dat
+echo "100000.0	0.0	99.999%" >> ./xlabels.dat
+echo "1000000.0	0.0	99.9999%" >> ./xlabels.dat
+echo "10000000.0	0.0	99.99999%" >> ./xlabels.dat
+
+IndividualFilePlotCommands="'./xlabels.dat' with labels center offset 0, 1.5 point"
+for file in $FILES; do
+	IndividualFilePlotCommands="$IndividualFilePlotCommands, '$file' using 4:1 with lines"
+done
+
+if [ $SLA_NAME ]; then
+	IndividualFilePlotCommands="$IndividualFilePlotCommands, '$SLA_NAME' with lines ls 1"
+	echo plotting "{ " $FILES " }" with SLA $SLA_NAME
+else
+	echo plotting "{ " $FILES " }"
+fi
+
+echo command will be:
+echo $IndividualFilePlotCommands
+echo "#plot commands" > gnuplot_input
+echo "set terminal png" >> gnuplot_input
+if [ $OUTPUT_FILENAME ]; then
+	echo "set output '$OUTPUT_FILENAME'" >> gnuplot_input
+fi
+echo "set logscale x" >> gnuplot_input
+echo "unset xtics" >> gnuplot_input
+echo "set key top left" >> gnuplot_input
+echo "set style line 1 lt 1 lw 3 pt 3 linecolor rgb \"red\"" >> gnuplot_input
+echo "plot $IndividualFilePlotCommands" >> gnuplot_input
+	
+cat gnuplot_input | gnuplot
