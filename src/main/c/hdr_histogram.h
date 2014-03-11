@@ -46,7 +46,7 @@ struct hdr_histogram
  * @param result Output parameter to capture allocated histogram.
  * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
  */
-int hdr_histogram_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
+int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
 
 /**
  * Record a value in the histogram.
@@ -59,7 +59,7 @@ int hdr_histogram_alloc(int64_t highest_trackable_value, int significant_figures
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdr_histogram_record_value(struct hdr_histogram* h, int64_t value);
+bool hdrh_record_value(struct hdr_histogram* h, int64_t value);
 
 /**
  * Record a value in the histogram and backfill based on an expected interval.
@@ -76,16 +76,16 @@ bool hdr_histogram_record_value(struct hdr_histogram* h, int64_t value);
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdr_histogram_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
+bool hdrh_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
 
-int64_t hdr_histogram_min(struct hdr_histogram* h);
-int64_t hdr_histogram_max(struct hdr_histogram* h);
-int64_t hdr_histogram_value_at_percentile(struct hdr_histogram* h, double percentile);
+int64_t hdrh_min(struct hdr_histogram* h);
+int64_t hdrh_max(struct hdr_histogram* h);
+int64_t hdrh_value_at_percentile(struct hdr_histogram* h, double percentile);
 
-double hdr_histogram_mean(struct hdr_histogram* h);
-bool hdr_histogram_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
+double hdrh_mean(struct hdr_histogram* h);
+bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
 
-struct hdr_histogram_iter
+struct hdrh_iter
 {
     struct hdr_histogram* h;
     int32_t bucket_index;
@@ -96,30 +96,30 @@ struct hdr_histogram_iter
     int64_t highest_equivalent_value;
 };
 
-void hdr_histogram_iter_init(struct hdr_histogram_iter* iter, struct hdr_histogram* h);
-bool hdr_histogram_iter_next(struct hdr_histogram_iter* iter);
+void hdrh_iter_init(struct hdrh_iter* iter, struct hdr_histogram* h);
+bool hdrh_iter_next(struct hdrh_iter* iter);
 
-struct hdr_histogram_percentiles
+struct hdrh_percentiles
 {
-    struct hdr_histogram_iter iter;
+    struct hdrh_iter iter;
     bool seen_last_value;
     int32_t ticks_per_half_distance;
     double percentile_to_iterate_to;
     double percentile;
 };
 
-void hdr_histogram_percentiles_init(struct hdr_histogram_percentiles* percentiles,
+void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
                                     struct hdr_histogram* h,
                                     int32_t ticks_per_half_distance);
 
-bool hdr_histogram_percentiles_next(struct hdr_histogram_percentiles* percentiles);
+bool hdrh_percentiles_next(struct hdrh_percentiles* percentiles);
 
 typedef enum {
     CLASSIC,
     CSV
 } format_type;
 
-void hdr_histogram_percentiles_print(struct hdr_histogram* h,
+void hdrh_percentiles_print(struct hdr_histogram* h,
                                      FILE* stream,
                                      int32_t ticks_per_half_distance,
                                      double value_scale,
