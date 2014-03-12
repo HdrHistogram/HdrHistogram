@@ -12,13 +12,22 @@ src_directory     = version_directory + '/src/'
 test_directory    = version_directory + '/test/'
 include_directory = version_directory + '/include/'
 
+debug    = ARGUMENTS.get('debug', 0)
+optimise = ARGUMENTS.get('optimise', 1)
+cc       = ARGUMENTS.get('cc', 'clang')
+
 env = Environment()
 env['ENV']['PATH'] = os.environ['PATH']
-env['CC']  = 'clang'
-env['CPPPATH'] = []
-env['CPPFLAGS'] = ['-g', '-Wall', '-O3']
+env['CC']  = cc
+env['CPATH'] = []
+env['CFLAGS'] = ['-std=gnu99', '-Wall']
 env['TARFLAGS'] = ['-c', '-z']
 env['TARSUFFIX'] = ['.tar.gz']
+
+if int(debug):
+    env.Append(CFLAGS = '-g')
+if int(optimise):
+    env.Append(CFLAGS = '-O3')
 
 bin = env.Clone()
 bin['CPPDEFINES'] = ['__LZCNT__']
@@ -28,7 +37,7 @@ tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
 tst['LIBS'] = ['hdr_histogram']
 tst['LIBPATH'] = [lib_directory]
-tst['LINKFLAGS'] = ['-lm']
+tst['LINKFLAGS'] = ['-lm', '-lrt']
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 tst.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 

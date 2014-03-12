@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <strings.h>
+#include <stdint.h>
 
 #include "hdr_histogram.h"
 
