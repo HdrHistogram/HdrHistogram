@@ -45,8 +45,9 @@ struct hdr_histogram
  * be a value between 3 and 6 (inclusive).
  * @param result Output parameter to capture allocated histogram.
  * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
+ * or -2 if malloc failed.
  */
-int hdr_histogram_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
+int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
 
 /**
  * Record a value in the histogram.
@@ -59,7 +60,7 @@ int hdr_histogram_alloc(int64_t highest_trackable_value, int significant_figures
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdr_histogram_record_value(struct hdr_histogram* h, int64_t value);
+bool hdrh_record_value(struct hdr_histogram* h, int64_t value);
 
 /**
  * Record a value in the histogram and backfill based on an expected interval.
@@ -76,16 +77,22 @@ bool hdr_histogram_record_value(struct hdr_histogram* h, int64_t value);
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdr_histogram_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
+bool hdrh_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
 
-int64_t hdr_histogram_min(struct hdr_histogram* h);
-int64_t hdr_histogram_max(struct hdr_histogram* h);
-int64_t hdr_histogram_value_at_percentile(struct hdr_histogram* h, double percentile);
+int64_t hdrh_min(struct hdr_histogram* h);
+int64_t hdrh_max(struct hdr_histogram* h);
+int64_t hdrh_value_at_percentile(struct hdr_histogram* h, double percentile);
 
-double hdr_histogram_mean(struct hdr_histogram* h);
-bool hdr_histogram_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
+double hdrh_mean(struct hdr_histogram* h);
+bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
 
-struct hdr_histogram_iter
+/**
+ * The basic iterator.  This is the equivlent of the
+ * AllValues iterator from the Java implementation.  It iterates
+ * through all entries in the histogram whether or not a value
+ * is recorded.
+ */
+struct hdrh_iter
 {
     struct hdr_histogram* h;
     int32_t bucket_index;
@@ -96,33 +103,82 @@ struct hdr_histogram_iter
     int64_t highest_equivalent_value;
 };
 
-void hdr_histogram_iter_init(struct hdr_histogram_iter* iter, struct hdr_histogram* h);
-bool hdr_histogram_iter_next(struct hdr_histogram_iter* iter);
+/**
+ * Initalises the basic iterator.
+ *
+ * @param itr 'This' pointer
+ * @param h The histogram to iterate over
+ */
+void hdrh_iter_init(struct hdrh_iter* iter, struct hdr_histogram* h);
+/**
+ * Iterate to the next value for the iterator.  If there are no more values
+ * available return faluse.
+ *
+ * @param itr 'This' pointer
+ * @return 'false' if there are no values remaining for this iterator.
+ */
+bool hdrh_iter_next(struct hdrh_iter* iter);
 
-struct hdr_histogram_percentiles
+/**
+ * Iterator for percentile values.  Equivalent to the PercentileIterator
+ * from the Java implementation.
+ */
+struct hdrh_percentile_iter
 {
-    struct hdr_histogram_iter iter;
+    struct hdrh_iter iter;
     bool seen_last_value;
     int32_t ticks_per_half_distance;
     double percentile_to_iterate_to;
     double percentile;
 };
 
-void hdr_histogram_percentiles_init(struct hdr_histogram_percentiles* percentiles,
-                                    struct hdr_histogram* h,
-                                    int32_t ticks_per_half_distance);
+/**
+ * Initialise the percentiles.
+ *
+ * @param percentiles 'This' pointer
+ * @param h The histogram to iterate over
+ * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
+ */
+void hdrh_percentile_iter_init(struct hdrh_percentile_iter* percentiles,
+                               struct hdr_histogram* h,
+                               int32_t ticks_per_half_distance);
 
-bool hdr_histogram_percentiles_next(struct hdr_histogram_percentiles* percentiles);
+/**
+ * Iterate to the next percentile step, defined by the ticks_per_half_distance.
+ *
+ * @param percentiles 'This' pointer
+ * @return 'false' if there are no values remaining for this iterator.
+ */
+bool hdrh_percentile_iter_next(struct hdrh_percentile_iter* percentiles);
 
 typedef enum {
     CLASSIC,
     CSV
 } format_type;
 
-void hdr_histogram_percentiles_print(struct hdr_histogram* h,
-                                     FILE* stream,
-                                     int32_t ticks_per_half_distance,
-                                     double value_scale,
-                                     format_type format);
+/**
+ * Print out a percentile based histogram to the supplied stream.
+ *
+ * @param h 'This' pointer
+ * @param stream The FILE to write the output to
+ * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
+ * @param value_scale Scale the output values by this amount
+ * @param format_type Format to use, e.g. CSV.
+ */
+void hdrh_percentiles_print(struct hdr_histogram* h,
+                            FILE* stream,
+                            int32_t ticks_per_half_distance,
+                            double value_scale,
+                            format_type format);
+
+struct hdrh_recorded_iter
+{
+    struct hdrh_iter iter;
+    int64_t count_added_in_this_iteration_step;
+};
+
+void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_histogram* h);
+
+bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
 
 #endif
