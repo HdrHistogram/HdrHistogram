@@ -80,7 +80,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      * @return the {@link HistogramIterationValue} associated with the next element in the iteration.
      */
     public HistogramIterationValue next() {
-        // Move through the sub buckets and buckets until we hit the next  reporting level:
+        // Move through the sub buckets and buckets until we hit the next reporting level:
         while (!exhaustedSubBuckets()) {
             countAtThisValue = histogram.getCountAt(currentBucketIndex, currentSubBucketIndex);
             if (freshSubBucket) { // Don't add unless we've incremented since last bucket...
@@ -96,7 +96,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
                         getPercentileIteratedTo());
                 prevValueIteratedTo = valueIteratedTo;
                 totalCountToPrevIndex = totalCountToCurrentIndex;
-                // move the next percentile reporting level forward:
+                // move the next iteration level forward:
                 incrementIterationLevel();
                 if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
                     throw new ConcurrentModificationException();

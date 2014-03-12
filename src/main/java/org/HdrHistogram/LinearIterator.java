@@ -46,7 +46,12 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
 
     @Override
     public boolean hasNext() {
-        return (super.hasNext() || (countAtThisValue != 0));
+        if (super.hasNext()) {
+            return true;
+        }
+        // If next iterate does not move to the next sub bucket index (which is empty if
+        // if we reached this point), then we are not done iterating... Otherwise we're done.
+        return (nextValueReportingLevelLowestEquivalent < nextValueAtIndex);
     }
 
     @Override

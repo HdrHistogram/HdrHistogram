@@ -300,11 +300,11 @@ public class HistogramDataTest {
             }
             index++;
         }
-        Assert.assertEquals(1000, index - 1);
+        Assert.assertEquals(1000, index);
 
         index = 0;
         long totalAddedCounts = 0;
-        // Iterate data using linear buckets of 1 sec each.
+        // Iterate data using linear buckets of 10 msec each.
         for (HistogramIterationValue v : histogram.getHistogramData().linearBucketValues(10000)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
@@ -321,9 +321,40 @@ public class HistogramDataTest {
             totalAddedCounts += v.getCountAddedInThisIterationStep();
             index++;
         }
-        Assert.assertEquals("There should be 10001 linear buckets of size 10001 usec between 0 and 1 sec.",
-                10001, index);
+        Assert.assertEquals("There should be 10000 linear buckets of size 10000 usec between 0 and 100 sec.",
+                10000, index);
         Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
+
+        index = 0;
+        totalAddedCounts = 0;
+        // Iterate data using linear buckets of 1 msec each.
+        for (HistogramIterationValue v : histogram.getHistogramData().linearBucketValues(1000)) {
+            long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
+            if (index == 0) {
+                Assert.assertEquals("Linear 1 sec bucket # 0 [" +
+                        v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
+                        "] added a count of 10000",
+                        10000, countAddedInThisBucket);
+            }
+            // Because value resolution is low enough (3 digits) that multiple linear buckets will end up
+            // residing in a single value-equivalent range, some linear buckets will have counts of 2 or
+            // more, and some will have 0 (when the first bucket in the equivalent range was the one that
+            // got the total count bump).
+            // However, we can still verify the sum of counts added in all the buckets...
+            totalAddedCounts += v.getCountAddedInThisIterationStep();
+            index++;
+        }
+        // You may ask "why 100007 and not 100000?" for the value below? The answer is that at this fine
+        // a linear stepping resolution, the final populated sub-bucket (at 100 seconds with 3 decimal
+        // point resolution) is larger than our liner stepping, and holds more than one linear 1 msec
+        // step in it.
+        // Since we only know we're done with linear iteration when the next iteration step will step
+        // out of the last populated bucket, there is not way to tell if the iteration should stop at
+        // 100000 or 100007 steps. The proper thing to do is to run to the end of the sub-bucket quanta...
+        Assert.assertEquals("There should be 100007 linear buckets of size 1000 usec between 0 and 100 sec.",
+                100007, index);
+        Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
+
 
     }
 
@@ -361,7 +392,7 @@ public class HistogramDataTest {
             totalAddedCounts += v.getCountAddedInThisIterationStep();
             index++;
         }
-        Assert.assertEquals("There should be 14 Logarithmic buckets of size 10001 usec between 0 and 1 sec.",
+        Assert.assertEquals("There should be 14 Logarithmic buckets of size 10000 usec between 0 and 100 sec.",
                 14, index - 1);
         Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
     }
