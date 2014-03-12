@@ -485,3 +485,40 @@ bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded)
 
     return false;
 }
+
+////////////////////////////////// Linear Values ////////////////////////////////
+
+void hdrh_linear_iter_init(struct hdrh_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket)
+{
+    hdrh_iter_init(&linear->iter, h);
+    linear->count_added_in_this_iteration_step = 0;
+    linear->value_units_per_bucket = value_units_per_bucket;
+    linear->next_value_reporting_level = value_units_per_bucket;
+    linear->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(h, value_units_per_bucket);
+}
+
+bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear)
+{
+    linear->count_added_in_this_iteration_step = 0;
+
+    while (hdrh_iter_next(&linear->iter))
+    {
+        linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
+
+        if (linear->iter.value_from_index >= linear->next_value_reporting_level_lowest_equivalent)
+        {
+            linear->next_value_reporting_level += linear->value_units_per_bucket;
+            linear->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(linear->iter.h, linear->next_value_reporting_level);
+
+            return true;
+        }
+    }
+
+    if (linear->iter.count_at_index != 0)
+    {
+        linear->iter.count_at_index = 0;
+        return true;
+    }
+
+    return false;
+}

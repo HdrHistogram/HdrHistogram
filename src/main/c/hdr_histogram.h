@@ -181,4 +181,17 @@ void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_his
 
 bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
 
+struct hdrh_linear_iter
+{
+    struct hdrh_iter iter;
+    int value_units_per_bucket;
+    int64_t count_added_in_this_iteration_step;
+    int64_t next_value_reporting_level;
+    int64_t next_value_reporting_level_lowest_equivalent;
+};
+
+void hdrh_linear_iter_init(struct hdrh_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket);
+
+bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear);
+
 #endif

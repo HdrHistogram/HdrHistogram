@@ -191,6 +191,80 @@ static char* test_recorded_values()
     return 0;
 }
 
+static char* test_linear_values()
+{
+    load_histograms();
+    struct hdrh_linear_iter iter;
+    int index;
+
+    /*
+    for (HistogramIterationValue v : rawHistogram.getHistogramData().linearBucketValues(100000)) {
+        long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
+        if (index == 0) {
+            Assert.assertEquals("Raw Linear 100 msec bucket # 0 added a count of 10000",
+                    10000, countAddedInThisBucket);
+        } else if (index == 999) {
+            Assert.assertEquals("Raw Linear 100 msec bucket # 999 added a count of 1",
+                    1, countAddedInThisBucket);
+        } else {
+            Assert.assertEquals("Raw Linear 100 msec bucket # " + index + " added a count of 0",
+                    0 , countAddedInThisBucket);
+        }
+        index++;
+    }
+    Assert.assertEquals(1000, index - 1);
+    */
+
+    hdrh_linear_iter_init(&iter, raw_histogram, 100000);
+    index = 0;
+    while (hdrh_linear_iter_next(&iter))
+    {
+        int64_t count_added_in_this_bucket = iter.count_added_in_this_iteration_step;
+
+        if (index == 0)
+        {
+            mu_assert("Count at 0 is not 10000", count_added_in_this_bucket == 10000);
+        }
+        else if (index == 999)
+        {
+            mu_assert("Count at 999 is not 1", count_added_in_this_bucket == 1);
+        }
+        else
+        {
+            mu_assert("Count should be 0", count_added_in_this_bucket == 0);
+        }
+
+        index++;
+    }
+    printf("Index: %d\n", index);
+    mu_assert("Should of met 1000 values", index - 1 == 1000);
+
+    /*
+    index = 0;
+    long totalAddedCounts = 0;
+    // Iterate data using linear buckets of 1 sec each.
+    for (HistogramIterationValue v : histogram.getHistogramData().recordedValues()) {
+        long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
+        if (index == 0) {
+            Assert.assertEquals("Recorded bucket # 0 [" +
+                    v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
+                    "] added a count of 10000",
+                    10000, countAddedInThisBucket);
+        }
+        Assert.assertTrue("The count in recorded bucket #" + index + " is not 0",
+                v.getCountAtValueIteratedTo() != 0);
+        Assert.assertEquals("The count in recorded bucket #" + index +
+                " is exactly the amount added since the last iteration ",
+                v.getCountAtValueIteratedTo(), v.getCountAddedInThisIterationStep());
+        totalAddedCounts += v.getCountAddedInThisIterationStep();
+        index++;
+    }
+    Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
+    */
+
+    return 0;
+}
+
 
 static struct mu_result all_tests()
 {
@@ -201,6 +275,7 @@ static struct mu_result all_tests()
     mu_run_test(test_get_max_value);
     mu_run_test(test_percentiles);
     mu_run_test(test_recorded_values);
+    mu_run_test(test_linear_values);
 
     mu_ok;
 }
