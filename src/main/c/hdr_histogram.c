@@ -130,6 +130,11 @@ int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct 
     size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(long);
     struct hdr_histogram* histogram = (struct hdr_histogram*) malloc(histogram_size);
 
+    if (!histogram)
+    {
+        return -2;
+    }
+
     bzero((void*) histogram, histogram_size);
 
     histogram->highest_trackable_value         = highest_trackable_value;

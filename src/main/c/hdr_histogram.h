@@ -45,6 +45,7 @@ struct hdr_histogram
  * be a value between 3 and 6 (inclusive).
  * @param result Output parameter to capture allocated histogram.
  * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
+ * or -2 if malloc failed.
  */
 int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
 
