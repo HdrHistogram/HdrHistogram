@@ -86,6 +86,12 @@ int64_t hdrh_value_at_percentile(struct hdr_histogram* h, double percentile);
 double hdrh_mean(struct hdr_histogram* h);
 bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
 
+/**
+ * The basic iterator.  This is the equivlent of the
+ * AllValues iterator from the Java implementation.  It iterates
+ * through all entries in the histogram whether or not a value
+ * is recorded.
+ */
 struct hdrh_iter
 {
     struct hdr_histogram* h;
@@ -97,9 +103,26 @@ struct hdrh_iter
     int64_t highest_equivalent_value;
 };
 
+/**
+ * Initalises the basic iterator.
+ *
+ * @param itr 'This' pointer
+ * @param h The histogram to iterate over
+ */
 void hdrh_iter_init(struct hdrh_iter* iter, struct hdr_histogram* h);
+/**
+ * Iterate to the next value for the iterator.  If there are no more values
+ * available return faluse.
+ *
+ * @param itr 'This' pointer
+ * @return 'false' if there are no values remaining for this iterator.
+ */
 bool hdrh_iter_next(struct hdrh_iter* iter);
 
+/**
+ * Iterator for percentile values.  Equivalent to the PercentileIterator
+ * from the Java implementation.
+ */
 struct hdrh_percentiles
 {
     struct hdrh_iter iter;
@@ -109,10 +132,23 @@ struct hdrh_percentiles
     double percentile;
 };
 
+/**
+ * Initialise the percentiles.
+ *
+ * @param percentiles 'This' pointer
+ * @param h The histogram to iterate over
+ * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
+ */
 void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
-                                    struct hdr_histogram* h,
-                                    int32_t ticks_per_half_distance);
+                           struct hdr_histogram* h,
+                           int32_t ticks_per_half_distance);
 
+/**
+ * Iterate to the next percentile step, defined by the ticks_per_half_distance.
+ *
+ * @param percentiles 'This' pointer
+ * @return 'false' if there are no values remaining for this iterator.
+ */
 bool hdrh_percentiles_next(struct hdrh_percentiles* percentiles);
 
 typedef enum {
@@ -120,10 +156,19 @@ typedef enum {
     CSV
 } format_type;
 
+/**
+ * Print out a percentile based histogram to the supplied stream.
+ *
+ * @param h 'This' pointer
+ * @param stream The FILE to write the output to
+ * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
+ * @param value_scale Scale the output values by this amount
+ * @param format_type Format to use, e.g. CSV.
+ */
 void hdrh_percentiles_print(struct hdr_histogram* h,
-                                     FILE* stream,
-                                     int32_t ticks_per_half_distance,
-                                     double value_scale,
-                                     format_type format);
+                            FILE* stream,
+                            int32_t ticks_per_half_distance,
+                            double value_scale,
+                            format_type format);
 
 #endif
