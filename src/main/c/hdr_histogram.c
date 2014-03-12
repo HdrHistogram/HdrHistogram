@@ -343,9 +343,9 @@ bool hdrh_iter_next(struct hdrh_iter* iter)
 
 ////////////////////////////////// Percentiles ////////////////////////////////
 
-void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
-                           struct hdr_histogram* h,
-                           int32_t ticks_per_half_distance)
+void hdrh_percentile_iter_init(struct hdrh_percentile_iter* percentiles,
+                               struct hdr_histogram* h,
+                               int32_t ticks_per_half_distance)
 {
     hdrh_iter_init(&percentiles->iter, h);
 
@@ -355,7 +355,7 @@ void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
     percentiles->percentile               = 0.0;
 }
 
-bool hdrh_percentiles_next(struct hdrh_percentiles* percentiles)
+bool hdrh_percentile_iter_next(struct hdrh_percentile_iter* percentiles)
 {
     if (!has_next(&percentiles->iter))
     {
@@ -435,12 +435,12 @@ void hdrh_percentiles_print(struct hdr_histogram* h,
     format_line_string(line_format, 25, h->significant_figures, format);
     const char* head_format = format_head_string(format);
 
-    struct hdrh_percentiles percentiles;
-    hdrh_percentiles_init(&percentiles, h, ticks_per_half_distance);
+    struct hdrh_percentile_iter percentiles;
+    hdrh_percentile_iter_init(&percentiles, h, ticks_per_half_distance);
 
     fprintf(stream, head_format, "Value", "Percentile", "TotalCount", "1/(1-Percentile)");
 
-    while (hdrh_percentiles_next(&percentiles))
+    while (hdrh_percentile_iter_next(&percentiles))
     {
         double  value               = percentiles.iter.highest_equivalent_value / value_scale;
         double  percentile          = percentiles.percentile / 100.0;
@@ -462,4 +462,26 @@ void hdrh_percentiles_print(struct hdr_histogram* h,
     }
 
     fflush(stream);
+}
+
+////////////////////////////////// Recorded Values ////////////////////////////////
+
+void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_histogram* h)
+{
+    hdrh_iter_init(&recorded->iter, h);
+    recorded->count_added_in_this_iteration_step = 0;
+}
+
+bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded)
+{
+    while (hdrh_iter_next(&recorded->iter))
+    {
+        if (recorded->iter.count_at_index != 0)
+        {
+            recorded->count_added_in_this_iteration_step = recorded->iter.count_at_index;
+            return true;
+        }
+    }
+
+    return false;
 }

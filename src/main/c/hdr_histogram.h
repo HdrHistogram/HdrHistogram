@@ -123,7 +123,7 @@ bool hdrh_iter_next(struct hdrh_iter* iter);
  * Iterator for percentile values.  Equivalent to the PercentileIterator
  * from the Java implementation.
  */
-struct hdrh_percentiles
+struct hdrh_percentile_iter
 {
     struct hdrh_iter iter;
     bool seen_last_value;
@@ -139,9 +139,9 @@ struct hdrh_percentiles
  * @param h The histogram to iterate over
  * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
  */
-void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
-                           struct hdr_histogram* h,
-                           int32_t ticks_per_half_distance);
+void hdrh_percentile_iter_init(struct hdrh_percentile_iter* percentiles,
+                               struct hdr_histogram* h,
+                               int32_t ticks_per_half_distance);
 
 /**
  * Iterate to the next percentile step, defined by the ticks_per_half_distance.
@@ -149,7 +149,7 @@ void hdrh_percentiles_init(struct hdrh_percentiles* percentiles,
  * @param percentiles 'This' pointer
  * @return 'false' if there are no values remaining for this iterator.
  */
-bool hdrh_percentiles_next(struct hdrh_percentiles* percentiles);
+bool hdrh_percentile_iter_next(struct hdrh_percentile_iter* percentiles);
 
 typedef enum {
     CLASSIC,
@@ -170,5 +170,15 @@ void hdrh_percentiles_print(struct hdr_histogram* h,
                             int32_t ticks_per_half_distance,
                             double value_scale,
                             format_type format);
+
+struct hdrh_recorded_iter
+{
+    struct hdrh_iter iter;
+    int64_t count_added_in_this_iteration_step;
+};
+
+void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_histogram* h);
+
+bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
 
 #endif
