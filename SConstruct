@@ -16,7 +16,7 @@ env = Environment()
 env['ENV']['PATH'] = os.environ['PATH']
 env['CC']  = 'clang'
 env['CPPPATH'] = []
-env['CPPFLAGS'] = ['-g', '-Wall']
+env['CPPFLAGS'] = ['-g', '-Wall', '-O3']
 env['TARFLAGS'] = ['-c', '-z']
 env['TARSUFFIX'] = ['.tar.gz']
 
@@ -29,13 +29,10 @@ tst['CPPPATH'] = ['src/main/c']
 tst['LIBS'] = ['hdr_histogram']
 tst['LIBPATH'] = [lib_directory]
 tst['LINKFLAGS'] = ['-lm']
-tst.Program(bin_directory + 'alltests', Glob('src/test/c/*.c'))
+tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
+tst.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 
-exp = env.Clone()
-exp['CPPPATH'] = ['src/main/c']
-exp['LIBS'] = ['hdr_histogram']
-exp['LIBPATH'] = [lib_directory]
-exp['LINKFLAGS'] = ['-lm']
+exp = tst.Clone()
 exp.Program(bin_directory + 'format_example', ['src/examples/c/hdr_histogram_format_example.c'])
 
 env.Install(include_directory, Glob('src/main/c/*.h'))
