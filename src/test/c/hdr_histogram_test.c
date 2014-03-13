@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include <errno.h>
 
 #include <stdio.h>
 #include <hdr_histogram.h>
@@ -197,24 +199,7 @@ static char* test_linear_values()
     struct hdrh_linear_iter iter;
     int index;
 
-    /*
-    for (HistogramIterationValue v : rawHistogram.getHistogramData().linearBucketValues(100000)) {
-        long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
-        if (index == 0) {
-            Assert.assertEquals("Raw Linear 100 msec bucket # 0 added a count of 10000",
-                    10000, countAddedInThisBucket);
-        } else if (index == 999) {
-            Assert.assertEquals("Raw Linear 100 msec bucket # 999 added a count of 1",
-                    1, countAddedInThisBucket);
-        } else {
-            Assert.assertEquals("Raw Linear 100 msec bucket # " + index + " added a count of 0",
-                    0 , countAddedInThisBucket);
-        }
-        index++;
-    }
-    Assert.assertEquals(1000, index - 1);
-    */
-
+    // Raw Histogram
     hdrh_linear_iter_init(&iter, raw_histogram, 100000);
     index = 0;
     while (hdrh_linear_iter_next(&iter))
@@ -236,35 +221,38 @@ static char* test_linear_values()
 
         index++;
     }
-    printf("Index: %d\n", index);
-    mu_assert("Should of met 1000 values", index - 1 == 1000);
+    mu_assert("Should of met 1000 values", index == 1000);
 
-    /*
+    // Corrected Histogram
+
+    FILE* file = fopen("/tmp/c_cor_linear.txt", "w+");
+
+    hdrh_linear_iter_init(&iter, cor_histogram, 10000);
     index = 0;
-    long totalAddedCounts = 0;
-    // Iterate data using linear buckets of 1 sec each.
-    for (HistogramIterationValue v : histogram.getHistogramData().recordedValues()) {
-        long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
-        if (index == 0) {
-            Assert.assertEquals("Recorded bucket # 0 [" +
-                    v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
-                    "] added a count of 10000",
-                    10000, countAddedInThisBucket);
+    int64_t total_added_count = 0;
+    while (hdrh_linear_iter_next(&iter))
+    {
+        int64_t count_added_in_this_bucket = iter.count_added_in_this_iteration_step;
+
+        if (index == 0)
+        {
+            mu_assert("Count at 0 is not 10001", count_added_in_this_bucket == 10001);
         }
-        Assert.assertTrue("The count in recorded bucket #" + index + " is not 0",
-                v.getCountAtValueIteratedTo() != 0);
-        Assert.assertEquals("The count in recorded bucket #" + index +
-                " is exactly the amount added since the last iteration ",
-                v.getCountAtValueIteratedTo(), v.getCountAddedInThisIterationStep());
-        totalAddedCounts += v.getCountAddedInThisIterationStep();
+
+        total_added_count += count_added_in_this_bucket;
         index++;
+
+        fprintf(file, "%d,%ld,%ld\n", index, iter.iter.value_from_index, iter.iter.count_at_index);
     }
-    Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
-    */
+
+    fflush(file);
+    fclose(file);
+
+    mu_assert("Should of met 10001 values", index == 10000);
+    mu_assert("Should of met 20000 counts", total_added_count == 20000);
 
     return 0;
 }
-
 
 static struct mu_result all_tests()
 {

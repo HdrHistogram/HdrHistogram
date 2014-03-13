@@ -300,9 +300,44 @@ bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b)
 
 /////////////////////////////////// Iterators /////////////////////////////////
 
+static bool has_buckets(struct hdrh_iter* iter)
+{
+    return iter->bucket_index < iter->h->bucket_count;
+}
+
 static bool has_next(struct hdrh_iter* iter)
 {
-    return iter->count_to_index < iter->h->total_count;
+    return has_buckets(iter) && iter->count_to_index < iter->h->total_count;
+}
+
+static void move_next(struct hdrh_iter* iter)
+{
+    iter->sub_bucket_index++;
+
+    if (iter->sub_bucket_index >= iter->h->sub_bucket_count)
+    {
+        iter->sub_bucket_index = iter->h->sub_bucket_half_count;
+        iter->bucket_index++;
+    }
+
+    iter->count_at_index  = get_count_at_index(iter->h, iter->bucket_index, iter->sub_bucket_index);
+    iter->count_to_index += iter->count_at_index;
+
+    iter->value_from_index = value_from_index(iter->bucket_index, iter->sub_bucket_index);
+    iter->highest_equivalent_value = highest_equivalent_value(iter->h, iter->value_from_index);    
+}
+
+static int64_t peek_next_value_from_index(struct hdrh_iter* iter)
+{
+    int64_t bucket_index = iter->bucket_index;
+    int64_t sub_bucket_index = iter->sub_bucket_index + 1;
+    if (sub_bucket_index >= iter->h->sub_bucket_count)
+    {
+        sub_bucket_index = iter->h->sub_bucket_half_count;
+        bucket_index++;
+    }
+
+    return value_from_index(bucket_index, sub_bucket_index);
 }
 
 void hdrh_iter_init(struct hdrh_iter* itr, struct hdr_histogram* h)
@@ -324,21 +359,9 @@ bool hdrh_iter_next(struct hdrh_iter* iter)
         return false;
     }
 
-    iter->sub_bucket_index++;
+    move_next(iter);
 
-    if (iter->sub_bucket_index >= iter->h->sub_bucket_count)
-    {
-        iter->sub_bucket_index = iter->h->sub_bucket_half_count;
-        iter->bucket_index++;
-    }
-
-    iter->count_at_index  = get_count_at_index(iter->h, iter->bucket_index, iter->sub_bucket_index);
-    iter->count_to_index += iter->count_at_index;
-
-    iter->value_from_index = value_from_index(iter->bucket_index, iter->sub_bucket_index);
-    iter->highest_equivalent_value = highest_equivalent_value(iter->h, iter->value_from_index);
-
-   return true;
+    return true;
 }
 
 ////////////////////////////////// Percentiles ////////////////////////////////
@@ -501,10 +524,9 @@ bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear)
 {
     linear->count_added_in_this_iteration_step = 0;
 
-    while (hdrh_iter_next(&linear->iter))
+    while (has_next(&linear->iter) || 
+           peek_next_value_from_index(&linear->iter) > linear->next_value_reporting_level_lowest_equivalent)
     {
-        linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
-
         if (linear->iter.value_from_index >= linear->next_value_reporting_level_lowest_equivalent)
         {
             linear->next_value_reporting_level += linear->value_units_per_bucket;
@@ -512,12 +534,9 @@ bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear)
 
             return true;
         }
-    }
 
-    if (linear->iter.count_at_index != 0)
-    {
-        linear->iter.count_at_index = 0;
-        return true;
+        move_next(&linear->iter);
+        linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
     }
 
     return false;
