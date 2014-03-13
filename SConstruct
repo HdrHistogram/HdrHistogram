@@ -20,7 +20,7 @@ env = Environment()
 env['ENV']['PATH'] = os.environ['PATH']
 env['CC']  = cc
 env['CPATH'] = []
-env['CFLAGS'] = ['-std=gnu99', '-Wall', '-O' + optimise]
+env['CFLAGS'] = ['-std=c99', '-Wall', '-O' + optimise]
 if cc == 'clang':
     env.Append(CFLAGS = '-fcolor-diagnostics')
 
@@ -40,7 +40,10 @@ tst['LIBS'] = ['hdr_histogram']
 tst['LIBPATH'] = [lib_directory]
 tst['LINKFLAGS'] = ['-lm', '-lrt']
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
-tst.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
+
+prf = tst.Clone();
+prf.Append(CFLAGS = '-D_POSIX_C_SOURCE=199309L')
+prf.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 
 exp = tst.Clone()
 exp.Program(bin_directory + 'format_example', ['src/examples/c/hdr_histogram_format_example.c'])

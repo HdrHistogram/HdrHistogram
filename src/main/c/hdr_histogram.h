@@ -10,6 +10,9 @@
  * - #include <stdint.h>
  * - #include <stdbool.h>
  * - #include <stdio.h>
+ *
+ * The source for the hdr_histogram utilises a few C99 constructs, specifically
+ * the use of stdint/stdbool and inline variable declaration.
  */
 
 #ifndef _HDR_HISTOGRAM_H_
