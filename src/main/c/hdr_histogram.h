@@ -171,16 +171,38 @@ void hdrh_percentiles_print(struct hdr_histogram* h,
                             double value_scale,
                             format_type format);
 
+/**
+ * Iterator for recorded values.  Will only return when it encounters a value
+ * that has a non-zero count.  Equivalent to the the RecordedValueIterator from the
+ * Java implementation.
+ */
 struct hdrh_recorded_iter
 {
     struct hdrh_iter iter;
     int64_t count_added_in_this_iteration_step;
 };
 
+/**
+ * Initialise the recorded values iterator
+ *
+ * @param recorded 'This' pointer
+ * @param h The histogram to iterate over
+ */
 void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_histogram* h);
 
+/**
+ * Iterate to the next recorded value
+ *
+ * @param recorded 'This' pointer
+ * @return 'false' if there are no values remaining for this iterator.
+ */
 bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
 
+/**
+ * An iterator over to get (dis)aggregated counts for a series of linear value steps.  The
+ * linear can either group multiple values or have multiple steps within a single recorded
+ * value.
+ */
 struct hdrh_linear_iter
 {
     struct hdrh_iter iter;
@@ -190,8 +212,20 @@ struct hdrh_linear_iter
     int64_t next_value_reporting_level_lowest_equivalent;
 };
 
+/**
+ * Initialise the linear iterator
+ *
+ * @param 'This' pointer
+ * @param h The histogram to iterate over
+ * @param value_unit_per_bucket The size of each linear step
+ */
 void hdrh_linear_iter_init(struct hdrh_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket);
 
+/**
+ * Iterate to the next linear step.
+ *
+ * @param 'This' pointer
+ */
 bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear);
 
 #endif
