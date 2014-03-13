@@ -254,6 +254,20 @@ static char* test_linear_values()
     return 0;
 }
 
+static void foo(int64_t* a)
+{
+    (*a)++;
+}
+
+static char* test_foo()
+{
+    int64_t v = 1;
+    foo(&v);
+    mu_assert("Should increment", v == 2);
+
+    return 0;
+}
+
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
@@ -264,6 +278,7 @@ static struct mu_result all_tests()
     mu_run_test(test_percentiles);
     mu_run_test(test_recorded_values);
     mu_run_test(test_linear_values);
+    mu_run_test(test_foo);
 
     mu_ok;
 }

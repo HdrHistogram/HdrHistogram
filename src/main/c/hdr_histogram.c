@@ -310,15 +310,20 @@ static bool has_next(struct hdrh_iter* iter)
     return has_buckets(iter) && iter->count_to_index < iter->h->total_count;
 }
 
+static void increment_bucket(struct hdr_histogram* h, int32_t* bucket_index, int32_t* sub_bucket_index)
+{
+    (*sub_bucket_index)++;
+
+    if (*sub_bucket_index >= h->sub_bucket_count)
+    {
+        *sub_bucket_index = h->sub_bucket_half_count;
+        (*bucket_index)++;
+    }    
+}
+
 static void move_next(struct hdrh_iter* iter)
 {
-    iter->sub_bucket_index++;
-
-    if (iter->sub_bucket_index >= iter->h->sub_bucket_count)
-    {
-        iter->sub_bucket_index = iter->h->sub_bucket_half_count;
-        iter->bucket_index++;
-    }
+    increment_bucket(iter->h, &iter->bucket_index, &iter->sub_bucket_index);
 
     iter->count_at_index  = get_count_at_index(iter->h, iter->bucket_index, iter->sub_bucket_index);
     iter->count_to_index += iter->count_at_index;
@@ -329,13 +334,10 @@ static void move_next(struct hdrh_iter* iter)
 
 static int64_t peek_next_value_from_index(struct hdrh_iter* iter)
 {
-    int64_t bucket_index = iter->bucket_index;
-    int64_t sub_bucket_index = iter->sub_bucket_index + 1;
-    if (sub_bucket_index >= iter->h->sub_bucket_count)
-    {
-        sub_bucket_index = iter->h->sub_bucket_half_count;
-        bucket_index++;
-    }
+    int32_t bucket_index     = iter->bucket_index;
+    int32_t sub_bucket_index = iter->sub_bucket_index;
+    
+    increment_bucket(iter->h, &bucket_index, &sub_bucket_index);
 
     return value_from_index(bucket_index, sub_bucket_index);
 }
