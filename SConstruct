@@ -3,8 +3,9 @@
 # as explained at http://creativecommons.org/publicdomain/zero/1.0/
 
 import os
+import xml.etree.ElementTree as ET
 
-version = '1.0.9'
+version = ET.parse('pom.xml').getroot().findtext('{http://maven.apache.org/POM/4.0.0}version')
 version_directory = 'target/c/hdr_histogram-' + version
 lib_directory     = version_directory + '/lib/'
 bin_directory     = version_directory + '/bin/'
@@ -52,5 +53,5 @@ env.Install(include_directory, Glob('src/main/c/*.h'))
 env.Install(src_directory, Glob('src/main/c/*.c') + Glob('src/main/c/*.h'))
 env.Install(test_directory, Glob('src/test/c/*.c') + Glob('src/test/c/*.h'))
 
-env.Tar('target/c/hdr_histogram-' + version, Dir('hdr_histogram-' + version),
+env.Tar('target/c/hdr_histogram-' + version + '.tar.gz', Dir('hdr_histogram-' + version),
         TARFLAGS = ['-c', '-z', '-Ctarget/c'])
