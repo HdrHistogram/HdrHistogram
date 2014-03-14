@@ -33,14 +33,14 @@ static void load_histograms()
         free(raw_histogram);
     }
 
-    hdrh_alloc(100000000, 3, &raw_histogram);
+    hdrh_alloc(3600L * 1000 * 1000, 3, &raw_histogram);
 
     if (cor_histogram)
     {
         free(cor_histogram);
     }
 
-    hdrh_alloc(100000000, 3, &cor_histogram);
+    hdrh_alloc(3600L * 1000 * 1000, 3, &cor_histogram);
 
     for (i = 0; i < 10000; i++)
     {
@@ -225,8 +225,6 @@ static char* test_linear_values()
 
     // Corrected Histogram
 
-    FILE* file = fopen("/tmp/c_cor_linear.txt", "w+");
-
     hdrh_linear_iter_init(&iter, cor_histogram, 10000);
     index = 0;
     int64_t total_added_count = 0;
@@ -241,29 +239,60 @@ static char* test_linear_values()
 
         total_added_count += count_added_in_this_bucket;
         index++;
-
-        fprintf(file, "%d,%ld,%ld\n", index, iter.iter.value_from_index, iter.iter.count_at_index);
     }
-
-    fflush(file);
-    fclose(file);
-
     mu_assert("Should of met 10001 values", index == 10000);
     mu_assert("Should of met 20000 counts", total_added_count == 20000);
 
     return 0;
 }
 
-static void foo(int64_t* a)
+static char* test_logarithmic_values()
 {
-    (*a)++;
-}
+    load_histograms();
+    struct hdrh_log_iter iter;
+    int index;
 
-static char* test_foo()
-{
-    int64_t v = 1;
-    foo(&v);
-    mu_assert("Should increment", v == 2);
+    hdrh_log_iter_init(&iter, raw_histogram, 10000, 2.0);
+    index = 0;
+
+    while(hdrh_log_iter_next(&iter))
+    {
+        long count_added_in_this_bucket = iter.count_added_in_this_iteration_step;
+        if (index == 0)
+        {
+            mu_assert("Raw Logarithmic 10 msec bucket # 0 added a count of 10000", 10000 == count_added_in_this_bucket);
+        }
+        else if (index == 14)
+        {
+            mu_assert("Raw Logarithmic 10 msec bucket # 14 added a count of 1", 1 == count_added_in_this_bucket);            
+        }
+        else
+        {
+            mu_assert("Raw Logarithmic 10 msec bucket added a count of 0", 0 == count_added_in_this_bucket);            
+        }
+
+        index++;
+    }
+
+    mu_assert("Should of seen 14 values", index - 1 == 14);
+
+    hdrh_log_iter_init(&iter, cor_histogram, 10000, 2.0);
+    index = 0;
+    int total_added_count = 0;
+    while (hdrh_log_iter_next(&iter))
+    {
+        long count_added_in_this_bucket = iter.count_added_in_this_iteration_step;
+
+        if (index == 0)
+        {
+            mu_assert("Corrected Logarithmic 10 msec bucket # 0 added a count of 10001", 10001 == count_added_in_this_bucket);
+        }
+        total_added_count += count_added_in_this_bucket;
+        index++;
+    }
+
+    mu_assert("Should of seen 14 values", index - 1 == 14);
+    mu_assert("Should of seen count of 20000", total_added_count == 20000);
 
     return 0;
 }
@@ -278,7 +307,7 @@ static struct mu_result all_tests()
     mu_run_test(test_percentiles);
     mu_run_test(test_recorded_values);
     mu_run_test(test_linear_values);
-    mu_run_test(test_foo);
+    mu_run_test(test_logarithmic_values);
 
     mu_ok;
 }

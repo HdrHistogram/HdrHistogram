@@ -307,7 +307,7 @@ static bool has_buckets(struct hdrh_iter* iter)
 
 static bool has_next(struct hdrh_iter* iter)
 {
-    return has_buckets(iter) && iter->count_to_index < iter->h->total_count;
+    return iter->count_to_index < iter->h->total_count;
 }
 
 static void increment_bucket(struct hdr_histogram* h, int32_t* bucket_index, int32_t* sub_bucket_index)
@@ -321,22 +321,29 @@ static void increment_bucket(struct hdr_histogram* h, int32_t* bucket_index, int
     }    
 }
 
-static void move_next(struct hdrh_iter* iter)
+static bool move_next(struct hdrh_iter* iter)
 {
     increment_bucket(iter->h, &iter->bucket_index, &iter->sub_bucket_index);
+
+    if (!has_buckets(iter))
+    {
+        return false;
+    }
 
     iter->count_at_index  = get_count_at_index(iter->h, iter->bucket_index, iter->sub_bucket_index);
     iter->count_to_index += iter->count_at_index;
 
     iter->value_from_index = value_from_index(iter->bucket_index, iter->sub_bucket_index);
-    iter->highest_equivalent_value = highest_equivalent_value(iter->h, iter->value_from_index);    
+    iter->highest_equivalent_value = highest_equivalent_value(iter->h, iter->value_from_index);
+
+    return true;
 }
 
 static int64_t peek_next_value_from_index(struct hdrh_iter* iter)
 {
     int32_t bucket_index     = iter->bucket_index;
     int32_t sub_bucket_index = iter->sub_bucket_index;
-    
+
     increment_bucket(iter->h, &bucket_index, &sub_bucket_index);
 
     return value_from_index(bucket_index, sub_bucket_index);
@@ -526,19 +533,68 @@ bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear)
 {
     linear->count_added_in_this_iteration_step = 0;
 
-    while (has_next(&linear->iter) || 
-           peek_next_value_from_index(&linear->iter) > linear->next_value_reporting_level_lowest_equivalent)
+    if (has_next(&linear->iter) || 
+        peek_next_value_from_index(&linear->iter) > linear->next_value_reporting_level_lowest_equivalent)
     {
-        if (linear->iter.value_from_index >= linear->next_value_reporting_level_lowest_equivalent)
+        do
         {
-            linear->next_value_reporting_level += linear->value_units_per_bucket;
-            linear->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(linear->iter.h, linear->next_value_reporting_level);
+            if (linear->iter.value_from_index >= linear->next_value_reporting_level_lowest_equivalent)
+            {
+                linear->next_value_reporting_level += linear->value_units_per_bucket;
+                linear->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(linear->iter.h, linear->next_value_reporting_level);
 
-            return true;
+                return true;
+            }
+
+            if (!move_next(&linear->iter))
+            {
+                break;
+            }
+            linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
         }
+        while (true);       
+    }
 
-        move_next(&linear->iter);
-        linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
+    return false;
+}
+
+////////////////////////////////// Log Values ////////////////////////////////
+
+void hdrh_log_iter_init(struct hdrh_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base)
+{
+    hdrh_iter_init(&logarithmic->iter, h);
+    logarithmic->count_added_in_this_iteration_step = 0;
+    logarithmic->value_units_first_bucket = value_units_first_bucket;
+    logarithmic->log_base = log_base;
+    logarithmic->next_value_reporting_level = value_units_first_bucket;
+    logarithmic->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(h, value_units_first_bucket);
+}
+
+bool hdrh_log_iter_next(struct hdrh_log_iter* logarithmic)
+{
+    logarithmic->count_added_in_this_iteration_step = 0;
+
+    if (has_next(&logarithmic->iter) || 
+        peek_next_value_from_index(&logarithmic->iter) > logarithmic->next_value_reporting_level_lowest_equivalent)
+    {
+        do
+        {
+            if (logarithmic->iter.value_from_index >= logarithmic->next_value_reporting_level_lowest_equivalent)
+            {
+                logarithmic->next_value_reporting_level *= logarithmic->log_base;
+                logarithmic->next_value_reporting_level_lowest_equivalent = lowest_equivalent_value(logarithmic->iter.h, logarithmic->next_value_reporting_level);
+
+                return true;
+            }
+
+            if (!move_next(&logarithmic->iter))
+            {
+                break;
+            }
+
+            logarithmic->count_added_in_this_iteration_step += logarithmic->iter.count_at_index;            
+        }
+        while (true);
     }
 
     return false;

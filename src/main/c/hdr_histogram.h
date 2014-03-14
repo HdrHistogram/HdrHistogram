@@ -202,8 +202,8 @@ void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_his
 bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
 
 /**
- * An iterator over to get (dis)aggregated counts for a series of linear value steps.  The
- * linear can either group multiple values or have multiple steps within a single recorded
+ * An iterator to get (dis)aggregated counts for a series of linear value steps.  The
+ * linear step can either group multiple values or have multiple steps within a single recorded
  * value.
  */
 struct hdrh_linear_iter
@@ -230,5 +230,24 @@ void hdrh_linear_iter_init(struct hdrh_linear_iter* linear, struct hdr_histogram
  * @param 'This' pointer
  */
 bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear);
+
+/**
+ * An iterator to get (dis)aggregated counts for a series of logarithmic value steps.  The
+ * log step can either group multiple values or have multiple steps within a single recorded
+ * value.
+ */
+struct hdrh_log_iter
+{
+    struct hdrh_iter iter;
+    int value_units_first_bucket;
+    double log_base;
+    int64_t count_added_in_this_iteration_step;
+    int64_t next_value_reporting_level;
+    int64_t next_value_reporting_level_lowest_equivalent;
+};
+
+void hdrh_log_iter_init(struct hdrh_log_iter* log, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
+
+bool hdrh_log_iter_next(struct hdrh_log_iter* log);
 
 #endif
