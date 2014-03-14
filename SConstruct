@@ -14,20 +14,22 @@ test_directory    = version_directory + '/test/'
 include_directory = version_directory + '/include/'
 
 debug    = ARGUMENTS.get('debug', 0)
-optimise = ARGUMENTS.get('optimise', '3')
+optimise = ARGUMENTS.get('optimise', 3)
 cc       = ARGUMENTS.get('cc', 'clang')
 
 env = Environment()
 env['ENV']['PATH'] = os.environ['PATH']
 env['CC']  = cc
 env['CPATH'] = []
-env['CFLAGS'] = ['-std=c99', '-Wall', '-O' + optimise]
+env['CFLAGS'] = ['-std=c99', '-Wall']
 if cc == 'clang':
     env.Append(CFLAGS = '-fcolor-diagnostics')
 
 env['TARFLAGS'] = ['-c', '-z']
 env['TARSUFFIX'] = ['.tar.gz']
 
+if int(optimise) != 0:
+    env.Append(CFLAGS = '-O' + str(optimise))
 if int(debug):
     env.Append(CFLAGS = '-g')
 
