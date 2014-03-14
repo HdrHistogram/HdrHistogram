@@ -246,8 +246,21 @@ struct hdrh_log_iter
     int64_t next_value_reporting_level_lowest_equivalent;
 };
 
-void hdrh_log_iter_init(struct hdrh_log_iter* log, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
+/**
+ * Initialise the logarithmic iterator
+ *
+ * @param logarithmic 'This' pointer
+ * @param h Histogram to iterate over
+ * @param value_units_first_bucket The size of the first bucket in the iteration
+ * @param log_base The factor to multiply by at each step
+ */
+void hdrh_log_iter_init(struct hdrh_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
 
-bool hdrh_log_iter_next(struct hdrh_log_iter* log);
+/**
+ * Iterate to the next logarithmic step
+ *
+ * @param logarithmic 'This' pointer
+ */
+bool hdrh_log_iter_next(struct hdrh_log_iter* logarithmic);
 
 #endif
