@@ -25,9 +25,6 @@ env['CFLAGS'] = ['-std=c99', '-Wall']
 if cc == 'clang':
     env.Append(CFLAGS = '-fcolor-diagnostics')
 
-env['TARFLAGS'] = ['-c', '-z']
-env['TARSUFFIX'] = ['.tar.gz']
-
 if int(optimise) != 0:
     env.Append(CFLAGS = '-O' + str(optimise))
 if int(debug):
