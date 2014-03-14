@@ -14,7 +14,7 @@ test_directory    = version_directory + '/test/'
 include_directory = version_directory + '/include/'
 
 debug    = ARGUMENTS.get('debug', 0)
-optimise = ARGUMENTS.get('optimise', 3)
+optimise = ARGUMENTS.get('optimise', 2)
 cc       = ARGUMENTS.get('cc', 'clang')
 
 env = Environment()
@@ -33,11 +33,10 @@ if int(debug):
 bin = env.Clone()
 bin['CPPDEFINES'] = ['__LZCNT__']
 static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
-shared_library = bin.SharedLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
 
 tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
-tst['LIBS'] = ['hdr_histogram']
+tst['LIBS'] = ['hdr_histogram.a']
 tst['LIBPATH'] = [lib_directory]
 tst['LINKFLAGS'] = ['-lm', '-lrt']
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))

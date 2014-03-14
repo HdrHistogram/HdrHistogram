@@ -50,7 +50,7 @@ struct hdr_histogram
  * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
  * or -2 if malloc failed.
  */
-int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
+int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
 
 /**
  * Record a value in the histogram.
@@ -63,7 +63,7 @@ int hdrh_alloc(int64_t highest_trackable_value, int significant_figures, struct 
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdrh_record_value(struct hdr_histogram* h, int64_t value);
+bool hdr_record_value(struct hdr_histogram* h, int64_t value);
 
 /**
  * Record a value in the histogram and backfill based on an expected interval.
@@ -80,14 +80,14 @@ bool hdrh_record_value(struct hdr_histogram* h, int64_t value);
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
-bool hdrh_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
+bool hdr_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
 
-int64_t hdrh_min(struct hdr_histogram* h);
-int64_t hdrh_max(struct hdr_histogram* h);
-int64_t hdrh_value_at_percentile(struct hdr_histogram* h, double percentile);
+int64_t hdr_min(struct hdr_histogram* h);
+int64_t hdr_max(struct hdr_histogram* h);
+int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile);
 
-double hdrh_mean(struct hdr_histogram* h);
-bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
+double hdr_mean(struct hdr_histogram* h);
+bool hdr_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
 
 /**
  * The basic iterator.  This is the equivlent of the
@@ -95,7 +95,7 @@ bool hdrh_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
  * through all entries in the histogram whether or not a value
  * is recorded.
  */
-struct hdrh_iter
+struct hdr_iter
 {
     struct hdr_histogram* h;
     int32_t bucket_index;
@@ -112,7 +112,7 @@ struct hdrh_iter
  * @param itr 'This' pointer
  * @param h The histogram to iterate over
  */
-void hdrh_iter_init(struct hdrh_iter* iter, struct hdr_histogram* h);
+void hdr_iter_init(struct hdr_iter* iter, struct hdr_histogram* h);
 /**
  * Iterate to the next value for the iterator.  If there are no more values
  * available return faluse.
@@ -120,15 +120,15 @@ void hdrh_iter_init(struct hdrh_iter* iter, struct hdr_histogram* h);
  * @param itr 'This' pointer
  * @return 'false' if there are no values remaining for this iterator.
  */
-bool hdrh_iter_next(struct hdrh_iter* iter);
+bool hdr_iter_next(struct hdr_iter* iter);
 
 /**
  * Iterator for percentile values.  Equivalent to the PercentileIterator
  * from the Java implementation.
  */
-struct hdrh_percentile_iter
+struct hdr_percentile_iter
 {
-    struct hdrh_iter iter;
+    struct hdr_iter iter;
     bool seen_last_value;
     int32_t ticks_per_half_distance;
     double percentile_to_iterate_to;
@@ -142,7 +142,7 @@ struct hdrh_percentile_iter
  * @param h The histogram to iterate over
  * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
  */
-void hdrh_percentile_iter_init(struct hdrh_percentile_iter* percentiles,
+void hdr_percentile_iter_init(struct hdr_percentile_iter* percentiles,
                                struct hdr_histogram* h,
                                int32_t ticks_per_half_distance);
 
@@ -152,7 +152,7 @@ void hdrh_percentile_iter_init(struct hdrh_percentile_iter* percentiles,
  * @param percentiles 'This' pointer
  * @return 'false' if there are no values remaining for this iterator.
  */
-bool hdrh_percentile_iter_next(struct hdrh_percentile_iter* percentiles);
+bool hdr_percentile_iter_next(struct hdr_percentile_iter* percentiles);
 
 typedef enum {
     CLASSIC,
@@ -168,7 +168,7 @@ typedef enum {
  * @param value_scale Scale the output values by this amount
  * @param format_type Format to use, e.g. CSV.
  */
-void hdrh_percentiles_print(struct hdr_histogram* h,
+void hdr_percentiles_print(struct hdr_histogram* h,
                             FILE* stream,
                             int32_t ticks_per_half_distance,
                             double value_scale,
@@ -179,9 +179,9 @@ void hdrh_percentiles_print(struct hdr_histogram* h,
  * that has a non-zero count.  Equivalent to the the RecordedValueIterator from the
  * Java implementation.
  */
-struct hdrh_recorded_iter
+struct hdr_recorded_iter
 {
-    struct hdrh_iter iter;
+    struct hdr_iter iter;
     int64_t count_added_in_this_iteration_step;
 };
 
@@ -191,7 +191,7 @@ struct hdrh_recorded_iter
  * @param recorded 'This' pointer
  * @param h The histogram to iterate over
  */
-void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_histogram* h);
+void hdr_recorded_iter_init(struct hdr_recorded_iter* recorded, struct hdr_histogram* h);
 
 /**
  * Iterate to the next recorded value
@@ -199,16 +199,16 @@ void hdrh_recorded_iter_init(struct hdrh_recorded_iter* recorded, struct hdr_his
  * @param recorded 'This' pointer
  * @return 'false' if there are no values remaining for this iterator.
  */
-bool hdrh_recorded_iter_next(struct hdrh_recorded_iter* recorded);
+bool hdr_recorded_iter_next(struct hdr_recorded_iter* recorded);
 
 /**
  * An iterator to get (dis)aggregated counts for a series of linear value steps.  The
  * linear step can either group multiple values or have multiple steps within a single recorded
  * value.
  */
-struct hdrh_linear_iter
+struct hdr_linear_iter
 {
-    struct hdrh_iter iter;
+    struct hdr_iter iter;
     int value_units_per_bucket;
     int64_t count_added_in_this_iteration_step;
     int64_t next_value_reporting_level;
@@ -222,23 +222,23 @@ struct hdrh_linear_iter
  * @param h The histogram to iterate over
  * @param value_unit_per_bucket The size of each linear step
  */
-void hdrh_linear_iter_init(struct hdrh_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket);
+void hdr_linear_iter_init(struct hdr_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket);
 
 /**
  * Iterate to the next linear step.
  *
  * @param 'This' pointer
  */
-bool hdrh_linear_iter_next(struct hdrh_linear_iter* linear);
+bool hdr_linear_iter_next(struct hdr_linear_iter* linear);
 
 /**
  * An iterator to get (dis)aggregated counts for a series of logarithmic value steps.  The
  * log step can either group multiple values or have multiple steps within a single recorded
  * value.
  */
-struct hdrh_log_iter
+struct hdr_log_iter
 {
-    struct hdrh_iter iter;
+    struct hdr_iter iter;
     int value_units_first_bucket;
     double log_base;
     int64_t count_added_in_this_iteration_step;
@@ -254,13 +254,13 @@ struct hdrh_log_iter
  * @param value_units_first_bucket The size of the first bucket in the iteration
  * @param log_base The factor to multiply by at each step
  */
-void hdrh_log_iter_init(struct hdrh_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
+void hdr_log_iter_init(struct hdr_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
 
 /**
  * Iterate to the next logarithmic step
  *
  * @param logarithmic 'This' pointer
  */
-bool hdrh_log_iter_next(struct hdrh_log_iter* logarithmic);
+bool hdr_log_iter_next(struct hdr_log_iter* logarithmic);
 
 #endif

@@ -28,7 +28,7 @@ int main(int argc, char **argv)
 {
     struct hdr_histogram* histogram;
     int64_t max_value = 24 * 60 * 60 * 1000000L;
-    int result = hdrh_alloc(max_value, 4, &histogram);
+    int result = hdr_alloc(max_value, 4, &histogram);
     if (result != 0)
     {
         fprintf(stderr, "Failed to allocate histogram: %d\n", result);
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         clock_gettime(CLOCK_MONOTONIC_RAW, &t0);
         for (int64_t j = 1; j < iterations; j++)
         {
-            hdrh_record_value(histogram, j);
+            hdr_record_value(histogram, j);
         }
         clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
 
