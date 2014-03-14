@@ -32,7 +32,8 @@ if int(debug):
 
 bin = env.Clone()
 bin['CPPDEFINES'] = ['__LZCNT__']
-library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
+static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
+shared_library = bin.SharedLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
 
 tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
@@ -42,7 +43,7 @@ tst['LINKFLAGS'] = ['-lm', '-lrt']
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 
 prf = tst.Clone();
-prf.Append(CFLAGS = '-D_POSIX_C_SOURCE=199309L')
+prf.Append(CPPDEFINES = '_POSIX_C_SOURCE=199309L')
 prf.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 
 exp = tst.Clone()
