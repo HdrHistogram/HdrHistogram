@@ -9,7 +9,13 @@
 package org.HdrHistogram;
 
 import java.io.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
  * This non-public AbstractHistogramBase super-class separation is meant to bunch "cold" fields
@@ -23,7 +29,7 @@ abstract class AbstractHistogramBase {
     static AtomicLong constructionIdentityCount = new AtomicLong(0);
 
     // "Cold" accessed fields. Not used in the recording code path:
-    long identityCount;
+    long identity;
 
     long highestTrackableValue;
     long lowestTrackableValue;
@@ -84,7 +90,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     abstract void addToTotalCount(long value);
 
     abstract void clearCounts();
-    
+
+    abstract int _getEstimatedFootprintInBytes();
+
     /**
      * Create a copy of this histogram, complete with data and everything.
      * 
@@ -121,7 +129,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *
      * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
      */
-    abstract public int getEstimatedFootprintInBytes();
+    public int getEstimatedFootprintInBytes() {
+        return _getEstimatedFootprintInBytes();
+    }
 
     /**
      * Copy this histogram into the target histogram, overwriting it's contents.
@@ -181,7 +191,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5)) {
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
         }
-        identityCount = constructionIdentityCount.getAndIncrement();
+        identity = constructionIdentityCount.getAndIncrement();
         initTotalCount();
         init(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits, 0);
     }
@@ -206,19 +216,29 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
 
         // determine exponent range needed to support the trackable value with no overflow:
-        long trackableValue = (subBucketCount - 1) << unitMagnitude;
-        int bucketsNeeded = 1;
-        while (trackableValue < highestTrackableValue) {
-            trackableValue <<= 1;
-            bucketsNeeded++;
-        }
-        this.bucketCount = bucketsNeeded;
 
-        countsArrayLength = (bucketCount + 1) * (subBucketCount / 2);
+        this.bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
+
+        countsArrayLength = getLengthForNumberOfBuckets(bucketCount);
 
         setTotalCount(totalCount);
 
         histogramData = new HistogramData(this);
+    }
+
+    int getBucketsNeededToCoverValue(long value) {
+        long trackableValue = (subBucketCount - 1) << unitMagnitude;
+        int bucketsNeeded = 1;
+        while (trackableValue < value) {
+            trackableValue <<= 1;
+            bucketsNeeded++;
+        }
+        return bucketsNeeded;
+    }
+
+    int getLengthForNumberOfBuckets(int numberOfBuckets) {
+        int lengthNeeded = (numberOfBuckets + 1) * (subBucketCount / 2);
+        return lengthNeeded;
     }
 
 
@@ -261,12 +281,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     long getCountAt(final int bucketIndex, final int subBucketIndex) {
         return getCountAtIndex(countsArrayIndex(bucketIndex, subBucketIndex));
-    }
-
-    private static void arrayAdd(final AbstractHistogram toHistogram, final AbstractHistogram fromHistogram) {
-        if (fromHistogram.countsArrayLength != toHistogram.countsArrayLength) throw new IndexOutOfBoundsException();
-        for (int i = 0; i < fromHistogram.countsArrayLength; i++)
-            toHistogram.addToCountAtIndex(i, fromHistogram.getCountAtIndex(i));
     }
 
     int getBucketIndex(final long value) {
@@ -380,18 +394,31 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Add the contents of another histogram to this one
+     * Add the contents of another histogram to this one.
      *
-     * @param fromHistogram The other histogram. highestTrackableValue and largestValueWithSingleUnitResolution must match.
+     * @param fromHistogram The other histogram.
+     * @throws ArrayIndexOutOfBoundsException if fromHistogram's highestTrackableValue is larger than this one's.
      */
-    public void add(final AbstractHistogram fromHistogram) {
-        if ((highestTrackableValue != fromHistogram.highestTrackableValue) ||
-                (numberOfSignificantValueDigits != fromHistogram.numberOfSignificantValueDigits) ||
-                (bucketCount != fromHistogram.bucketCount) ||
-                (subBucketCount != fromHistogram.subBucketCount))
-            throw new IllegalArgumentException("Cannot add histograms with incompatible ranges");
-        arrayAdd(this, fromHistogram);
-        setTotalCount(getTotalCount() + fromHistogram.getTotalCount());
+    public void add(final AbstractHistogram fromHistogram) throws ArrayIndexOutOfBoundsException {
+        if (this.highestTrackableValue < fromHistogram.highestTrackableValue) {
+            throw new ArrayIndexOutOfBoundsException("The other histogram covers a wider range than this one.");
+        }
+        if ((bucketCount == fromHistogram.bucketCount) &&
+                (subBucketCount == fromHistogram.subBucketCount) &&
+                (unitMagnitude == fromHistogram.unitMagnitude)) {
+            // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
+            for (int i = 0; i < fromHistogram.countsArrayLength; i++) {
+                addToCountAtIndex(i, fromHistogram.getCountAtIndex(i));
+            }
+            setTotalCount(getTotalCount() + fromHistogram.getTotalCount());
+        } else {
+            // Arrays are not a direct match, so we can't just stream through and add them.
+            // Instead, go through the array and add each non-zero value found at it's proper value:
+            for (int i = 0; i < fromHistogram.countsArrayLength; i++) {
+                long count = fromHistogram.getCountAtIndex(i);
+                recordValueWithCount(fromHistogram.valueFromIndex(i), count);
+            }
+        }
     }
 
     /**
@@ -486,16 +513,28 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return True if this histogram are equivalent with the other.
      */
     public boolean equals(Object other){
-        if ( this == other ) return true;
-        if ( !(other instanceof AbstractHistogram) ) return false;
+        if ( this == other ) {
+            return true;
+        }
+        if ( !(other instanceof AbstractHistogram) ) {
+            return false;
+        }
         AbstractHistogram that = (AbstractHistogram)other;
         if ((highestTrackableValue != that.highestTrackableValue) ||
-                (numberOfSignificantValueDigits != that.numberOfSignificantValueDigits))
+                (numberOfSignificantValueDigits != that.numberOfSignificantValueDigits)) {
             return false;
-        if (countsArrayLength != that.countsArrayLength)
+        }
+        if (countsArrayLength != that.countsArrayLength) {
             return false;
-        if (getTotalCount() != that.getTotalCount())
+        }
+        if (getTotalCount() != that.getTotalCount()) {
             return false;
+        }
+        for (int i = 0; i < countsArrayLength; i++) {
+            if (getCountAtIndex(i) != that.getCountAtIndex(i)) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -535,7 +574,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public long lowestEquivalentValue(final long value) {
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-        long thisValueBaseLevel = valueFromIndex(bucketIndex, subBucketIndex, unitMagnitude);
+        long thisValueBaseLevel = valueFromIndex(bucketIndex, subBucketIndex);
         return thisValueBaseLevel;
     }
 
@@ -609,9 +648,166 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         setTotalCount(totalCount);
     }
 
+    /**
+     * Get the capacity needed to encode this histogram into a ByteBuffer
+     * @return the capacity needed to encode this histogram into a ByteBuffer
+     */
+    public int getNeededByteBufferCapacity() {
+        return getNeededByteBufferCapacity(countsArrayLength);
+    }
 
-    static final long valueFromIndex(int bucketIndex, int subBucketIndex, int unitMagnitude)
-    {
-        return ((long) subBucketIndex) << ( bucketIndex + unitMagnitude);
+    abstract int getNeededByteBufferCapacity(int relevantLength);
+
+    abstract void fillCountsArrayFromBuffer(ByteBuffer buffer, int length);
+
+    abstract void fillBufferFromCountsArray(ByteBuffer buffer, int length);
+
+    abstract int getEncodingCookie();
+    abstract int getCompressedEncodingCookie();
+
+    /**
+     * Encode this histogram into a ByteBuffer
+     * @param buffer The buffer to encode into
+     * @return The number of bytes written to the buffer
+     */
+    synchronized public int encodeIntoByteBuffer(ByteBuffer buffer) {
+        long maxValue = getHistogramData().getMaxValue();
+        int relevantLength = getLengthForNumberOfBuckets(getBucketsNeededToCoverValue(maxValue));
+        if (buffer.capacity() < getNeededByteBufferCapacity(relevantLength)) {
+            throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" + getNeededByteBufferCapacity(relevantLength) + " bytes");
+        }
+        buffer.putInt(getEncodingCookie());
+        buffer.putInt(numberOfSignificantValueDigits);
+        buffer.putLong(lowestTrackableValue);
+        buffer.putLong(highestTrackableValue);
+        buffer.putLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
+
+        fillBufferFromCountsArray(buffer, relevantLength);
+        return relevantLength;
+    }
+
+    private ByteBuffer intermediateUncompressedByteBuffer = null;
+
+    /**
+     * Encode this histogram in compressed form into a byte array
+     * @param targetBuffer The buffer to encode into
+     * @param compressionLevel Compression level (for java.util.zip.Deflater).
+     * @return The number of bytes written to the buffer
+     */
+    synchronized public int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer, int compressionLevel) {
+        if (intermediateUncompressedByteBuffer == null) {
+            intermediateUncompressedByteBuffer = ByteBuffer.allocate(getNeededByteBufferCapacity(countsArrayLength));
+        }
+        intermediateUncompressedByteBuffer.clear();
+        int uncompressedLength = encodeIntoByteBuffer(intermediateUncompressedByteBuffer);
+
+        targetBuffer.putInt(getCompressedEncodingCookie());
+        targetBuffer.putInt(0); // Placeholder for compressed contents length
+        Deflater compressor = new Deflater(compressionLevel);
+        compressor.setInput(intermediateUncompressedByteBuffer.array());
+        compressor.finish();
+        byte[] targetArray = targetBuffer.array();
+        int compressedDataLength = compressor.deflate(targetArray, 8, targetArray.length - 8);
+        compressor.end();
+
+        targetBuffer.putInt(4, compressedDataLength); // Record the compressed length
+
+        return compressedDataLength + 8;
+    }
+
+    /**
+     * Encode this histogram in compressed form into a byte array
+     * @param targetBuffer The buffer to encode into
+     * @return The number of bytes written to the array
+     */
+    public int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer) {
+        return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
+    }
+
+    private static final Class[] constructorArgsTypes = {Long.TYPE, Long.TYPE, Integer.TYPE};
+
+    static AbstractHistogram constructHistogramFromBufferHeader(final ByteBuffer buffer,
+                                                                        Class histogramClass,
+                                                                        long minBarForHighestTrackableValue,
+                                                                        int expectedEncodingCookie) {
+        if (buffer.getInt() != expectedEncodingCookie) {
+            throw new IllegalArgumentException("The buffer does not contain a Histogram");
+        }
+        int numberOfSignificantValueDigits = buffer.getInt();
+        long lowestTrackableValue = buffer.getLong();
+        long highestTrackableValue = buffer.getLong();
+        long totalCount = buffer.getLong();
+
+        highestTrackableValue = Math.max(highestTrackableValue, minBarForHighestTrackableValue);
+
+        try {
+            Constructor<AbstractHistogram> constructor = histogramClass.getConstructor(constructorArgsTypes);
+            AbstractHistogram histogram =
+                    constructor.newInstance(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+            histogram.setTotalCount(totalCount); // Restore totalCount
+            return histogram;
+        } catch (IllegalAccessException ex) {
+            throw new IllegalArgumentException(ex);
+        } catch (NoSuchMethodException ex) {
+            throw new IllegalArgumentException(ex);
+        } catch (InstantiationException ex) {
+            throw new IllegalArgumentException(ex);
+        } catch (InvocationTargetException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
+
+    static AbstractHistogram decodeFromByteBuffer(ByteBuffer buffer, Class histogramClass,
+                                                            long minBarForHighestTrackableValue,
+                                                            int expectedEncodingCookie) {
+        AbstractHistogram histogram = constructHistogramFromBufferHeader(buffer, histogramClass,
+                minBarForHighestTrackableValue, expectedEncodingCookie);
+
+        int expectedCapacity = histogram.getNeededByteBufferCapacity(histogram.countsArrayLength);
+        if (expectedCapacity > buffer.capacity()) {
+            throw new IllegalArgumentException("The buffer does not contain the full Histogram");
+        }
+
+        histogram.fillCountsArrayFromBuffer(buffer, histogram.countsArrayLength);
+
+        return histogram;
+    }
+
+    static AbstractHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer, Class histogramClass,
+                                                                      long minBarForHighestTrackableValue,
+                                                                      int expectedEncodingCookie,
+                                                                      int expectedCompressedEncodingCookie) throws DataFormatException {
+        if (buffer.getInt() != expectedCompressedEncodingCookie) {
+            throw new IllegalArgumentException("The buffer does not contain a compressed Histogram");
+        }
+        int lengthOfCompressedContents = buffer.getInt();
+        Inflater decompressor = new Inflater();
+        decompressor.setInput(buffer.array(), 8, lengthOfCompressedContents);
+
+        ByteBuffer headerBuffer = ByteBuffer.allocate(32);
+        decompressor.inflate(headerBuffer.array());
+        AbstractHistogram histogram = constructHistogramFromBufferHeader(headerBuffer, histogramClass,
+                minBarForHighestTrackableValue, expectedEncodingCookie);
+        ByteBuffer countsBuffer = ByteBuffer.allocate(
+                histogram.getNeededByteBufferCapacity(histogram.countsArrayLength) - 32);
+        decompressor.inflate(countsBuffer.array());
+
+        histogram.fillCountsArrayFromBuffer(countsBuffer, histogram.countsArrayLength);
+
+        return histogram;
+    }
+
+    final long valueFromIndex(final int bucketIndex, final int subBucketIndex) {
+        return ((long) subBucketIndex) << (bucketIndex + unitMagnitude);
+    }
+
+    final long valueFromIndex(final int index) {
+        int bucketIndex = (index >> subBucketHalfCountMagnitude) - 1;
+        int subBucketIndex = (index & (subBucketHalfCount - 1)) + subBucketHalfCount;
+        if (bucketIndex < 0) {
+            subBucketIndex -= subBucketHalfCount;
+            bucketIndex = 0;
+        }
+        return valueFromIndex(bucketIndex, subBucketIndex);
     }
 }

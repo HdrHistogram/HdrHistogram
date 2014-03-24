@@ -8,9 +8,6 @@
 
 package org.HdrHistogram;
 
-
-import static org.HdrHistogram.AbstractHistogram.valueFromIndex;
-
 import java.io.PrintStream;
 import java.util.Iterator;
 import java.util.Locale;
@@ -124,7 +121,7 @@ public class HistogramData {
             for (; j < subBucketCount; j++) {
                 totalToCurrentIJ += histogram.getCountAt(i, j);
                 if (totalToCurrentIJ >= countAtPercentile) {
-                    long valueAtIndex = valueFromIndex(i, j, histogram.unitMagnitude);
+                    long valueAtIndex = histogram.valueFromIndex(i, j);
                     return valueAtIndex;
                 }
             }
@@ -176,10 +173,10 @@ public class HistogramData {
         // Compute the sub-bucket-rounded values for low and high:
         int lowBucketIndex = histogram.getBucketIndex(lowValue);
         int lowSubBucketIndex = histogram.getSubBucketIndex(lowValue, lowBucketIndex);
-        long valueAtlowValue = valueFromIndex(lowBucketIndex, lowSubBucketIndex, histogram.unitMagnitude);
+        long valueAtlowValue = histogram.valueFromIndex(lowBucketIndex, lowSubBucketIndex);
         int highBucketIndex = histogram.getBucketIndex(highValue);
         int highSubBucketIndex = histogram.getSubBucketIndex(highValue, highBucketIndex);
-        long valueAtHighValue = valueFromIndex(highBucketIndex, highSubBucketIndex, histogram.unitMagnitude);
+        long valueAtHighValue = histogram.valueFromIndex(highBucketIndex, highSubBucketIndex);
 
         if ((lowBucketIndex >= bucketCount) || (highBucketIndex >= bucketCount))
             throw new ArrayIndexOutOfBoundsException();
@@ -187,7 +184,7 @@ public class HistogramData {
         for (int i = lowBucketIndex; i <= highBucketIndex; i++) {
             int j = (i == 0) ? 0 : (subBucketCount / 2);
             for (; j < subBucketCount; j++) {
-                long valueAtIndex = valueFromIndex(i, j, histogram.unitMagnitude);
+                long valueAtIndex = histogram.valueFromIndex(i, j);
                 if (valueAtIndex > valueAtHighValue)
                     return count;
                 if (valueAtIndex >= valueAtlowValue)

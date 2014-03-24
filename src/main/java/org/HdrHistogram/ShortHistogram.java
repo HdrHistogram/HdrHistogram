@@ -10,6 +10,9 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
+import java.util.zip.DataFormatException;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram using a <b><code>short</code></b> count type </h3>
@@ -81,13 +84,8 @@ public class ShortHistogram extends AbstractHistogram {
         totalCount += value;
     }
 
-    /**
-     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
-     *
-     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
-     */
     @Override
-    public int getEstimatedFootprintInBytes() {
+    int _getEstimatedFootprintInBytes() {
         return (512 + (2 * counts.length));
     }
 
@@ -126,8 +124,84 @@ public class ShortHistogram extends AbstractHistogram {
         counts = new short[countsArrayLength];
     }
 
+    /**
+     * Construct a new histogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     */
+    public static ShortHistogram decodeFromByteBuffer(final ByteBuffer buffer, long minBarForHighestTrackableValue) {
+        return (ShortHistogram) decodeFromByteBuffer(buffer, ShortHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie);
+    }
+
+    /**
+     * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
+     * @param buffer The buffer to encode into
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     * @throws DataFormatException
+     */
+    public static ShortHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
+                                                                long minBarForHighestTrackableValue) throws DataFormatException {
+        return (ShortHistogram) decodeFromCompressedByteBuffer(buffer, ShortHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie, compressedEncodingCookie);
+    }
+
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
+    }
+
+    private static final int encodingCookie = 0x1c849382;
+    private static final int compressedEncodingCookie = 0x1c849383;
+
+    @Override
+    int getEncodingCookie() {
+        return encodingCookie;
+    }
+
+    @Override
+    int getCompressedEncodingCookie() {
+        return compressedEncodingCookie;
+    }
+
+    @Override
+    int getNeededByteBufferCapacity(final int relevantLength) {
+        return (relevantLength * 2) + 32;
+    }
+
+    private ShortBuffer cachedDstShortBuffer = null;
+    private ByteBuffer cachedDstByteBuffer = null;
+    private int cachedDstByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
+        if ((cachedDstShortBuffer == null) ||
+                (buffer != cachedDstByteBuffer) ||
+                (buffer.position() != cachedDstByteBufferPosition)) {
+            cachedDstByteBuffer = buffer;
+            cachedDstByteBufferPosition = buffer.position();
+            cachedDstShortBuffer = buffer.asShortBuffer();
+        }
+        cachedDstShortBuffer.rewind();
+        cachedDstShortBuffer.put(counts, 0, length);
+    }
+
+    private ShortBuffer cachedSrcShortBuffer = null;
+    private ByteBuffer cachedSrcByteBuffer = null;
+    private int cachedSrcByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
+        if ((cachedSrcShortBuffer == null) ||
+                (buffer != cachedSrcByteBuffer)||
+                (buffer.position() != cachedSrcByteBufferPosition)) {
+            cachedSrcByteBuffer = buffer;
+            cachedSrcByteBufferPosition = buffer.position();
+            cachedSrcShortBuffer = buffer.asShortBuffer();
+        }
+        cachedSrcShortBuffer.rewind();
+        cachedSrcShortBuffer.get(counts, 0, length);
     }
 }

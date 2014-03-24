@@ -10,7 +10,10 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
 import java.util.concurrent.atomic.*;
+import java.util.zip.DataFormatException;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram using atomic <b><code>long</code></b> count type </h3>
@@ -86,13 +89,8 @@ public class AtomicHistogram extends AbstractHistogram {
         totalCountUpdater.addAndGet(this, value);
     }
 
-    /**
-     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
-     *
-     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
-     */
     @Override
-    public int getEstimatedFootprintInBytes() {
+    int _getEstimatedFootprintInBytes() {
         return (512 + (8 * counts.length()));
     }
 
@@ -131,8 +129,89 @@ public class AtomicHistogram extends AbstractHistogram {
         counts = new AtomicLongArray(countsArrayLength);
     }
 
+    /**
+     * Construct a new histogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     */
+    public static AtomicHistogram decodeFromByteBuffer(final ByteBuffer buffer, long minBarForHighestTrackableValue) {
+        return (AtomicHistogram) decodeFromByteBuffer(buffer, AtomicHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie);
+    }
+
+    /**
+     * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
+     * @param buffer The buffer to encode into
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     * @throws DataFormatException
+     */
+    public static AtomicHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
+                                                                 long minBarForHighestTrackableValue) throws DataFormatException {
+        return (AtomicHistogram) decodeFromCompressedByteBuffer(buffer, AtomicHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie, compressedEncodingCookie);
+    }
+
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
+    }
+
+    private static final int encodingCookie = 0x1c849388;
+    private static final int compressedEncodingCookie = 0x1c849389;
+
+    @Override
+    int getEncodingCookie() {
+        return encodingCookie;
+    }
+
+    @Override
+    int getCompressedEncodingCookie() {
+        return compressedEncodingCookie;
+    }
+
+
+    @Override
+    int getNeededByteBufferCapacity(final int relevantLength) {
+        return (relevantLength * 8) + 32;
+    }
+
+    private LongBuffer cachedDstLongBuffer = null;
+    private ByteBuffer cachedDstByteBuffer = null;
+    private int cachedDstByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
+        if ((cachedDstLongBuffer == null) ||
+                (buffer != cachedDstByteBuffer) ||
+                (buffer.position() != cachedDstByteBufferPosition)) {
+            cachedDstByteBuffer = buffer;
+            cachedDstByteBufferPosition = buffer.position();
+            cachedDstLongBuffer = buffer.asLongBuffer();
+        }
+        cachedDstLongBuffer.rewind();
+        for (int i = 0; i < length; i++) {
+            cachedDstLongBuffer.put(counts.get(i));
+        }
+    }
+
+    private LongBuffer cachedSrcLongBuffer = null;
+    private ByteBuffer cachedSrcByteBuffer = null;
+    private int cachedSrcByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
+        if ((cachedSrcLongBuffer == null) ||
+                (buffer != cachedSrcByteBuffer)||
+                (buffer.position() != cachedSrcByteBufferPosition)) {
+            cachedSrcByteBuffer = buffer;
+            cachedSrcByteBufferPosition = buffer.position();
+            cachedSrcLongBuffer = buffer.asLongBuffer();
+        }
+        cachedSrcLongBuffer.rewind();
+        for (int i = 0; i < length; i++) {
+            counts.lazySet(i, cachedSrcLongBuffer.get());
+        }
     }
 }

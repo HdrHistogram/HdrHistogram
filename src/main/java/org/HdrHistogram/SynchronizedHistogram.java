@@ -10,7 +10,9 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.util.concurrent.atomic.AtomicLong;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
+import java.util.zip.DataFormatException;
 
 /**
  * <h3>An internally synchronized High Dynamic Range (HDR) Histogram using a <b><code>long</code></b> count type </h3>
@@ -53,9 +55,9 @@ public class SynchronizedHistogram extends AbstractHistogram {
      * @inheritDoc
      */
     @Override
-    public synchronized void add(final AbstractHistogram other) {
+    public void add(final AbstractHistogram other) {
         // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
-        if (identityCount < other.identityCount) {
+        if (identity < other.identity) {
             synchronized (this) {
                 synchronized (other) {
                     super.add(other);
@@ -117,16 +119,10 @@ public class SynchronizedHistogram extends AbstractHistogram {
         }
     }
 
-    /**
-     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
-     *
-     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
-     */
     @Override
-    public int getEstimatedFootprintInBytes() {
+    int _getEstimatedFootprintInBytes() {
         return (512 + (8 * counts.length));
     }
-
 
     /**
      * Construct a SynchronizedHistogram given the Highest value to be tracked and a number of significant decimal digits. The
@@ -163,8 +159,84 @@ public class SynchronizedHistogram extends AbstractHistogram {
         counts = new long[countsArrayLength];
     }
 
+    /**
+     * Construct a new histogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     */
+    public static SynchronizedHistogram decodeFromByteBuffer(final ByteBuffer buffer, long minBarForHighestTrackableValue) {
+        return (SynchronizedHistogram) decodeFromByteBuffer(buffer, SynchronizedHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie);
+    }
+
+    /**
+     * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
+     * @param buffer The buffer to encode into
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     * @throws DataFormatException
+     */
+    public static SynchronizedHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
+                                                                       long minBarForHighestTrackableValue) throws DataFormatException {
+        return (SynchronizedHistogram) decodeFromCompressedByteBuffer(buffer, SynchronizedHistogram.class,
+                minBarForHighestTrackableValue, encodingCookie, compressedEncodingCookie);
+    }
+
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
+    }
+
+    private static final int encodingCookie = 0x1c849388;
+    private static final int compressedEncodingCookie = 0x1c849389;
+
+    @Override
+    int getEncodingCookie() {
+        return encodingCookie;
+    }
+
+    @Override
+    int getCompressedEncodingCookie() {
+        return compressedEncodingCookie;
+    }
+
+    @Override
+    int getNeededByteBufferCapacity(final int relevantLength) {
+        return (relevantLength * 8) + 32;
+    }
+
+    private LongBuffer cachedDstLongBuffer = null;
+    private ByteBuffer cachedDstByteBuffer = null;
+    private int cachedDstByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
+        if ((cachedDstLongBuffer == null) ||
+                (buffer != cachedDstByteBuffer) ||
+                (buffer.position() != cachedDstByteBufferPosition)) {
+            cachedDstByteBuffer = buffer;
+            cachedDstByteBufferPosition = buffer.position();
+            cachedDstLongBuffer = buffer.asLongBuffer();
+        }
+        cachedDstLongBuffer.rewind();
+        cachedDstLongBuffer.put(counts, 0, length);
+    }
+
+    private LongBuffer cachedSrcLongBuffer = null;
+    private ByteBuffer cachedSrcByteBuffer = null;
+    private int cachedSrcByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
+        if ((cachedSrcLongBuffer == null) ||
+                (buffer != cachedSrcByteBuffer)||
+                (buffer.position() != cachedSrcByteBufferPosition)) {
+            cachedSrcByteBuffer = buffer;
+            cachedSrcByteBufferPosition = buffer.position();
+            cachedSrcLongBuffer = buffer.asLongBuffer();
+        }
+        cachedSrcLongBuffer.rewind();
+        cachedSrcLongBuffer.get(counts, 0, length);
     }
 }

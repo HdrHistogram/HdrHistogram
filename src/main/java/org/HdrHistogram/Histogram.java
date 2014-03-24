@@ -10,7 +10,13 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
@@ -65,9 +71,9 @@ public class Histogram extends AbstractHistogram {
      */
     @Override
     public Histogram copy() {
-      Histogram copy = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
-      copy.add(this);
-      return copy;
+        Histogram copy = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        copy.add(this);
+        return copy;
     }
 
     /**
@@ -100,23 +106,17 @@ public class Histogram extends AbstractHistogram {
         totalCount += value;
     }
 
-    /**
-     * Provide a (conservatively high) estimate of the Histogram's total footprint in bytes
-     *
-     * @return a (conservatively high) estimate of the Histogram's total footprint in bytes
-     */
     @Override
-    public int getEstimatedFootprintInBytes() {
+    int _getEstimatedFootprintInBytes() {
         return (512 + (8 * counts.length));
     }
-
 
     /**
      * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits. The
      * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
-     * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is >= 2.
+     * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
+     *                                       integer that is >= 2.
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
@@ -132,22 +132,98 @@ public class Histogram extends AbstractHistogram {
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
      * proper value for lowestTrackableValue would be 1000.
      *
-     * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
-     *                             Must be a positive integer that is >= 1. May be internally rounded down to nearest
-     *                             power of 2.
-     * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is >= (2 * lowestTrackableValue).
+     * @param lowestTrackableValue           The lowest value that can be tracked (distinguished from 0) by the histogram.
+     *                                       Must be a positive integer that is >= 1. May be internally rounded down to nearest
+     *                                       power of 2.
+     * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
+     *                                       integer that is >= (2 * lowestTrackableValue).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public Histogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+    public Histogram(final long lowestTrackableValue, final long highestTrackableValue,
+                     final int numberOfSignificantValueDigits) {
         super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         counts = new long[countsArrayLength];
+    }
+
+    /**
+     * Construct a new histogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     */
+    public static Histogram decodeFromByteBuffer(final ByteBuffer buffer, long minBarForHighestTrackableValue) {
+        return (Histogram) decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue, encodingCookie);
+    }
+
+    /**
+     * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
+     * @param buffer The buffer to encode into
+     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @return The newly constructed histogram
+     * @throws DataFormatException
+     */
+    public static Histogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
+                                                           long minBarForHighestTrackableValue) throws DataFormatException {
+        return (Histogram) decodeFromCompressedByteBuffer(buffer, Histogram.class,
+                minBarForHighestTrackableValue, encodingCookie, compressedEncodingCookie);
     }
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
+    }
+
+    private static final int encodingCookie = 0x1c849388;
+    private static final int compressedEncodingCookie = 0x1c849389;
+
+    @Override
+    int getEncodingCookie() {
+        return encodingCookie;
+    }
+
+    @Override
+    int getCompressedEncodingCookie() {
+        return compressedEncodingCookie;
+    }
+
+    @Override
+    int getNeededByteBufferCapacity(final int relevantLength) {
+        return (relevantLength * 8) + 32;
+    }
+
+    private LongBuffer cachedDstLongBuffer = null;
+    private ByteBuffer cachedDstByteBuffer = null;
+    private int cachedDstByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
+        if ((cachedDstLongBuffer == null) ||
+                (buffer != cachedDstByteBuffer) ||
+                (buffer.position() != cachedDstByteBufferPosition)) {
+            cachedDstByteBuffer = buffer;
+            cachedDstByteBufferPosition = buffer.position();
+            cachedDstLongBuffer = buffer.asLongBuffer();
+        }
+        cachedDstLongBuffer.rewind();
+        cachedDstLongBuffer.put(counts, 0, length);
+    }
+
+    private LongBuffer cachedSrcLongBuffer = null;
+    private ByteBuffer cachedSrcByteBuffer = null;
+    private int cachedSrcByteBufferPosition = 0;
+
+    @Override
+    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
+        if ((cachedSrcLongBuffer == null) ||
+                (buffer != cachedSrcByteBuffer)||
+                (buffer.position() != cachedSrcByteBufferPosition)) {
+            cachedSrcByteBuffer = buffer;
+            cachedSrcByteBufferPosition = buffer.position();
+            cachedSrcLongBuffer = buffer.asLongBuffer();
+        }
+        cachedSrcLongBuffer.rewind();
+        cachedSrcLongBuffer.get(counts, 0, length);
     }
 }

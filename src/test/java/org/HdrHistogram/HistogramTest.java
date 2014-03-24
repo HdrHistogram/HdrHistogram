@@ -145,19 +145,35 @@ public class HistogramTest {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Histogram other = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
         other.recordValue(testValueLevel);
+        other.recordValue(testValueLevel * 1000);
         histogram.add(other);
         Assert.assertEquals(2L, histogram.getHistogramData().getCountAtValue(testValueLevel));
-        Assert.assertEquals(2L, histogram.getHistogramData().getTotalCount());
-        Histogram incompatibleOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
+        Assert.assertEquals(2L, histogram.getHistogramData().getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, histogram.getHistogramData().getTotalCount());
+
+        Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
+        biggerOther.recordValue(testValueLevel);
+        biggerOther.recordValue(testValueLevel * 1000);
+
+        // Adding the smaller histogram to the bigger one should work:
+        biggerOther.add(histogram);
+        Assert.assertEquals(3L, biggerOther.getHistogramData().getCountAtValue(testValueLevel));
+        Assert.assertEquals(3L, biggerOther.getHistogramData().getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(6L, biggerOther.getHistogramData().getTotalCount());
+
+        // But trying to add a larger histogram into a smaller one should throw an AIOOB:
         boolean thrown = false;
         try {
             // This should throw:
-            histogram.add(incompatibleOther);
-        } catch (IllegalArgumentException e) {
+            histogram.add(biggerOther);
+        } catch (ArrayIndexOutOfBoundsException e) {
             thrown = true;
         }
         Assert.assertTrue(thrown);
+
+
     }
 
 
