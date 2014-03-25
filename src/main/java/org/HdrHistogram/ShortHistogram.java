@@ -122,6 +122,7 @@ public class ShortHistogram extends AbstractHistogram {
     public ShortHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
         counts = new short[countsArrayLength];
+        wordSizeInBytes = 2;
     }
 
     /**
@@ -130,9 +131,10 @@ public class ShortHistogram extends AbstractHistogram {
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
      */
-    public static ShortHistogram decodeFromByteBuffer(final ByteBuffer buffer, long minBarForHighestTrackableValue) {
+    public static ShortHistogram decodeFromByteBuffer(final ByteBuffer buffer,
+                                                      final long minBarForHighestTrackableValue) {
         return (ShortHistogram) decodeFromByteBuffer(buffer, ShortHistogram.class,
-                minBarForHighestTrackableValue, encodingCookie);
+                minBarForHighestTrackableValue);
     }
 
     /**
@@ -143,9 +145,9 @@ public class ShortHistogram extends AbstractHistogram {
      * @throws DataFormatException
      */
     public static ShortHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                long minBarForHighestTrackableValue) throws DataFormatException {
+                                                                final long minBarForHighestTrackableValue) throws DataFormatException {
         return (ShortHistogram) decodeFromCompressedByteBuffer(buffer, ShortHistogram.class,
-                minBarForHighestTrackableValue, encodingCookie, compressedEncodingCookie);
+                minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -153,24 +155,13 @@ public class ShortHistogram extends AbstractHistogram {
         o.defaultReadObject();
     }
 
-    private static final int encodingCookie = 0x1c849382;
-    private static final int compressedEncodingCookie = 0x1c849383;
-
     @Override
-    int getEncodingCookie() {
-        return encodingCookie;
+    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
+        buffer.asShortBuffer().get(counts, 0, length);
     }
 
-    @Override
-    int getCompressedEncodingCookie() {
-        return compressedEncodingCookie;
-    }
-
-    @Override
-    int getNeededByteBufferCapacity(final int relevantLength) {
-        return (relevantLength * 2) + 32;
-    }
-
+    // We try to cache the LongBuffer used in output cases, as repeated
+    // output form the same histogram using the same buffer is likely:
     private ShortBuffer cachedDstShortBuffer = null;
     private ByteBuffer cachedDstByteBuffer = null;
     private int cachedDstByteBufferPosition = 0;
@@ -186,22 +177,5 @@ public class ShortHistogram extends AbstractHistogram {
         }
         cachedDstShortBuffer.rewind();
         cachedDstShortBuffer.put(counts, 0, length);
-    }
-
-    private ShortBuffer cachedSrcShortBuffer = null;
-    private ByteBuffer cachedSrcByteBuffer = null;
-    private int cachedSrcByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        if ((cachedSrcShortBuffer == null) ||
-                (buffer != cachedSrcByteBuffer)||
-                (buffer.position() != cachedSrcByteBufferPosition)) {
-            cachedSrcByteBuffer = buffer;
-            cachedSrcByteBufferPosition = buffer.position();
-            cachedSrcShortBuffer = buffer.asShortBuffer();
-        }
-        cachedSrcShortBuffer.rewind();
-        cachedSrcShortBuffer.get(counts, 0, length);
     }
 }
