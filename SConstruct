@@ -11,6 +11,7 @@ lib_directory     = version_directory + '/lib/'
 bin_directory     = version_directory + '/bin/'
 src_directory     = version_directory + '/src/'
 test_directory    = version_directory + '/test/'
+example_directory = version_directory + '/examples'
 include_directory = version_directory + '/include/'
 
 debug    = ARGUMENTS.get('debug', 0)
@@ -49,8 +50,9 @@ exp = tst.Clone()
 exp.Program(bin_directory + 'format_example', ['src/examples/c/hdr_histogram_format_example.c'])
 
 env.Install(include_directory, Glob('src/main/c/*.h'))
-env.Install(src_directory, Glob('src/main/c/*.c') + Glob('src/main/c/*.h'))
-env.Install(test_directory, Glob('src/test/c/*.c') + Glob('src/test/c/*.h'))
+env.Install(src_directory,     Glob('src/main/c/*.c')     + Glob('src/main/c/*.h'))
+env.Install(test_directory,    Glob('src/test/c/*.c')     + Glob('src/test/c/*.h'))
+env.Install(example_directory, Glob('src/examples/c/*.c') + Glob('src/examples/c/*.h'))
 
 env.Tar('target/c/hdr_histogram-' + version + '.tar.gz', Dir('hdr_histogram-' + version),
         TARFLAGS = ['-c', '-z', '-Ctarget/c'])
