@@ -29,7 +29,7 @@ static int64_t power(int64_t base, int64_t exp)
 
 static int32_t get_bucket_index(struct hdr_histogram* h, int64_t value)
 {
-    int32_t pow2ceiling = 64 - __lzcnt64(value | h->sub_bucket_mask); // smallest power of 2 containing value
+    int32_t pow2ceiling = 64 - __builtin_clzll(value | h->sub_bucket_mask); // smallest power of 2 containing value
     return pow2ceiling - (h->sub_bucket_half_count_magnitude + 1);
 }
 
