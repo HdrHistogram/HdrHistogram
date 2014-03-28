@@ -32,7 +32,6 @@ if int(debug):
     env.Append(CFLAGS = '-g')
 
 bin = env.Clone()
-bin['CPPDEFINES'] = ['__LZCNT__']
 static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
 
 tst = env.Clone()
