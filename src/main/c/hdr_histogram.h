@@ -53,6 +53,17 @@ struct hdr_histogram
 int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
 
 /**
+ * Reset a histogram to zero - empty out a histogram and re-initialise it
+ * 
+ * If you want to re-use an existing histogram, but reset everthing back to zero, this 
+ * is the routine to use. 
+ * 
+ * @param h The histogram you want to reset to empty. 
+ * 
+ */
+void hdr_reset(struct hdr_histogram *h);
+
+/**
  * Record a value in the histogram.
  *
  * Records a value in the histogram, will round this value of to a precision at or better
