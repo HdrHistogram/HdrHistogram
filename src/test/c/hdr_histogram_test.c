@@ -297,6 +297,31 @@ static char* test_logarithmic_values()
     return 0;
 }
 
+static char* test_reset()
+{
+    load_histograms();
+
+    // before
+    mu_assert("Value at 99% not 1000.0",
+              compare_percentile(hdr_value_at_percentile(raw_histogram, 99.0), 1000.0, 0.001));
+    mu_assert("Value at 99% not 98000000.0",
+              compare_percentile(hdr_value_at_percentile(cor_histogram, 99.0), 98000000.0, 0.001));
+
+    hdr_reset(raw_histogram);
+    hdr_reset(cor_histogram);
+
+    //after
+    mu_assert("Total raw count != 0",       raw_histogram->total_count == 0);
+    mu_assert("Total corrected count != 0", cor_histogram->total_count == 0);
+
+    mu_assert("Value at 99% not 0.0",
+              compare_percentile(hdr_value_at_percentile(raw_histogram, 99.0), 0.0, 0.001));
+    mu_assert("Value at 99% not 0.0",
+              compare_percentile(hdr_value_at_percentile(cor_histogram, 99.0), 0.0, 0.001));
+     
+    return 0;
+}
+
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
@@ -308,6 +333,7 @@ static struct mu_result all_tests()
     mu_run_test(test_recorded_values);
     mu_run_test(test_linear_values);
     mu_run_test(test_logarithmic_values);
+    mu_run_test(test_reset);
 
     mu_ok;
 }
