@@ -36,9 +36,8 @@ static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/ma
 
 tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
-tst['LIBS'] = ['hdr_histogram.a']
+tst['LIBS'] = ['hdr_histogram.a', 'm', 'rt']
 tst['LIBPATH'] = [lib_directory]
-tst['LINKFLAGS'] = ['-lm', '-lrt']
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 
 prf = tst.Clone();
