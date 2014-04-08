@@ -1,5 +1,4 @@
 /**
- * AbstractHistogram.java
  * Written by Gil Tene of Azul Systems, and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
@@ -39,6 +38,8 @@ abstract class AbstractHistogramBase {
     int subBucketCount;
     int countsArrayLength;
     int wordSizeInBytes;
+
+    Double timeStampSec;
 
     HistogramData histogramData;
 }
@@ -255,6 +256,22 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public int getNumberOfSignificantValueDigits() {
         return numberOfSignificantValueDigits;
+    }
+
+    /**
+     * get the time stamp [optionally] stored with this histogram
+     * @return the time stamp [optionally] stored with this histogram
+     */
+    public Double getTimeStamp() {
+        return timeStampSec;
+    }
+
+    /**
+     * Set the time stamp value associated with this histogram to a given value.
+     * @param timeStampSec the value to set the time stamp to.
+     */
+    public void setTimeStamp(Double timeStampSec) {
+        this.timeStampSec = timeStampSec;
     }
 
 
