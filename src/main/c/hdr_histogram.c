@@ -10,7 +10,7 @@
 #include <x86intrin.h>
 #include <assert.h>
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 #include <stdint.h>
 
 #include "hdr_histogram.h"
@@ -29,7 +29,7 @@ static int64_t power(int64_t base, int64_t exp)
 
 static int32_t get_bucket_index(struct hdr_histogram* h, int64_t value)
 {
-    int32_t pow2ceiling = 64 - __lzcnt64(value | h->sub_bucket_mask); // smallest power of 2 containing value
+    int32_t pow2ceiling = 64 - __builtin_clzll(value | h->sub_bucket_mask); // smallest power of 2 containing value
     return pow2ceiling - (h->sub_bucket_half_count_magnitude + 1);
 }
 
@@ -136,7 +136,7 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
         return -2;
     }
 
-    bzero((void*) histogram, histogram_size);
+    memset((void*) histogram, 0, histogram_size);
 
     histogram->highest_trackable_value         = highest_trackable_value;
     histogram->significant_figures             = significant_figures;
@@ -151,6 +151,14 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
     *result = histogram;
 
     return 0;
+}
+
+// reset a histogram to zero.
+void hdr_reset(struct hdr_histogram *h)
+{
+     h->total_count=0;
+     memset((void *) &h->counts, 0, (sizeof(int64_t) * h->counts_len));
+     return;
 }
 
 /////////////////////////////////// Updates ///////////////////////////////////
