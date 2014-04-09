@@ -709,7 +709,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         buffer.putLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
 
         fillBufferFromCountsArray(buffer, relevantLength);
-        return relevantLength;
+
+        return getNeededByteBufferCapacity(relevantLength);
     }
 
     private ByteBuffer intermediateUncompressedByteBuffer = null;
@@ -730,14 +731,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         targetBuffer.putInt(getCompressedEncodingCookie());
         targetBuffer.putInt(0); // Placeholder for compressed contents length
         Deflater compressor = new Deflater(compressionLevel);
-        compressor.setInput(intermediateUncompressedByteBuffer.array());
+        compressor.setInput(intermediateUncompressedByteBuffer.array(), 0, uncompressedLength);
         compressor.finish();
         byte[] targetArray = targetBuffer.array();
         int compressedDataLength = compressor.deflate(targetArray, 8, targetArray.length - 8);
         compressor.end();
 
         targetBuffer.putInt(4, compressedDataLength); // Record the compressed length
-
         return compressedDataLength + 8;
     }
 
