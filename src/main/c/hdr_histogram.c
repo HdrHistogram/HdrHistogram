@@ -128,7 +128,7 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
     int32_t bucket_count = buckets_needed;
     int32_t counts_len   = (bucket_count + 1) * (sub_bucket_count / 2);
 
-    size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(long);
+    size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(int64_t);
     struct hdr_histogram* histogram = (struct hdr_histogram*) malloc(histogram_size);
 
     if (!histogram)
@@ -159,6 +159,11 @@ void hdr_reset(struct hdr_histogram *h)
      h->total_count=0;
      memset((void *) &h->counts, 0, (sizeof(int64_t) * h->counts_len));
      return;
+}
+
+size_t hdr_get_memory_size(struct hdr_histogram *h)
+{
+    return sizeof(struct hdr_histogram) + h->counts_len * sizeof(int64_t);
 }
 
 /////////////////////////////////// Updates ///////////////////////////////////

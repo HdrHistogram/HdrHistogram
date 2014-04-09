@@ -64,6 +64,14 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
 void hdr_reset(struct hdr_histogram *h);
 
 /**
+ * Get the memory size of the hdr_histogram.
+ *
+ * @param h "This" pointer
+ * @return The amount of memory used by the hdr_histogram in bytes
+ */
+size_t hdr_get_memory_size(struct hdr_histogram *h);
+
+/**
  * Record a value in the histogram.
  *
  * Records a value in the histogram, will round this value of to a precision at or better

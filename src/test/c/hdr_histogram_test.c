@@ -56,9 +56,11 @@ static char* test_create()
 {
     struct hdr_histogram* h = NULL;
     int r = hdr_alloc(36000000, 4, &h);
+    size_t s = hdr_get_memory_size(h);
 
     mu_assert("Failed to allocate hdr_histogram", r == 0);
     mu_assert("Failed to allocate hdr_histogram", h != 0);
+    mu_assert("Size is incorrect", s == 1703992);
 
     free(h);
 
