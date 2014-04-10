@@ -324,6 +324,28 @@ static char* test_reset()
     return 0;
 }
 
+static char* test_encode_and_decode()
+{
+    load_histograms();
+
+    size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
+
+    char* buffer = (char*) malloc(hdr_get_memory_size(raw_histogram));
+
+    bool encode_result = hdr_encode(raw_histogram, buffer, 0, raw_histogram_size);
+
+    mu_assert("Did not encode", encode_result);
+
+    struct hdr_histogram* loaded_histogram;
+    hdr_decode(buffer, 0, raw_histogram_size, &loaded_histogram);
+
+    int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
+
+    mu_assert("Comparison did not match", compare_result == 0);
+
+    return 0;
+}
+
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
@@ -336,6 +358,7 @@ static struct mu_result all_tests()
     mu_run_test(test_linear_values);
     mu_run_test(test_logarithmic_values);
     mu_run_test(test_reset);
+    mu_run_test(test_encode_and_decode);
 
     mu_ok;
 }
