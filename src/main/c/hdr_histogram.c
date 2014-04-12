@@ -12,10 +12,19 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <endian.h>
 
 #include "hdr_histogram.h"
 
-/////////////////////////////////// Utility ///////////////////////////////////
+
+// ##     ## ######## #### ##       #### ######## ##    ##
+// ##     ##    ##     ##  ##        ##     ##     ##  ##
+// ##     ##    ##     ##  ##        ##     ##      ####
+// ##     ##    ##     ##  ##        ##     ##       ##
+// ##     ##    ##     ##  ##        ##     ##       ##
+// ##     ##    ##     ##  ##        ##     ##       ##
+//  #######     ##    #### ######## ####    ##       ##
+
 
 static int64_t power(int64_t base, int64_t exp)
 {
@@ -100,7 +109,15 @@ static int64_t median_equivalent_value(struct hdr_histogram* h, int64_t value)
     return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);
 }
 
-//////////////////////////////////// Memory ///////////////////////////////////
+
+// ##     ## ######## ##     ##  #######  ########  ##    ##
+// ###   ### ##       ###   ### ##     ## ##     ##  ##  ##
+// #### #### ##       #### #### ##     ## ##     ##   ####
+// ## ### ## ######   ## ### ## ##     ## ########     ##
+// ##     ## ##       ##     ## ##     ## ##   ##      ##
+// ##     ## ##       ##     ## ##     ## ##    ##     ##
+// ##     ## ######## ##     ##  #######  ##     ##    ##
+
 
 int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result)
 {
@@ -128,7 +145,7 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
     int32_t bucket_count = buckets_needed;
     int32_t counts_len   = (bucket_count + 1) * (sub_bucket_count / 2);
 
-    size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(long);
+    size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(int64_t);
     struct hdr_histogram* histogram = (struct hdr_histogram*) malloc(histogram_size);
 
     if (!histogram)
@@ -161,7 +178,20 @@ void hdr_reset(struct hdr_histogram *h)
      return;
 }
 
-/////////////////////////////////// Updates ///////////////////////////////////
+size_t hdr_get_memory_size(struct hdr_histogram *h)
+{
+    return sizeof(struct hdr_histogram) + h->counts_len * sizeof(int64_t);
+}
+
+
+// ##     ## ########  ########     ###    ######## ########  ######
+// ##     ## ##     ## ##     ##   ## ##      ##    ##       ##    ##
+// ##     ## ##     ## ##     ##  ##   ##     ##    ##       ##
+// ##     ## ########  ##     ## ##     ##    ##    ######    ######
+// ##     ## ##        ##     ## #########    ##    ##             ##
+// ##     ## ##        ##     ## ##     ##    ##    ##       ##    ##
+//  #######  ##        ########  ##     ##    ##    ########  ######
+
 
 bool hdr_record_value(struct hdr_histogram* h, int64_t value)
 {
@@ -202,7 +232,15 @@ bool hdr_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t 
     return true;
 }
 
-//////////////////////////////////// Values ///////////////////////////////////
+
+// ##     ##    ###    ##       ##     ## ########  ######
+// ##     ##   ## ##   ##       ##     ## ##       ##    ##
+// ##     ##  ##   ##  ##       ##     ## ##       ##
+// ##     ## ##     ## ##       ##     ## ######    ######
+//  ##   ##  ######### ##       ##     ## ##             ##
+//   ## ##   ##     ## ##       ##     ## ##       ##    ##
+//    ###    ##     ## ########  #######  ########  ######
+
 
 int64_t hdr_max(struct hdr_histogram* h)
 {
@@ -306,7 +344,15 @@ bool hdr_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b)
     return lowest_equivalent_value(h, a) == lowest_equivalent_value(h, b);
 }
 
-/////////////////////////////////// Iterators /////////////////////////////////
+
+// #### ######## ######## ########     ###    ########  #######  ########   ######
+//  ##     ##    ##       ##     ##   ## ##      ##    ##     ## ##     ## ##    ##
+//  ##     ##    ##       ##     ##  ##   ##     ##    ##     ## ##     ## ##
+//  ##     ##    ######   ########  ##     ##    ##    ##     ## ########   ######
+//  ##     ##    ##       ##   ##   #########    ##    ##     ## ##   ##         ##
+//  ##     ##    ##       ##    ##  ##     ##    ##    ##     ## ##    ##  ##    ##
+// ####    ##    ######## ##     ## ##     ##    ##     #######  ##     ##  ######
+
 
 static bool has_buckets(struct hdr_iter* iter)
 {
@@ -326,7 +372,7 @@ static void increment_bucket(struct hdr_histogram* h, int32_t* bucket_index, int
     {
         *sub_bucket_index = h->sub_bucket_half_count;
         (*bucket_index)++;
-    }    
+    }
 }
 
 static bool move_next(struct hdr_iter* iter)
@@ -381,7 +427,15 @@ bool hdr_iter_next(struct hdr_iter* iter)
     return true;
 }
 
-////////////////////////////////// Percentiles ////////////////////////////////
+
+// ########  ######## ########   ######  ######## ##    ## ######## #### ##       ########  ######
+// ##     ## ##       ##     ## ##    ## ##       ###   ##    ##     ##  ##       ##       ##    ##
+// ##     ## ##       ##     ## ##       ##       ####  ##    ##     ##  ##       ##       ##
+// ########  ######   ########  ##       ######   ## ## ##    ##     ##  ##       ######    ######
+// ##        ##       ##   ##   ##       ##       ##  ####    ##     ##  ##       ##             ##
+// ##        ##       ##    ##  ##    ## ##       ##   ###    ##     ##  ##       ##       ##    ##
+// ##        ######## ##     ##  ######  ######## ##    ##    ##    #### ######## ########  ######
+
 
 void hdr_percentile_iter_init(struct hdr_percentile_iter* percentiles,
                                struct hdr_histogram* h,
@@ -504,7 +558,15 @@ void hdr_percentiles_print(struct hdr_histogram* h,
     fflush(stream);
 }
 
-////////////////////////////////// Recorded Values ////////////////////////////////
+
+// ########  ########  ######   #######  ########  ########  ######## ########
+// ##     ## ##       ##    ## ##     ## ##     ## ##     ## ##       ##     ##
+// ##     ## ##       ##       ##     ## ##     ## ##     ## ##       ##     ##
+// ########  ######   ##       ##     ## ########  ##     ## ######   ##     ##
+// ##   ##   ##       ##       ##     ## ##   ##   ##     ## ##       ##     ##
+// ##    ##  ##       ##    ## ##     ## ##    ##  ##     ## ##       ##     ##
+// ##     ## ########  ######   #######  ##     ## ########  ######## ########
+
 
 void hdr_recorded_iter_init(struct hdr_recorded_iter* recorded, struct hdr_histogram* h)
 {
@@ -526,7 +588,15 @@ bool hdr_recorded_iter_next(struct hdr_recorded_iter* recorded)
     return false;
 }
 
-////////////////////////////////// Linear Values ////////////////////////////////
+
+// ##       #### ##    ## ########    ###    ########
+// ##        ##  ###   ## ##         ## ##   ##     ##
+// ##        ##  ####  ## ##        ##   ##  ##     ##
+// ##        ##  ## ## ## ######   ##     ## ########
+// ##        ##  ##  #### ##       ######### ##   ##
+// ##        ##  ##   ### ##       ##     ## ##    ##
+// ######## #### ##    ## ######## ##     ## ##     ##
+
 
 void hdr_linear_iter_init(struct hdr_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket)
 {
@@ -541,7 +611,7 @@ bool hdr_linear_iter_next(struct hdr_linear_iter* linear)
 {
     linear->count_added_in_this_iteration_step = 0;
 
-    if (has_next(&linear->iter) || 
+    if (has_next(&linear->iter) ||
         peek_next_value_from_index(&linear->iter) > linear->next_value_reporting_level_lowest_equivalent)
     {
         do
@@ -560,13 +630,21 @@ bool hdr_linear_iter_next(struct hdr_linear_iter* linear)
             }
             linear->count_added_in_this_iteration_step += linear->iter.count_at_index;
         }
-        while (true);       
+        while (true);
     }
 
     return false;
 }
 
-////////////////////////////////// Log Values ////////////////////////////////
+
+// ##        #######   ######      ###    ########  #### ######## ##     ## ##     ## ####  ######
+// ##       ##     ## ##    ##    ## ##   ##     ##  ##     ##    ##     ## ###   ###  ##  ##    ##
+// ##       ##     ## ##         ##   ##  ##     ##  ##     ##    ##     ## #### ####  ##  ##
+// ##       ##     ## ##   #### ##     ## ########   ##     ##    ######### ## ### ##  ##  ##
+// ##       ##     ## ##    ##  ######### ##   ##    ##     ##    ##     ## ##     ##  ##  ##
+// ##       ##     ## ##    ##  ##     ## ##    ##   ##     ##    ##     ## ##     ##  ##  ##    ##
+// ########  #######   ######   ##     ## ##     ## ####    ##    ##     ## ##     ## ####  ######
+
 
 void hdr_log_iter_init(struct hdr_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base)
 {
@@ -582,7 +660,7 @@ bool hdr_log_iter_next(struct hdr_log_iter* logarithmic)
 {
     logarithmic->count_added_in_this_iteration_step = 0;
 
-    if (has_next(&logarithmic->iter) || 
+    if (has_next(&logarithmic->iter) ||
         peek_next_value_from_index(&logarithmic->iter) > logarithmic->next_value_reporting_level_lowest_equivalent)
     {
         do
@@ -600,10 +678,83 @@ bool hdr_log_iter_next(struct hdr_log_iter* logarithmic)
                 break;
             }
 
-            logarithmic->count_added_in_this_iteration_step += logarithmic->iter.count_at_index;            
+            logarithmic->count_added_in_this_iteration_step += logarithmic->iter.count_at_index;
         }
         while (true);
     }
 
     return false;
+}
+
+
+// ######## ##    ##  ######   #######  ########  #### ##    ##  ######
+// ##       ###   ## ##    ## ##     ## ##     ##  ##  ###   ## ##    ##
+// ##       ####  ## ##       ##     ## ##     ##  ##  ####  ## ##
+// ######   ## ## ## ##       ##     ## ##     ##  ##  ## ## ## ##   ####
+// ##       ##  #### ##       ##     ## ##     ##  ##  ##  #### ##    ##
+// ##       ##   ### ##    ## ##     ## ##     ##  ##  ##   ### ##    ##
+// ######## ##    ##  ######   #######  ########  #### ##    ##  ######
+
+
+static const int32_t ENCODING_COOKIE_BASE = 0x1c849308;
+// static const int32_t COMPRESSED_ENCODING_COOKIE_BASE = 0x1c849309;
+
+struct __attribute__((__packed__)) _encoding_flyweight
+{
+    int32_t cookie;
+    int32_t significant_figures;
+    int64_t lowest_trackable_value;
+    int64_t highest_trackable_value;
+    int64_t total_count;
+    int64_t counts[0];
+};
+
+bool hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length)
+{
+    size_t histogram_size = hdr_get_memory_size(h);
+
+    if (histogram_size > length)
+    {
+        return false;
+    }
+
+    struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
+
+    flyweight->cookie = ENCODING_COOKIE_BASE << 8;
+    flyweight->significant_figures = h->significant_figures;
+    flyweight->lowest_trackable_value = 0;
+    flyweight->highest_trackable_value = h->highest_trackable_value;
+    flyweight->total_count = h->total_count;
+
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        flyweight->counts[i] = htobe64(h->counts[i]);
+    }
+
+    return true;
+}
+
+bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** result)
+{
+    struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
+
+    if (*result == NULL)
+    {
+        hdr_alloc(flyweight->highest_trackable_value, flyweight->significant_figures, result);
+    }
+    else
+    {
+        return false;
+    }
+
+    struct hdr_histogram* h = *result;
+
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        h->counts[i] = be64toh(flyweight->counts[i]);
+    }
+
+    h->total_count = flyweight->total_count;
+
+    return true;
 }

@@ -64,6 +64,14 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
 void hdr_reset(struct hdr_histogram *h);
 
 /**
+ * Get the memory size of the hdr_histogram.
+ *
+ * @param h "This" pointer
+ * @return The amount of memory used by the hdr_histogram in bytes
+ */
+size_t hdr_get_memory_size(struct hdr_histogram *h);
+
+/**
  * Record a value in the histogram.
  *
  * Records a value in the histogram, will round this value of to a precision at or better
@@ -273,5 +281,35 @@ void hdr_log_iter_init(struct hdr_log_iter* logarithmic, struct hdr_histogram* h
  * @param logarithmic 'This' pointer
  */
 bool hdr_log_iter_next(struct hdr_log_iter* logarithmic);
+
+/**
+ * Encode the hdr_histogram into the supplied buffer.  The
+ * buffer should be >= than hdr_get_memory_size(hdr_histogram).
+ *
+ * @param h "This" pointer
+ * @param buffer The memory space to encode this buffer into
+ * @param offset The offset into the buffer to start encoding
+ * @param length The length to encode up to.  This needs to be
+ * >= the memory size of the hdr_histogram.
+ * @return false if the hdr_histogram could not be encoded.
+ */
+bool hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length);
+
+/**
+ * Decode the supplied buffer into the specified hdr_histogram.  If
+ * the supplied hdr_histogram is NULL then this method will allocate
+ * new hdr_histogram of the appropriate size.  The hdr_histogram to
+ * decode the data into need not match the parameters of the original
+ * histogram.  Values larger the that the max_value of the supplied
+ * histogram will be discarded.
+ *
+ * @param buffer The data buffer to decode from.
+ * @param offset The offset to start reading from.
+ * @param length The amount to read from the buffer.
+ * @param result The updated histogram
+ * @return false if the hdr_histogram could not be decoded.
+ */
+bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** result);
+
 
 #endif

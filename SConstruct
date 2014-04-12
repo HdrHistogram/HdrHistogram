@@ -32,6 +32,7 @@ if int(debug):
     env.Append(CFLAGS = '-g')
 
 bin = env.Clone()
+bin.Append(CPPDEFINES = '_BSD_SOURCE')
 static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
 
 tst = env.Clone()
