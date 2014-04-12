@@ -39,7 +39,8 @@ abstract class AbstractHistogramBase {
     int countsArrayLength;
     int wordSizeInBytes;
 
-    Double timeStampSec;
+    long startTimeStampMsec;
+    long endTimeStampMsec;
 
     HistogramData histogramData;
 }
@@ -259,19 +260,36 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * get the time stamp [optionally] stored with this histogram
-     * @return the time stamp [optionally] stored with this histogram
+     * get the start time stamp [optionally] stored with this histogram
+     * @return the start time stamp [optionally] stored with this histogram
      */
-    public Double getTimeStamp() {
-        return timeStampSec;
+    public long getStartTimeStamp() {
+        return startTimeStampMsec;
     }
 
     /**
-     * Set the time stamp value associated with this histogram to a given value.
-     * @param timeStampSec the value to set the time stamp to.
+     * Set the start time stamp value associated with this histogram to a given value.
+     * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
      */
-    public void setTimeStamp(Double timeStampSec) {
-        this.timeStampSec = timeStampSec;
+    public void setStartTimeStamp(long timeStampMsec) {
+        this.startTimeStampMsec = timeStampMsec;
+    }
+
+
+    /**
+     * get the end time stamp [optionally] stored with this histogram
+     * @return the end time stamp [optionally] stored with this histogram
+     */
+    public long getEndTimeStamp() {
+        return endTimeStampMsec;
+    }
+
+    /**
+     * Set the end time stamp value associated with this histogram to a given value.
+     * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
+     */
+    public void setEndTimeStamp(long timeStampMsec) {
+        this.endTimeStampMsec = timeStampMsec;
     }
 
 

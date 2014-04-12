@@ -85,10 +85,13 @@ public class HistogramLogWriter {
      * Output an interval histogram, with the given timestamp.
      * (note that the specified timestamp will be used, and the timestamp in the actual
      * histogram will be ignored)
-     * @param timeStampSec The timestamp to log with the interval histogram, in seconds.
+     * @param startTimeStampSec The start timestamp to log with the interval histogram, in seconds.
+     * @param endTimeStampSec The end timestamp to log with the interval histogram, in seconds.
      * @param histogram The interval histogram to log.
      */
-    public void outputIntervalHistogram(final double timeStampSec, final Histogram histogram) {
+    public void outputIntervalHistogram(final double startTimeStampSec,
+                                        final double endTimeStampSec,
+                                        final Histogram histogram) {
         if ((targetBuffer == null) || targetBuffer.capacity() < histogram.getNeededByteBufferCapacity()) {
             targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
         }
@@ -97,8 +100,9 @@ public class HistogramLogWriter {
         int compressedLength = histogram.encodeIntoCompressedByteBuffer(targetBuffer, Deflater.BEST_COMPRESSION);
         byte[] compressedArray = Arrays.copyOf(targetBuffer.array(), compressedLength);
 
-        log.format(Locale.US, "%.3f,%.3f,%s\n",
-                timeStampSec,
+        log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
+                startTimeStampSec,
+                endTimeStampSec,
                 histogram.getHistogramData().getMaxValue() / 1000000.0,
                 DatatypeConverter.printBase64Binary(compressedArray)
         );
@@ -109,7 +113,9 @@ public class HistogramLogWriter {
      * @param histogram The interval histogram to log.
      */
     public void outputIntervalHistogram(final Histogram histogram) {
-        outputIntervalHistogram(histogram.getTimeStamp(), histogram);
+        outputIntervalHistogram(histogram.getStartTimeStamp()/1000.0,
+                histogram.getEndTimeStamp()/1000.0,
+                histogram);
     }
 
     /**
@@ -135,7 +141,7 @@ public class HistogramLogWriter {
      * Output a legend line to the log.
      */
     public void outputLegend() {
-        log.println("\"Timestamp\",\"Interval_Max\",\"Interval_Compressed_Histogram\"");
+        log.println("\"StartTimestamp\",\"EndTimestamp\",\"Interval_Max\",\"Interval_Compressed_Histogram\"");
     }
 
     /**

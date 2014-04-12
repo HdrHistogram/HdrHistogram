@@ -38,11 +38,13 @@ import java.util.zip.DataFormatException;
  * <p>
  * A valid interval description line must contain exactly three text fields:
  * <ul>
- * <li>Timestamp: The first field must contain a number parse-able as a Double value,
- * representing the timestamp of the interval.</li>
- * <li>Interval_Max: The second field must contain a number parse-able as a Double value,
+ * <li>StartTimestamp: The first field must contain a number parse-able as a Double value,
+ * representing the start timestamp of the interval.</li>
+ * <li>endTimestamp: The second field must contain a number parse-able as a Double value,
+ * representing the end timestamp of the interval.</li>
+ * <li>Interval_Max: The third field must contain a number parse-able as a Double value,
  * which generally represents the maximum value of the interval histogram.</li>
- * <li>Interval_Compressed_Histogram: The third field must contain a text field
+ * <li>Interval_Compressed_Histogram: The fourth field must contain a text field
  * parse-able as a Base64 text representation of a compressed HdrHistogram.</li>
  * </ul>
  * The log file may contain an optional indication of a starting time. Starting time
@@ -102,7 +104,7 @@ public class HistogramLogReader {
      * Read the next interval histogram from the log, if interval falls within a time range.
      * <p>
      * Returns a histogram object if an interval line was found with an
-     * associated timestamp value that falls between startTimeSec and
+     * associated start timestamp value that falls between startTimeSec and
      * endTimeSec, or null if no such interval line is found. Note that
      * the range is assumed to be in seconds relative to the actual
      * timstamp value found in each interval line in the log, and not
@@ -133,7 +135,7 @@ public class HistogramLogReader {
      * Read the next interval histogram from the log, if interval falls within an absolute time range
      * <p>
      * Returns a histogram object if an interval line was found with an
-     * associated absolute timestamp value that falls between
+     * associated absolute start timestamp value that falls between
      * absoluteStartTimeSec and absoluteEndTimeSec, or null if no such
      * interval line is found.
      * <p>
@@ -160,7 +162,7 @@ public class HistogramLogReader {
      */
     public Histogram nextAbsoluteIntervalHistogram(final Double absoluteStartTimeSec,
                                                      final Double absoluteEndTimeSec) {
-        return nextIntervalHistogram(absoluteStartTimeSec, absoluteEndTimeSec, false);
+        return nextIntervalHistogram(absoluteStartTimeSec, absoluteEndTimeSec, true);
     }
 
 
@@ -191,25 +193,28 @@ public class HistogramLogReader {
                     continue;
                 }
 
-                if (scanner.hasNext("\"Timestamp\".*")) {
+                if (scanner.hasNext("\"StartTimestamp\".*")) {
                     // Legend line
                     scanner.nextLine();
                     continue;
                 }
 
-                // Decode: timestamp, maxTime, histogramPayload
+                // Decode: startTimestamp, endTimestamp, maxTime, histogramPayload
 
-                final double offsetTimeStampSec = scanner.nextDouble(); // Timestamp is expect to be in seconds
-                final double absoluteTimeStampSec = startTimeSec + offsetTimeStampSec;
+                final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp is expect to be in seconds
+                final double absoluteStartTimeStampSec = startTimeSec + offsetStartTimeStampSec;
 
-                final double timeStampToCheckRangeOn = absolute ? absoluteTimeStampSec : offsetTimeStampSec;
+                final double offsetEndTimeStampSec = scanner.nextDouble(); // Timestamp is expect to be in seconds
+                final double absoluteEndTimeStampSec = startTimeSec + offsetEndTimeStampSec;
 
-                if (offsetTimeStampSec < rangeStartTimeSec) {
+                final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
+
+                if (startTimeStampToCheckRangeOn < rangeStartTimeSec) {
                     scanner.nextLine();
                     continue;
                 }
 
-                if (offsetTimeStampSec > rangeEndTimeSec) {
+                if (startTimeStampToCheckRangeOn > rangeEndTimeSec) {
                     return null;
                 }
 
@@ -220,7 +225,8 @@ public class HistogramLogReader {
 
                 Histogram histogram = Histogram.decodeFromCompressedByteBuffer(buffer, 0);
 
-                histogram.setTimeStamp(absoluteTimeStampSec);
+                histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
+                histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
 
                 return histogram;
 
