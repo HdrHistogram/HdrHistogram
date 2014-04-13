@@ -102,7 +102,7 @@ public class HistogramLogWriter {
 
         log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
                 startTimeStampSec,
-                endTimeStampSec,
+                endTimeStampSec - startTimeStampSec,
                 histogram.getHistogramData().getMaxValue() / 1000000.0,
                 DatatypeConverter.printBase64Binary(compressedArray)
         );

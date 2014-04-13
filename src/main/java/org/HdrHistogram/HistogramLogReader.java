@@ -39,9 +39,9 @@ import java.util.zip.DataFormatException;
  * A valid interval description line must contain exactly three text fields:
  * <ul>
  * <li>StartTimestamp: The first field must contain a number parse-able as a Double value,
- * representing the start timestamp of the interval.</li>
- * <li>endTimestamp: The second field must contain a number parse-able as a Double value,
- * representing the end timestamp of the interval.</li>
+ * representing the start timestamp of the interval in seconds.</li>
+ * <li>intervalLength: The second field must contain a number parse-able as a Double value,
+ * representing the length of the interval in seconds.</li>
  * <li>Interval_Max: The third field must contain a number parse-able as a Double value,
  * which generally represents the maximum value of the interval histogram.</li>
  * <li>Interval_Compressed_Histogram: The fourth field must contain a text field
@@ -199,12 +199,13 @@ public class HistogramLogReader {
                     continue;
                 }
 
-                // Decode: startTimestamp, endTimestamp, maxTime, histogramPayload
+                // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
-                final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp is expect to be in seconds
+                final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp start is expect to be in seconds
                 final double absoluteStartTimeStampSec = startTimeSec + offsetStartTimeStampSec;
 
-                final double offsetEndTimeStampSec = scanner.nextDouble(); // Timestamp is expect to be in seconds
+                final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
+                final double offsetEndTimeStampSec = offsetStartTimeStampSec + intervalLengthSec;
                 final double absoluteEndTimeStampSec = startTimeSec + offsetEndTimeStampSec;
 
                 final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
