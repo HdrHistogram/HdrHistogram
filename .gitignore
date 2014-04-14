@@ -8,6 +8,7 @@ HdrHistogram.iml
 .settings
 release.properties
 pom.xml.releaseBackup
+release-pom.xml
 /bin
 alltests
 format_example
