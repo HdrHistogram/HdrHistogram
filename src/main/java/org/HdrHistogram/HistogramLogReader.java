@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.Locale;
 import java.util.Scanner;
 import java.util.zip.DataFormatException;
 
@@ -65,7 +66,7 @@ public class HistogramLogReader {
      */
     public HistogramLogReader(final String inputFileName) throws FileNotFoundException {
         scanner = new Scanner(new File(inputFileName));
-        scanner.useDelimiter("[ ,\\r\\n]");
+        initScanner();
     }
 
     /**
@@ -75,7 +76,7 @@ public class HistogramLogReader {
      */
     public HistogramLogReader(final InputStream inputStream) throws FileNotFoundException {
         scanner = new Scanner(inputStream);
-        scanner.useDelimiter("[ ,\\r\\n]");
+        initScanner();
     }
 
     /**
@@ -85,6 +86,12 @@ public class HistogramLogReader {
      */
     public HistogramLogReader(final File inputFile) throws FileNotFoundException {
         scanner = new Scanner(inputFile);
+        initScanner();
+    }
+
+
+    private void initScanner() {
+        scanner.useLocale(Locale.US);
         scanner.useDelimiter("[ ,\\r\\n]");
     }
 
