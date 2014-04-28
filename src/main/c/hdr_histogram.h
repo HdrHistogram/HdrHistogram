@@ -54,12 +54,12 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
 
 /**
  * Reset a histogram to zero - empty out a histogram and re-initialise it
- * 
- * If you want to re-use an existing histogram, but reset everthing back to zero, this 
- * is the routine to use. 
- * 
- * @param h The histogram you want to reset to empty. 
- * 
+ *
+ * If you want to re-use an existing histogram, but reset everthing back to zero, this
+ * is the routine to use.
+ *
+ * @param h The histogram you want to reset to empty.
+ *
  */
 void hdr_reset(struct hdr_histogram *h);
 
@@ -293,7 +293,7 @@ bool hdr_log_iter_next(struct hdr_log_iter* logarithmic);
  * >= the memory size of the hdr_histogram.
  * @return false if the hdr_histogram could not be encoded.
  */
-bool hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length);
+size_t hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length);
 
 /**
  * Decode the supplied buffer into the specified hdr_histogram.  If

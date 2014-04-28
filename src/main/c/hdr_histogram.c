@@ -709,29 +709,31 @@ struct __attribute__((__packed__)) _encoding_flyweight
     int64_t counts[0];
 };
 
-bool hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length)
+size_t hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length)
 {
     size_t histogram_size = hdr_get_memory_size(h);
 
     if (histogram_size > length)
     {
-        return false;
+        return 0;
     }
+
+    memset((void*) (buffer + offset), 0, length);
 
     struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
 
-    flyweight->cookie = ENCODING_COOKIE_BASE << 8;
-    flyweight->significant_figures = h->significant_figures;
-    flyweight->lowest_trackable_value = 0;
-    flyweight->highest_trackable_value = h->highest_trackable_value;
-    flyweight->total_count = h->total_count;
+    flyweight->cookie                  = htobe32(ENCODING_COOKIE_BASE << 8);
+    flyweight->significant_figures     = htobe32(h->significant_figures);
+    flyweight->lowest_trackable_value  = htobe64(0);
+    flyweight->highest_trackable_value = htobe64(h->highest_trackable_value);
+    flyweight->total_count             = htobe64(h->total_count);
 
     for (int i = 0; i < h->counts_len; i++)
     {
         flyweight->counts[i] = htobe64(h->counts[i]);
     }
 
-    return true;
+    return 1;
 }
 
 bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** result)
@@ -740,7 +742,9 @@ bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** 
 
     if (*result == NULL)
     {
-        hdr_alloc(flyweight->highest_trackable_value, flyweight->significant_figures, result);
+        hdr_alloc(be64toh(flyweight->highest_trackable_value),
+                  be32toh(flyweight->significant_figures),
+                  result);
     }
     else
     {
@@ -754,7 +758,7 @@ bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** 
         h->counts[i] = be64toh(flyweight->counts[i]);
     }
 
-    h->total_count = flyweight->total_count;
+    h->total_count = be64toh(flyweight->total_count);
 
     return true;
 }
