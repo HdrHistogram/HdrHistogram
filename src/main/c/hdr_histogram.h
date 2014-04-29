@@ -288,12 +288,11 @@ bool hdr_log_iter_next(struct hdr_log_iter* logarithmic);
  *
  * @param h "This" pointer
  * @param buffer The memory space to encode this buffer into
- * @param offset The offset into the buffer to start encoding
  * @param length The length to encode up to.  This needs to be
  * >= the memory size of the hdr_histogram.
  * @return false if the hdr_histogram could not be encoded.
  */
-size_t hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length);
+size_t hdr_encode(struct hdr_histogram* h, uint8_t* buffer, int length);
 
 /**
  * Decode the supplied buffer into the specified hdr_histogram.  If
@@ -304,12 +303,15 @@ size_t hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length)
  * histogram will be discarded.
  *
  * @param buffer The data buffer to decode from.
- * @param offset The offset to start reading from.
  * @param length The amount to read from the buffer.
  * @param result The updated histogram
  * @return false if the hdr_histogram could not be decoded.
  */
-bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** result);
+bool hdr_decode(uint8_t* buffer, size_t length, struct hdr_histogram** result);
 
+size_t hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length);
+int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result);
+
+const char* hdr_strerror(int errnum);
 
 #endif

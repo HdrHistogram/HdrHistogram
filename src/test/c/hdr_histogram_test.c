@@ -328,24 +328,24 @@ static char* test_encode_and_decode()
 {
     load_histograms();
 
-    size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
+    size_t raw_histogram_size = hdr_get_memory_size(cor_histogram);
 
-    char* buffer = (char*) malloc(hdr_get_memory_size(raw_histogram));
+    uint8_t* buffer = (uint8_t*) malloc(hdr_get_memory_size(cor_histogram));
 
-    size_t encode_result = hdr_encode(raw_histogram, buffer, 0, raw_histogram_size);
+    size_t encode_result = hdr_encode(cor_histogram, buffer, raw_histogram_size);
 
     mu_assert("Did not encode", encode_result != 0);
     mu_assert("Incorrect size", encode_result <= raw_histogram_size);
 
     struct hdr_histogram* loaded_histogram = NULL;
-    hdr_decode(buffer, 0, raw_histogram_size, &loaded_histogram);
+    hdr_decode(buffer, raw_histogram_size, &loaded_histogram);
 
-    int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
+    int compare_result = memcmp(cor_histogram, loaded_histogram, raw_histogram_size);
 
     if (compare_result != 0)
     {
-        char* a = (char*) raw_histogram;
-        char* b = (char*) loaded_histogram;
+        uint8_t* a = (uint8_t*) cor_histogram;
+        uint8_t* b = (uint8_t*) loaded_histogram;
         for (int i = 0; i < raw_histogram_size; i++)
         {
             if (a[i] != b[i])
@@ -360,28 +360,35 @@ static char* test_encode_and_decode()
     return 0;
 }
 
-// static char* test_encode_and_decode_compressed()
-// {
-//     load_histograms();
+static char* test_encode_and_decode_compressed()
+{
+    load_histograms();
 
-//     size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
+    size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
 
-//     char* buffer = (char*) malloc(hdr_get_memory_size(raw_histogram));
+    uint8_t* buffer = (uint8_t*) malloc(hdr_get_memory_size(raw_histogram));
 
-//     size_t encode_result = hdr_encode_compressed(raw_histogram, buffer, 0, raw_histogram_size);
+    size_t encode_result = hdr_encode_compressed(raw_histogram, buffer, raw_histogram_size);
 
-//     mu_assert("Did not encode", encode_result != 0);
-//     mu_assert("Incorrect size", encode_result <= raw_histogram_size);
+    mu_assert("Did not encode", encode_result != 0);
+    mu_assert("Incorrect size", encode_result <= raw_histogram_size);
 
-//     struct hdr_histogram* loaded_histogram;
-//     hdr_decode(buffer, 0, raw_histogram_size, &loaded_histogram);
+    struct hdr_histogram* loaded_histogram = NULL;
+    int decode_result = hdr_decode_compressed(buffer, encode_result, &loaded_histogram);
 
-//     int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
+    if (decode_result != 0)
+    {
+        printf("%s\n", hdr_strerror(decode_result));
+    }
+    mu_assert("Did not decode", decode_result == 0);
 
-//     mu_assert("Comparison did not match", compare_result == 0);
+    mu_assert("Loaded histogram is null", loaded_histogram != NULL);
+    int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
 
-//     return 0;
-// }
+    mu_assert("Comparison did not match", compare_result == 0);
+
+    return 0;
+}
 
 static struct mu_result all_tests()
 {
@@ -396,6 +403,7 @@ static struct mu_result all_tests()
     mu_run_test(test_logarithmic_values);
     mu_run_test(test_reset);
     mu_run_test(test_encode_and_decode);
+    mu_run_test(test_encode_and_decode_compressed);
 
     mu_ok;
 }

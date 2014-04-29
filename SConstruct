@@ -23,8 +23,9 @@ env['ENV']['PATH'] = os.environ['PATH']
 env['CC']  = cc
 env['CPATH'] = []
 env['CFLAGS'] = ['-std=c99', '-Wall']
+
 if cc == 'clang':
-    env.Append(CFLAGS = '-fcolor-diagnostics')
+    env.Append(CFLAGS = ['-fcolor-diagnostics', '-fdiagnostics-show-option'])
 
 if int(optimise) != 0:
     env.Append(CFLAGS = '-O' + str(optimise))
@@ -37,7 +38,7 @@ static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/ma
 
 tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
-tst['LIBS'] = ['hdr_histogram.a', 'm', 'rt']
+tst['LIBS'] = ['hdr_histogram.a', 'm', 'rt', 'z']
 tst['LIBPATH'] = [lib_directory]
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 
