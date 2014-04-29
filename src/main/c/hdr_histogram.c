@@ -814,32 +814,35 @@ struct __attribute__((__packed__)) _compression_flyweight
     uint8_t data[0];
 };
 
-size_t hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length)
+int hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length)
 {
-    int result = 0;
+    int ret = -1;
+    uint8_t* tmp_buffer = NULL;
 
     if (length < sizeof(struct _compression_flyweight))
     {
-        return result;
+        ret = EINVAL;
+        goto cleanup;
     }
 
     memset((void*) buffer, 0, length);
     struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
     size_t histogram_size = hdr_get_memory_size(h);
-    uint8_t* tmp_buffer = (uint8_t*) malloc(sizeof(uint8_t) * histogram_size);
+    tmp_buffer = (uint8_t*) malloc(sizeof(uint8_t) * histogram_size);
 
     if (!tmp_buffer)
     {
-        return 0;
+        ret = ENOMEM;
+        goto cleanup;
     }
 
     if (!hdr_encode(h, tmp_buffer, histogram_size))
     {
+        ret = -1;
         goto cleanup;
     }
 
     z_stream strm;
-    int ret;
     int level = 4;
 
     strm_init(&strm);
@@ -847,6 +850,7 @@ size_t hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int lengt
 
     if (ret != Z_OK)
     {
+        ret = HDR_DEFLATE_INIT_FAIL;
         goto cleanup;
     }
 
@@ -861,18 +865,22 @@ size_t hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int lengt
 
     if (ret != Z_OK)
     {
+        ret = HDR_DEFLATE_FAIL;
         goto cleanup;
     }
 
     flyweight->cookie = htobe32(COMPRESSION_COOKIE);
     flyweight->length = htobe32(strm.total_out);
 
-    result = strm.total_out;
+    ret = 0;
 
 cleanup:
-    free(tmp_buffer);
+    if (NULL != tmp_buffer)
+    {
+        free(tmp_buffer);
+    }
 
-    return result;
+    return ret;
 }
 
 int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result)
@@ -958,4 +966,10 @@ cleanup:
     }
 
     return 0;
+}
+
+int32_t hdr_get_compressed_length(uint8_t* buffer)
+{
+    struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
+    return flyweight->length;
 }

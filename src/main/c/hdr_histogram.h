@@ -309,8 +309,9 @@ size_t hdr_encode(struct hdr_histogram* h, uint8_t* buffer, int length);
  */
 bool hdr_decode(uint8_t* buffer, size_t length, struct hdr_histogram** result);
 
-size_t hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length);
+int hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length);
 int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result);
+int32_t hdr_get_compressed_length(uint8_t* buffer);
 
 const char* hdr_strerror(int errnum);
 

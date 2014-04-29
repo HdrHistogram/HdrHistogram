@@ -370,11 +370,12 @@ static char* test_encode_and_decode_compressed()
 
     size_t encode_result = hdr_encode_compressed(raw_histogram, buffer, raw_histogram_size);
 
-    mu_assert("Did not encode", encode_result != 0);
-    mu_assert("Incorrect size", encode_result <= raw_histogram_size);
+    mu_assert("Did not encode", encode_result == 0);
+
+    int32_t compressed_length = hdr_get_compressed_length(buffer);
 
     struct hdr_histogram* loaded_histogram = NULL;
-    int decode_result = hdr_decode_compressed(buffer, encode_result, &loaded_histogram);
+    int decode_result = hdr_decode_compressed(buffer, compressed_length, &loaded_histogram);
 
     if (decode_result != 0)
     {
