@@ -35,4 +35,4 @@ struct mu_result
         return r;           \
     } while (0)
 
- extern int tests_run;
+extern int tests_run;

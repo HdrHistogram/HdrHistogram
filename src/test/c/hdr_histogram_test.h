@@ -1,0 +1,1 @@
+int hdr_histogram_run_tests();
