@@ -36,14 +36,15 @@ bin = env.Clone()
 bin.Append(CPPDEFINES = '_BSD_SOURCE')
 static_library = bin.StaticLibrary(lib_directory + 'hdr_histogram', Glob('src/main/c/*.c'))
 
-os_libs = {'darwin': [], 'posix': ['rt']}
 tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
-tst['LIBS'] = ['hdr_histogram.a', 'm', 'z'] + os_libs[env['PLATFORM']]
+tst['LIBS'] = ['hdr_histogram.a', 'm', 'z']
 tst['LIBPATH'] = [lib_directory]
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 
+os_libs = {'darwin': [], 'posix': ['rt']}
 prf = tst.Clone();
+prf['LIBS'] = prf['LIBS'] + os_libs[env['PLATFORM']]
 prf.Append(CPPDEFINES = '_POSIX_C_SOURCE=199309L')
 prf.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 
