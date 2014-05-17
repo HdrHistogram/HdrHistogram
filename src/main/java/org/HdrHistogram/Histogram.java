@@ -70,7 +70,7 @@ public class Histogram extends AbstractHistogram {
      */
     @Override
     public Histogram copy() {
-        Histogram copy = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        Histogram copy = new Histogram(this);
         copy.add(this);
         return copy;
     }
@@ -80,9 +80,9 @@ public class Histogram extends AbstractHistogram {
      */
     @Override
     public Histogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        Histogram toHistogram = new Histogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
-        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
-        return toHistogram;
+        Histogram copy = new Histogram(this);
+        copy.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return copy;
     }
 
     @Override
@@ -143,6 +143,12 @@ public class Histogram extends AbstractHistogram {
     public Histogram(final long lowestTrackableValue, final long highestTrackableValue,
                      final int numberOfSignificantValueDigits) {
         super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        counts = new long[countsArrayLength];
+        wordSizeInBytes = 8;
+    }
+
+    private Histogram(final AbstractHistogram source) {
+        super(source);
         counts = new long[countsArrayLength];
         wordSizeInBytes = 8;
     }

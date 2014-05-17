@@ -123,7 +123,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException
+     * @return a copy of this histogram, corrected for coordinated omission.
      */
     abstract public AbstractHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples);
 
@@ -139,27 +139,33 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     /**
      * Copy this histogram into the target histogram, overwriting it's contents.
      *
-     * @param targetHistogram
+     * @param targetHistogram the histogram to copy into
      */
     public void copyInto(AbstractHistogram targetHistogram) {
         targetHistogram.reset();
         targetHistogram.add(this);
+        targetHistogram.setStartTimeStamp(this.startTimeStampMsec);
+        targetHistogram.setEndTimeStamp(this.endTimeStampMsec);
     }
 
     /**
      * Copy this histogram, corrected for coordinated omission, into the target histogram, overwriting it's contents.
      * (see {@link #copyCorrectedForCoordinatedOmission} for more detailed explanation about how correction is applied)
      *
-     * @param targetHistogram
-     * @param expectedIntervalBetweenValueSamples
+     * @param targetHistogram the histogram to copy into
+     * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
+     *                                           auto-generated value records as appropriate if value is larger
+     *                                           than expectedIntervalBetweenValueSamples
      */
     public void copyIntoCorrectedForCoordinatedOmission(AbstractHistogram targetHistogram, final long expectedIntervalBetweenValueSamples) {
         targetHistogram.reset();
         targetHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        targetHistogram.setStartTimeStamp(this.startTimeStampMsec);
+        targetHistogram.setEndTimeStamp(this.endTimeStampMsec);
     }
 
     /**
-     * Construct a Histogram given the Lowest and Highest values to be tracked and a number of significant
+     * Construct a histogram given the Lowest and Highest values to be tracked and a number of significant
      * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
@@ -187,6 +193,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         identity = constructionIdentityCount.getAndIncrement();
         init(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits, 0);
+    }
+
+    /**
+     * Construct a histogram with the same range settings as a given source histogram,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    AbstractHistogram(final AbstractHistogram source) {
+        this(source.getLowestTrackableValue(), source.getHighestTrackableValue(),
+                source.getNumberOfSignificantValueDigits());
+        this.setStartTimeStamp(source.getStartTimeStamp());
+        this.setEndTimeStamp(source.getEndTimeStamp());
     }
 
     private void init(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits, long totalCount) {
@@ -368,7 +386,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples) throws ArrayIndexOutOfBoundsException {
         recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
@@ -384,7 +402,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
     public void recordValue(final long value, final long expectedIntervalBetweenValueSamples) throws ArrayIndexOutOfBoundsException {
         recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
@@ -396,7 +414,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *
      * @param value The value to be recorded
      * @param count The number of occurrences of this value to record
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
     public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
@@ -406,7 +424,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Record a value in the histogram
      *
      * @param value The value to be recorded
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
     public void recordValue(final long value) throws ArrayIndexOutOfBoundsException {
         recordSingleValue(value);
@@ -423,7 +441,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Add the contents of another histogram to this one.
      *
      * @param fromHistogram The other histogram.
-     * @throws ArrayIndexOutOfBoundsException if fromHistogram's highestTrackableValue is larger than this one's.
+     * @throws ArrayIndexOutOfBoundsException (may throw) if values in fromHistogram's are higher than highestTrackableValue.
      */
     public void add(final AbstractHistogram fromHistogram) throws ArrayIndexOutOfBoundsException {
         if (this.highestTrackableValue < fromHistogram.highestTrackableValue) {
@@ -468,7 +486,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException (may throw) if values exceed highestTrackableValue
      */
     public void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram, final long expectedIntervalBetweenValueSamples) {
         final AbstractHistogram toHistogram = this;

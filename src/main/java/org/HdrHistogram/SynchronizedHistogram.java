@@ -76,8 +76,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
      */
     @Override
     public SynchronizedHistogram copy() {
-        SynchronizedHistogram copy = new SynchronizedHistogram(
-                lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        SynchronizedHistogram copy = new SynchronizedHistogram(this);
         copy.add(this);
         return copy;
     }
@@ -87,7 +86,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
      */
     @Override
     public SynchronizedHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        SynchronizedHistogram toHistogram = new SynchronizedHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        SynchronizedHistogram toHistogram = new SynchronizedHistogram(this);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }
@@ -155,6 +154,12 @@ public class SynchronizedHistogram extends AbstractHistogram {
      */
     public SynchronizedHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        counts = new long[countsArrayLength];
+        wordSizeInBytes = 8;
+    }
+
+    private SynchronizedHistogram(final AbstractHistogram source) {
+        super(source);
         counts = new long[countsArrayLength];
         wordSizeInBytes = 8;
     }

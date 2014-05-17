@@ -53,7 +53,7 @@ public class AtomicHistogram extends AbstractHistogram {
      */
     @Override
     public AtomicHistogram copy() {
-      AtomicHistogram copy = new AtomicHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+      AtomicHistogram copy = new AtomicHistogram(this);
       copy.add(this);
       return copy;
     }
@@ -63,7 +63,7 @@ public class AtomicHistogram extends AbstractHistogram {
      */
     @Override
     public AtomicHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        AtomicHistogram toHistogram = new AtomicHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        AtomicHistogram toHistogram = new AtomicHistogram(this);
         toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return toHistogram;
     }
@@ -125,6 +125,12 @@ public class AtomicHistogram extends AbstractHistogram {
      */
     public AtomicHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+        counts = new AtomicLongArray(countsArrayLength);
+        wordSizeInBytes = 8;
+    }
+
+    private AtomicHistogram(final AbstractHistogram source) {
+        super(source);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
     }

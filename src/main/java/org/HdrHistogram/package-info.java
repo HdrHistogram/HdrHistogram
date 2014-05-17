@@ -11,12 +11,14 @@
  * integer value range with configurable value precision within the range. Value precision is expressed as the number
  * of significant digits in the value recording, and provides control over value quantization behavior across the
  * value range and the subsequent value resolution at any given level.
+ * </p>
  * <p>
  * In contrast to traditional histograms that use linear, logarithmic, or arbitrary sized bins or buckets,
  * HdrHistograms use a fixed storage internal data representation that simultaneously supports an arbitrarily high
  * dynamic range and arbitrary precision throughout that dynamic range. This capability makes HdrHistograms extremely
  * useful for tracking and reporting on the distribution of percentile values with high resolution and across a wide
  * dynamic range -- a common need in latency behavior characterization.
+ * </p>
  * <p>
  * The HdrHistogram package was specifically designed with latency and performance sensitive applications in mind.
  * Experimental u-benchmark measurements show value recording times as low as 3-6 nanoseconds on modern
@@ -26,6 +28,7 @@
  * the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
  * directly computes storage index locations such that no iteration or searching is ever involved in recording
  * data values.
+ * </p>
  * <p>
  * The combination of high dynamic range and precision is useful for collection and accurate post-recording
  * analysis of sampled value data distribution in various forms. Whether it's calculating or
@@ -34,6 +37,7 @@
  * resolution allows for accurate post-recording analysis with low [and ultimately configurable] loss in
  * accuracy when compared to performing the same analysis directly on the potentially infinite series of sourced
  * data values samples.
+ * </p>
  * <p>
  * An HdrHistogram histogram is usually configured to maintain value count data with a resolution good enough
  * to support a desired precision in post-recording analysis and reporting on the collected data. Analysis can include
@@ -42,6 +46,7 @@
  * available on the collected value count data. In practice, a precision levels of 2 or 3 decimal points are most
  * commonly used, as they maintain a value accuracy of +/- ~1% or +/- ~0.1% respectively for derived distribution
  * statistics.
+ * </p>
  * <p>
  * A good example of HdrHistogram use would be tracking of latencies across a wide dynamic range. E.g. from a
  * microsecond to an hour. A Histogram can be configured to track and later report on the counts of observed integer
@@ -68,14 +73,13 @@
  * histogram.{@link org.HdrHistogram.AbstractHistogram#getHistogramData() getHistogramData}().{@link org.HdrHistogram.HistogramData#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0);
  * </pre>
  * </code>
- *
  * Specifying 3 decimal points of precision in this example guarantees that value quantization within the value range
  * will be no larger than 1/1,000th (or 0.1%) of any recorded value. This example Histogram can be therefor used to
  * track, analyze and report the counts of observed latencies ranging between 1 microsecond and 1 hour in magnitude,
  * while maintaining a value resolution 1 microsecond (or better) up to 1 millisecond, a resolution of 1 millisecond
  * (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked
  * value (1 hour), it would still maintain a resolution of 3.6 seconds (or better).
- * <p>
+ * </p>
  * <h3>Histogram variants and internal representation</h3>
  * The HdrHistogram package includes multiple implementations of the {@link org.HdrHistogram.AbstractHistogram} class:
  * <ul>
@@ -99,7 +103,7 @@
  * Both dynamic range and resolution are configurable, with <b><code>highestTrackableValue</code></b>
  * controlling dynamic range, and <b><code>numberOfSignificantValueDigits</code></b> controlling
  * resolution.
- * <p>
+ * </p>
  * <h3>Synchronization and concurrent access</h3>
  * In the interest of keeping value recording cost to a minimum, the commonly used {@link org.HdrHistogram.Histogram}
  * class and it's {@link org.HdrHistogram.IntHistogram} and {@link org.HdrHistogram.ShortHistogram} variants are NOT
@@ -113,7 +117,6 @@
  * (usually with some non-locking variants on the fast path) and having a summary/reporting thread perform
  * histogram aggregation math across time and/or threads.
  * </p>
- * <p>
  * <h3>Iteration</h3>
  * Histograms supports multiple convenient forms of iterating through the histogram data set, including linear,
  * logarithmic, and percentile iteration mechanisms, as well as means for iterating through each recorded value or
@@ -139,6 +142,7 @@
  *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}> through
  *     the histogram using a {@link org.HdrHistogram.AllValuesIterator} </li>
  * </ul>
+ * </p>
  * <p>
  * Iteration is typically done with a for-each loop statement. E.g.:
  * <br><code>
@@ -174,8 +178,8 @@
  * }
  * </pre>
  * </code>
- * <p>
- * <h3>Equivalent Values and value ranges</h3>
+ * </p>
+ * <p><h3>Equivalent Values and value ranges</h3></p>
  * <p>
  * Due to the finite (and configurable) resolution of the histogram, multiple adjacent integer data values can
  * be "equivalent". Two values are considered "equivalent" if samples recorded for both are always counted in a
@@ -183,8 +187,8 @@
  * lowest and highest equivalent values for any given value, as we as determining whether two values are equivalent,
  * and for finding the next non-equivalent value for a given value (useful when looping through values, in order
  * to avoid double-counting count).
- * <p>
- * <h3>Raw vs. corrected recording variants</h3>
+ * </p>
+ * <p><h3>Raw vs. corrected recording variants</h3></p>
  * <p>
  * Regular, raw value data recording into an HdrHistogram is achieved with the
  * {@link org.HdrHistogram.AbstractHistogram#recordValue(long) recordValue()} method.
@@ -199,12 +203,14 @@
  * typically correlate with "bad" results. This coordinated (non random) omission of source data, if left uncorrected,
  * will then dramatically skew any overall latency stats computed on the recorded information, as the recorded data set
  * itself will be significantly skewed towards good results.
- * <p><
+ * </p>
+ * <p>
  * When a value recorded in the histogram exceeds the
  * <b><code>expectedIntervalBetweenValueSamples</code></b> parameter, recorded histogram data will
  * reflect an appropriate number of additional values, linearly decreasing in steps of
  * <b><code>expectedIntervalBetweenValueSamples</code></b>, down to the last value
  * that would still be higher than <b><code>expectedIntervalBetweenValueSamples</code></b>).
+ * </p>
  * <p>
  * To illustrate why this corrective behavior is critically needed in order to accurately represent value
  * distribution when large value measurements may lead to missed samples, imagine a system for which response
@@ -221,6 +227,7 @@
  * real world response time distribution of this hypothetical system. Only ~50% of results will be at 1msec or below,
  * with the remaining 50% coming from the auto-generated value records covering the missing increments spread between
  * 10msec and 100 sec.
+ * </p>
  * <p>
  * Data sets recorded with and with
  * {@link org.HdrHistogram.AbstractHistogram#recordValue(long) recordValue()}
@@ -234,6 +241,7 @@
  * {@link org.HdrHistogram.AbstractHistogram#recordValue(long) recordValue()}
  * it if all values recorded via the <b><code>recordValue</code></b> calls were smaller
  * than their associated <b><code>expectedIntervalBetweenValueSamples</code></b> parameters.
+ * </p>
  * <p>
  * In addition to at-recording-time correction option, Histrogram variants also provide the post-recording correction
  * methods
@@ -244,11 +252,13 @@
  * <b><code>expectedIntervalBetweenValueSamples</code></b> parameter is estimated to be the same for all recorded
  * values. However, for obvious reasons, it is important to note that only one correction method (during or post
  * recording) should be be used on a given histogram data set.
+ * </p>
  * <p>
  * When used for response time characterization, the recording with the optional
  * </code></b>expectedIntervalBetweenValueSamples</code></b> parameter will tend to produce data sets that would
  * much more accurately reflect the response time distribution that a random, uncoordinated request would have
  * experienced.
+ * </p>
  * <p>
  * <h3>Footprint estimation</h3>
  * Due to it's dynamic range representation, Histogram is relatively efficient in memory space requirements given
@@ -269,6 +279,7 @@
  * </pre></code>
  * A conservative (high) estimate of a Histogram's footprint in bytes is available via the
  * {@link org.HdrHistogram.AbstractHistogram#getEstimatedFootprintInBytes() getEstimatedFootprintInBytes()} method.
+ * </p>
  */
 
 package org.HdrHistogram;
