@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <hdr_histogram.h>
+
 #include "minunit.h"
 
 bool compare_percentile(int64_t a, double b, double variation)
@@ -266,11 +267,11 @@ static char* test_logarithmic_values()
         }
         else if (index == 14)
         {
-            mu_assert("Raw Logarithmic 10 msec bucket # 14 added a count of 1", 1 == count_added_in_this_bucket);            
+            mu_assert("Raw Logarithmic 10 msec bucket # 14 added a count of 1", 1 == count_added_in_this_bucket);
         }
         else
         {
-            mu_assert("Raw Logarithmic 10 msec bucket added a count of 0", 0 == count_added_in_this_bucket);            
+            mu_assert("Raw Logarithmic 10 msec bucket added a count of 0", 0 == count_added_in_this_bucket);
         }
 
         index++;
@@ -320,28 +321,6 @@ static char* test_reset()
               compare_percentile(hdr_value_at_percentile(raw_histogram, 99.0), 0.0, 0.001));
     mu_assert("Value at 99% not 0.0",
               compare_percentile(hdr_value_at_percentile(cor_histogram, 99.0), 0.0, 0.001));
-     
-    return 0;
-}
-
-static char* test_encode_and_decode()
-{
-    load_histograms();
-
-    size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
-
-    char* buffer = (char*) malloc(hdr_get_memory_size(raw_histogram));
-
-    bool encode_result = hdr_encode(raw_histogram, buffer, 0, raw_histogram_size);
-
-    mu_assert("Did not encode", encode_result);
-
-    struct hdr_histogram* loaded_histogram;
-    hdr_decode(buffer, 0, raw_histogram_size, &loaded_histogram);
-
-    int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
-
-    mu_assert("Comparison did not match", compare_result == 0);
 
     return 0;
 }
@@ -358,18 +337,17 @@ static struct mu_result all_tests()
     mu_run_test(test_linear_values);
     mu_run_test(test_logarithmic_values);
     mu_run_test(test_reset);
-    mu_run_test(test_encode_and_decode);
 
     mu_ok;
 }
 
-int main(int argc, char **argv)
+int hdr_histogram_run_tests()
 {
     struct mu_result result = all_tests();
 
     if (result.message != 0)
     {
-        printf("%s(): %s\n", result.test, result.message);
+        printf("hdr_histogram_test.%s(): %s\n", result.test, result.message);
     }
     else
     {
@@ -380,3 +358,21 @@ int main(int argc, char **argv)
 
     return result.message != 0;
 }
+
+// int main(int argc, char **argv)
+// {
+//     struct mu_result result = all_tests();
+
+//     if (result.message != 0)
+//     {
+//         printf("%s(): %s\n", result.test, result.message);
+//     }
+//     else
+//     {
+//         printf("ALL TESTS PASSED\n");
+//     }
+
+//     printf("Tests run: %d\n", tests_run);
+
+//     return result.message != 0;
+// }

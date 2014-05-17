@@ -12,7 +12,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <endian.h>
+#include <zlib.h>
+#include <errno.h>
 
 #include "hdr_histogram.h"
 
@@ -684,77 +685,4 @@ bool hdr_log_iter_next(struct hdr_log_iter* logarithmic)
     }
 
     return false;
-}
-
-
-// ######## ##    ##  ######   #######  ########  #### ##    ##  ######
-// ##       ###   ## ##    ## ##     ## ##     ##  ##  ###   ## ##    ##
-// ##       ####  ## ##       ##     ## ##     ##  ##  ####  ## ##
-// ######   ## ## ## ##       ##     ## ##     ##  ##  ## ## ## ##   ####
-// ##       ##  #### ##       ##     ## ##     ##  ##  ##  #### ##    ##
-// ##       ##   ### ##    ## ##     ## ##     ##  ##  ##   ### ##    ##
-// ######## ##    ##  ######   #######  ########  #### ##    ##  ######
-
-
-static const int32_t ENCODING_COOKIE_BASE = 0x1c849308;
-// static const int32_t COMPRESSED_ENCODING_COOKIE_BASE = 0x1c849309;
-
-struct __attribute__((__packed__)) _encoding_flyweight
-{
-    int32_t cookie;
-    int32_t significant_figures;
-    int64_t lowest_trackable_value;
-    int64_t highest_trackable_value;
-    int64_t total_count;
-    int64_t counts[0];
-};
-
-bool hdr_encode(struct hdr_histogram* h, char* buffer, int offset, int length)
-{
-    size_t histogram_size = hdr_get_memory_size(h);
-
-    if (histogram_size > length)
-    {
-        return false;
-    }
-
-    struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
-
-    flyweight->cookie = ENCODING_COOKIE_BASE << 8;
-    flyweight->significant_figures = h->significant_figures;
-    flyweight->lowest_trackable_value = 0;
-    flyweight->highest_trackable_value = h->highest_trackable_value;
-    flyweight->total_count = h->total_count;
-
-    for (int i = 0; i < h->counts_len; i++)
-    {
-        flyweight->counts[i] = htobe64(h->counts[i]);
-    }
-
-    return true;
-}
-
-bool hdr_decode(char* buffer, int offset, size_t length, struct hdr_histogram** result)
-{
-    struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
-
-    if (*result == NULL)
-    {
-        hdr_alloc(flyweight->highest_trackable_value, flyweight->significant_figures, result);
-    }
-    else
-    {
-        return false;
-    }
-
-    struct hdr_histogram* h = *result;
-
-    for (int i = 0; i < h->counts_len; i++)
-    {
-        h->counts[i] = be64toh(flyweight->counts[i]);
-    }
-
-    h->total_count = flyweight->total_count;
-
-    return true;
 }
