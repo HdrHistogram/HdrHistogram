@@ -60,6 +60,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <version.template.file>src/main/java/org/HdrHistogram/Version.java.template</version.template.file>
+        <version.file>src/main/java/org/HdrHistogram/Version.java</version.file>
     </properties>
 
     <build>
@@ -128,6 +130,33 @@
                 <version>2.2.2</version>
                 <configuration>
                     <arguments>-Dgpg.passphrase=${gpg.passphrase}</arguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.google.code.maven-replacer-plugin</groupId>
+                <artifactId>maven-replacer-plugin</artifactId>
+                <version>1.4.0</version>
+                <executions>
+                    <execution>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>replace</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <file>${version.template.file}</file>
+                    <outputFile>${version.file}</outputFile>
+                    <replacements>
+                        <replacement>
+                            <token>\$BUILD_TIME\$</token>
+                            <value>${maven.build.timestamp}</value>
+                        </replacement>
+                        <replacement>
+                            <token>\$VERSION\$</token>
+                            <value>${project.version}</value>
+                        </replacement>
+                    </replacements>
                 </configuration>
             </plugin>
         </plugins>
