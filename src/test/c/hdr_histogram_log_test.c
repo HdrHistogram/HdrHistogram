@@ -114,12 +114,54 @@ static char* test_encode_and_decode_compressed()
     return 0;
 }
 
+// To prevent exporting the symbol, i.e. visible for testing.
+void base64_encode(const uint8_t* buf, int length, FILE* f);
+
+bool assert_base64_encode(const char* in, int len, const char* expected)
+{
+    const char* file_name = "/tmp/foo";
+    FILE* fw = fopen(file_name, "w+");
+
+    base64_encode((const uint8_t*) in, len, fw);
+
+    fflush(fw);
+
+    int num_bytes = (int) ftell(fw);
+
+    rewind(fw);
+
+    char* output = (char*) malloc(sizeof(char) * num_bytes);
+
+    fgets(output, num_bytes + 1, fw);
+
+    fclose(fw);
+    remove(file_name);
+
+    free(output);
+
+    return strncmp(expected, output, num_bytes) == 0;
+}
+
+static char* test_encode_to_base64()
+{
+    mu_assert("Encoding 3 bytes", assert_base64_encode("Man", 3, "TWFu"));
+    mu_assert("Encoding with padding '='",
+              assert_base64_encode("any carnal pleasure.", 20, "YW55IGNhcm5hbCBwbGVhc3VyZS4="));
+    mu_assert("Encoding with padding '=='",
+              assert_base64_encode("any carnal pleasure",  19, "YW55IGNhcm5hbCBwbGVhc3VyZQ=="));
+    mu_assert("Encoding without padding",
+              assert_base64_encode("any carnal pleasur", 18, "YW55IGNhcm5hbCBwbGVhc3Vy"));
+
+    return 0;
+}
+
 static struct mu_result all_tests()
 {
     tests_run = 0;
 
     mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
+    mu_run_test(test_encode_to_base64);
 
     mu_ok;
 }
