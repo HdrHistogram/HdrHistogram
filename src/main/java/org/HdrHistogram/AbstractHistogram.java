@@ -47,6 +47,7 @@ abstract class AbstractHistogramBase {
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
 
+    @SuppressWarnings("deprecation")
     HistogramData histogramData; // Deprecated, but we'll keep it around for compatibility.
 
     ByteBuffer intermediateUncompressedByteBuffer = null;
@@ -163,6 +164,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.setEndTimeStamp(source.getEndTimeStamp());
     }
 
+    @SuppressWarnings("deprecation")
     private void init(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits, long totalCount) {
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
@@ -498,6 +500,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * data set.
      */
     @Deprecated
+    @SuppressWarnings("deprecation")
     public HistogramData getHistogramData() {
         return histogramData;
     }
