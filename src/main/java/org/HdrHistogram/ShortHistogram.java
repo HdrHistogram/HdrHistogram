@@ -64,7 +64,7 @@ public class ShortHistogram extends AbstractHistogram {
     }
 
     @Override
-    long getTotalCount() {
+    public long getTotalCount() {
         return totalCount;
     }
 

@@ -86,7 +86,7 @@ public class Histogram extends AbstractHistogram {
     }
 
     @Override
-    long getTotalCount() {
+    public long getTotalCount() {
         return totalCount;
     }
 

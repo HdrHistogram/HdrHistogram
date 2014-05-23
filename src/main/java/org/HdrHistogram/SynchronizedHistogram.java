@@ -92,7 +92,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
     }
 
     @Override
-    long getTotalCount() {
+    public long getTotalCount() {
         return totalCount;
     }
 

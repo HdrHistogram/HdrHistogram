@@ -185,23 +185,22 @@ public class HistogramLogProcessor extends Thread {
                         timeIntervalLog.println("Time: IntervalPercentiles:count ( 50% 90% Max ) TotalPercentiles:count ( 50% 90% 99% 99.9% 99.99% Max )");
                     }
                 }
-                HistogramData intervalHistogramData = intervalHistogram.getHistogramData();
-                HistogramData accumulatedHistogramData = accumulatedHistogram.getHistogramData();
+
                 timeIntervalLog.format(Locale.US, logFormat,
                         ((intervalHistogram.getEndTimeStamp()/1000.0) - logReader.getStartTimeSec()),
                         // values recorded during the last reporting interval
-                        intervalHistogramData.getTotalCount(),
-                        intervalHistogramData.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                        intervalHistogramData.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                        intervalHistogramData.getMaxValue() / config.outputValueUnitRatio,
+                        intervalHistogram.getTotalCount(),
+                        intervalHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                        intervalHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                        intervalHistogram.getMaxValue() / config.outputValueUnitRatio,
                         // values recorded from the beginning until now
-                        accumulatedHistogramData.getTotalCount(),
-                        accumulatedHistogramData.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                        accumulatedHistogramData.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                        accumulatedHistogramData.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
-                        accumulatedHistogramData.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
-                        accumulatedHistogramData.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
-                        accumulatedHistogramData.getMaxValue() / config.outputValueUnitRatio
+                        accumulatedHistogram.getTotalCount(),
+                        accumulatedHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                        accumulatedHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                        accumulatedHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
+                        accumulatedHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
+                        accumulatedHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
+                        accumulatedHistogram.getMaxValue() / config.outputValueUnitRatio
                 );
             }
 
@@ -214,7 +213,7 @@ public class HistogramLogProcessor extends Thread {
             // one line output (shape/range doesn't matter because it is empty):
             accumulatedHistogram = new Histogram(1000000L, 2);
         }
-        accumulatedHistogram.getHistogramData().outputPercentileDistribution(histogramPercentileLog,
+        accumulatedHistogram.outputPercentileDistribution(histogramPercentileLog,
                 config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
 
     }

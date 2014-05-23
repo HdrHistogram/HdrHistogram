@@ -69,7 +69,7 @@ public class AtomicHistogram extends AbstractHistogram {
     }
 
     @Override
-    long getTotalCount() {
+    public long getTotalCount() {
         return totalCountUpdater.get(this);
     }
 
