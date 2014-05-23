@@ -10,14 +10,12 @@ package org.HdrHistogram;
 
 import static org.junit.Assert.assertTrue;
 
-import org.HdrHistogram.*;
 import org.junit.*;
-
-import java.util.Locale;
 
 /**
  * JUnit test for {@link HistogramData}
  */
+@SuppressWarnings("deprecation")
 public class HistogramDataTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // 1 hour in usec units
     static final int numberOfSignificantValueDigits = 3; // Maintain at least 3 decimal points of accuracy
