@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# HistogramLogProcessor
+#
+# Written by Gil Tene, and released to the public domain, as explained at
+#  http://creativecommons.org/publicdomain/zero/1.0/
+#
+JHICCUP_Version=2.0.1
+#
+# HistogramLogProcessor will process an input log and can generate two
+# different log files from a single  histogram log file: a
+# sequential interval log file and a histogram log file.
+#
+# The sequential interval log file logs a single %'ile stats line for
+# each reporting interval.
+#
+# The histogram percentile log file includes a detailed %'ile histogram
+# of the entire log file range processed.
+#
+# HistogramLogProcessor will process an input log file when provided with
+# the -i <filename> option. When no -i option is provided, standard input
+# will be processed.
+#
+# When provided with an output file name <logfile> with the -o option
+# (e.g. "-o mylog"), HistogramLogProcessor will produce both output files
+# under the names <logfile> and <logfile>.hgrm (e.g. mylog and mylog.hgrm).
+#
+# When not provided with an output file name, HistogramLogProcessor will
+# produce [only] the histogram percentile log output to standard output.
+#
+# HistogramLogProcessor accepts optional -start and -end time range
+# parameters. When provided, the output will only reflect the portion
+# of the input log with timestamps that fall within the provided start
+# and end time range parameters.
+#
+# HistogramLogProcessor also accepts and optional -csv parameter, which
+# will cause the output formatting (of both output file forms) to use
+# a CSV file format.
+#
+# Use HistogramLogProcessor -h for more info
+#
+
+# Figure out installed path:
+# On Linux, we'd do the following:
+# PARSED_SCRIPT=`readlink -f $0`
+# INSTALLED_PATH=`dirname $PARSED_SCRIPT`
+# But readlink -f doesn't work the same everywhere (e.g. Mac OS). We use this instead:
+function readlink_f () { _=`pwd`; cd `dirname $1` && echo `pwd` && cd $_; }
+INSTALLED_PATH=$(readlink_f $0)
+
+# Check if running from unpacked distribution archive by assuming jHiccup.jar
+# in the same directory as this script. If not, try to search in target/ directory
+# (running from the source repository build).
+HDRHISTOGRAM_JAR_FILE=$INSTALLED_PATH/HdrHistogram.jar
+if [ ! -f $HDRHISTOGRAM_JAR_FILE ] ; then
+  HDRHISTOGRAM_JAR_FILE=$INSTALLED_PATH/target/HdrHistogram.jar
+fi
+
+JAVA_BIN=`which java`
+
+if [ $JAVA_HOME ]; then
+    JAVA_CMD=$JAVA_HOME/bin/java
+elif [ $JAVA_BIN ]; then
+    JAVA_CMD=$JAVA_BIN
+else
+    echo "For this command to run, either $JAVA_HOME must be set, or java must be in the path."
+    exit 1
+fi
+
+# Deal with Windows/cygwin path normalization syntax needs:
+# Key Assumption: only cygwin/Windows installations will have a cygpath command...
+cygpath -w $JHICCUP_JAR_FILE &> /dev/null
+if [ $? -eq 0 ] ; then
+    # if using cygwin, use valid windows-style classpath
+    JHICCUP_JAR_FILE=`cygpath -w $HDRHISTOGRAM_JAR_FILE`
+	echo Windows path for hiccup jar file is $HDRHISTOGRAM_JAR_FILE
+fi
+
+exec $JAVA_CMD -cp $HDRHISTOGRAM_JAR_FILE org.HdrHistogram.HistogramLogProcessor $@
+#exec $CMD
