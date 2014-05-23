@@ -8,7 +8,6 @@
 
 package org.HdrHistogram;
 
-import org.HdrHistogram.*;
 import org.junit.*;
 
 /**
@@ -70,8 +69,8 @@ public class HistogramPerfTest {
         System.out.println(label + "Hot code timing:");
         System.out.println(label + timingLoopCount + " value recordings completed in " +
                 deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
-        rate = 1000000 * histogram.getHistogramData().getTotalCount() / deltaUsec;
-        System.out.println(label + histogram.getHistogramData().getTotalCount() + " raw recorded entries completed in " +
+        rate = 1000000 * histogram.getTotalCount() / deltaUsec;
+        System.out.println(label + histogram.getTotalCount() + " raw recorded entries completed in " +
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 

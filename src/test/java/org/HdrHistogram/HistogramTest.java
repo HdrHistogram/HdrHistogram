@@ -101,8 +101,8 @@ public class HistogramTest {
     public void testRecordValue() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
-        Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue(testValueLevel));
-        Assert.assertEquals(1L, histogram.getHistogramData().getTotalCount());
+        Assert.assertEquals(1L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(1L, histogram.getTotalCount());
     }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
@@ -118,17 +118,17 @@ public class HistogramTest {
         Histogram rawHistogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         rawHistogram.recordValue(testValueLevel);
         // The data will include corrected samples:
-        Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, histogram.getHistogramData().getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(4L, histogram.getHistogramData().getTotalCount());
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 1 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 2 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 3 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 4 )/4));
+        Assert.assertEquals(4L, histogram.getTotalCount());
         // But the raw data will not:
-        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(0L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, rawHistogram.getHistogramData().getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(1L, rawHistogram.getHistogramData().getTotalCount());
+        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 1 )/4));
+        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 2 )/4));
+        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 3 )/4));
+        Assert.assertEquals(1L, rawHistogram.getCountAtValue((testValueLevel * 4 )/4));
+        Assert.assertEquals(1L, rawHistogram.getTotalCount());
     }
 
     @Test
@@ -136,8 +136,8 @@ public class HistogramTest {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         histogram.reset();
-        Assert.assertEquals(0L, histogram.getHistogramData().getCountAtValue(testValueLevel));
-        Assert.assertEquals(0L, histogram.getHistogramData().getTotalCount());
+        Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(0L, histogram.getTotalCount());
     }
 
     @Test
@@ -149,9 +149,9 @@ public class HistogramTest {
         other.recordValue(testValueLevel);
         other.recordValue(testValueLevel * 1000);
         histogram.add(other);
-        Assert.assertEquals(2L, histogram.getHistogramData().getCountAtValue(testValueLevel));
-        Assert.assertEquals(2L, histogram.getHistogramData().getCountAtValue(testValueLevel * 1000));
-        Assert.assertEquals(4L, histogram.getHistogramData().getTotalCount());
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, histogram.getTotalCount());
 
         Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
         biggerOther.recordValue(testValueLevel);
@@ -159,9 +159,9 @@ public class HistogramTest {
 
         // Adding the smaller histogram to the bigger one should work:
         biggerOther.add(histogram);
-        Assert.assertEquals(3L, biggerOther.getHistogramData().getCountAtValue(testValueLevel));
-        Assert.assertEquals(3L, biggerOther.getHistogramData().getCountAtValue(testValueLevel * 1000));
-        Assert.assertEquals(6L, biggerOther.getHistogramData().getTotalCount());
+        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
+        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(6L, biggerOther.getTotalCount());
 
         // But trying to add a larger histogram into a smaller one should throw an AIOOB:
         boolean thrown = false;
@@ -335,14 +335,14 @@ public class HistogramTest {
     private void assertEqual(AbstractHistogram expectedHistogram, AbstractHistogram actualHistogram) {
         Assert.assertEquals(expectedHistogram, actualHistogram);
         Assert.assertEquals(
-                expectedHistogram.getHistogramData().getCountAtValue(testValueLevel),
-                actualHistogram.getHistogramData().getCountAtValue(testValueLevel));
+                expectedHistogram.getCountAtValue(testValueLevel),
+                actualHistogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(
-                expectedHistogram.getHistogramData().getCountAtValue(testValueLevel * 10),
-                actualHistogram.getHistogramData().getCountAtValue(testValueLevel * 10));
+                expectedHistogram.getCountAtValue(testValueLevel * 10),
+                actualHistogram.getCountAtValue(testValueLevel * 10));
         Assert.assertEquals(
-                expectedHistogram.getHistogramData().getTotalCount(),
-                actualHistogram.getHistogramData().getTotalCount());
+                expectedHistogram.getTotalCount(),
+                actualHistogram.getTotalCount());
     }
 
     @Test
@@ -371,9 +371,9 @@ public class HistogramTest {
         histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 500);
         Assert.assertTrue(histogram.hasOverflowed());
         System.out.println("Histogram percentile output should show overflow:");
-        histogram.getHistogramData().outputPercentileDistribution(System.out, 5, 100.0);
+        histogram.outputPercentileDistribution(System.out, 5, 100.0);
         System.out.println("\nHistogram percentile output should be in CSV format and show overflow:");
-        histogram.getHistogramData().outputPercentileDistribution(System.out, 5, 100.0, true);
+        histogram.outputPercentileDistribution(System.out, 5, 100.0, true);
     }
 
     @Test

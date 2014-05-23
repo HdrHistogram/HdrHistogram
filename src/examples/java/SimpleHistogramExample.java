@@ -57,6 +57,6 @@ public class SimpleHistogramExample {
 
         System.out.println("Recorded latencies [in usec] for Create+Close of a DatagramSocket:");
 
-        histogram.getHistogramData().outputPercentileDistribution(System.out, 1000.0);
+        histogram.outputPercentileDistribution(System.out, 1000.0);
     }
 }

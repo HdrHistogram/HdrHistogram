@@ -9,7 +9,7 @@
 package org.HdrHistogram;
 
 import org.junit.Assert;
-import org.junit.Test;
+import org.junit.*;
 
 import java.nio.ByteBuffer;
 
