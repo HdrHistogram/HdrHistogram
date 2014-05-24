@@ -29,7 +29,6 @@ import java.util.zip.DataFormatException;
  * HdrHistogram of the measured reaction time behavior for any arbitrary
  * time range within the log, by adding [only] the relevant interval
  * histograms.
- * <p>
  * <h3>Histogram log format:</h3>
  * A histogram log file consists of text lines. Lines beginning with
  * the "#" character are optional and treated as comments. Lines
@@ -62,7 +61,7 @@ public class HistogramLogReader {
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
      * @param inputFileName The name of the file to read from
-     * @throws FileNotFoundException
+     * @throws FileNotFoundException when unable to find inputFileName
      */
     public HistogramLogReader(final String inputFileName) throws FileNotFoundException {
         scanner = new Scanner(new File(inputFileName));
@@ -72,9 +71,8 @@ public class HistogramLogReader {
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified InputStream.
      * @param inputStream The InputStream to read from
-     * @throws FileNotFoundException
      */
-    public HistogramLogReader(final InputStream inputStream) throws FileNotFoundException {
+    public HistogramLogReader(final InputStream inputStream) {
         scanner = new Scanner(inputStream);
         initScanner();
     }
@@ -82,7 +80,7 @@ public class HistogramLogReader {
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file.
      * @param inputFile The File to read from
-     * @throws FileNotFoundException
+     * @throws FileNotFoundException when unable to find inputFile
      */
     public HistogramLogReader(final File inputFile) throws FileNotFoundException {
         scanner = new Scanner(inputFile);

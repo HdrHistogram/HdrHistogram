@@ -65,9 +65,6 @@ public class Histogram extends AbstractHistogram {
         totalCount = 0;
     }
 
-    /**
-     * @inheritDoc
-     */
     @Override
     public Histogram copy() {
         Histogram copy = new Histogram(this);
@@ -75,9 +72,6 @@ public class Histogram extends AbstractHistogram {
         return copy;
     }
 
-    /**
-     * @inheritDoc
-     */
     @Override
     public Histogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
         Histogram copy = new Histogram(this);
@@ -115,7 +109,7 @@ public class Histogram extends AbstractHistogram {
      * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
-     *                                       integer that is >= 2.
+     *                                       integer that is {@literal >=} 2.
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
@@ -132,10 +126,10 @@ public class Histogram extends AbstractHistogram {
      * proper value for lowestTrackableValue would be 1000.
      *
      * @param lowestTrackableValue           The lowest value that can be tracked (distinguished from 0) by the histogram.
-     *                                       Must be a positive integer that is >= 1. May be internally rounded down to nearest
+     *                                       Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
      *                                       power of 2.
      * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
-     *                                       integer that is >= (2 * lowestTrackableValue).
+     *                                       integer that is {@literal >=} (2 * lowestTrackableValue).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
@@ -169,7 +163,7 @@ public class Histogram extends AbstractHistogram {
      * @param buffer The buffer to encode into
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
-     * @throws DataFormatException
+     * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static Histogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                            final long minBarForHighestTrackableValue) throws DataFormatException {

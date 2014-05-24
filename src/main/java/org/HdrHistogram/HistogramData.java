@@ -103,8 +103,8 @@ public class HistogramData {
      * @param highValue  The higher value bound on the range for which to provide the recorded count.
      *                   Will be rounded up with {@link Histogram#highestEquivalentValue highestEquivalentValue}.
      * @return the total count of values recorded in the histogram within the value range that is
-     * >= lowestEquivalentValue(<i>lowValue</i>) and <= highestEquivalentValue(<i>highValue</i>)
-     * @throws ArrayIndexOutOfBoundsException
+     * {@literal >=} lowestEquivalentValue(<i>lowValue</i>) and {@literal <=} highestEquivalentValue(<i>highValue</i>)
+     * @throws ArrayIndexOutOfBoundsException on values that are outside the tracked value range
      */
     public long getCountBetweenValues(final long lowValue, final long highValue) throws ArrayIndexOutOfBoundsException {
         return histogram.getCountBetweenValues(lowValue, highValue);
@@ -116,7 +116,7 @@ public class HistogramData {
      * @param value The value for which to provide the recorded count
      * @return The total count of values recorded in the histogram at the given value (to within
      * the histogram resolution at the value level).
-     * @throws ArrayIndexOutOfBoundsException
+     * @throws ArrayIndexOutOfBoundsException on values that are outside the tracked value range
      */
     public long getCountAtValue(final long value) throws ArrayIndexOutOfBoundsException {
         return histogram.getCountAtValue(value);
@@ -183,8 +183,8 @@ public class HistogramData {
      * values are exhausted.
      * <p>
      * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
-     * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a
-     * {@link PercentileIterator}
+     * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link PercentileIterator}
      */
     public Percentiles percentiles(final int percentileTicksPerHalfDistance) {
         return new Percentiles(histogram, percentileTicksPerHalfDistance);
@@ -196,8 +196,8 @@ public class HistogramData {
      * values are exhausted.
      *
      * @param valueUnitsPerBucket  The size (in value units) of the linear buckets to use
-     * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a
-     * {@link LinearIterator}
+     * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link LinearIterator}
      */
     public LinearBucketValues linearBucketValues(final int valueUnitsPerBucket) {
         return new LinearBucketValues(histogram, valueUnitsPerBucket);
@@ -210,8 +210,8 @@ public class HistogramData {
      *
      * @param valueUnitsInFirstBucket The size (in value units) of the first bucket in the iteration
      * @param logBase The multiplier by which bucket sizes will grow in eahc iteration step
-     * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using
-     * a {@link LogarithmicIterator}
+     * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link LogarithmicIterator}
      */
     public LogarithmicBucketValues logarithmicBucketValues(final int valueUnitsInFirstBucket, final double logBase) {
         return new LogarithmicBucketValues(histogram, valueUnitsInFirstBucket, logBase);
@@ -222,8 +222,8 @@ public class HistogramData {
      * supported by the underlying representation. The iteration steps through all non-zero recorded value counts,
      * and terminates when all recorded histogram values are exhausted.
      *
-     * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using
-     * a {@link RecordedValuesIterator}
+     * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link RecordedValuesIterator}
      */
     public RecordedValues recordedValues() {
         return new RecordedValues(histogram);
@@ -235,8 +235,8 @@ public class HistogramData {
      * whether or not there were recorded values for that value level, and terminates when all recorded histogram
      * values are exhausted.
      *
-     * @return An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using
-     * a {@link RecordedValuesIterator}
+     * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link RecordedValuesIterator}
      */
     public AllValues allValues() {
         return new AllValues(histogram);
@@ -245,7 +245,8 @@ public class HistogramData {
     // Percentile iterator support:
 
     /**
-     * An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a {@link PercentileIterator}
+     * An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link PercentileIterator}
      */
     public class Percentiles implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
@@ -257,7 +258,7 @@ public class HistogramData {
         }
 
         /**
-         * @return A {@link PercentileIterator}<{@link HistogramIterationValue}>
+         * @return A {@link PercentileIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
         public Iterator<HistogramIterationValue> iterator() {
             return new PercentileIterator(histogram, percentileTicksPerHalfDistance);
@@ -267,7 +268,8 @@ public class HistogramData {
     // Linear iterator support:
 
     /**
-     * An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a {@link LinearIterator}
+     * An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link LinearIterator}
      */
     public class LinearBucketValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
@@ -279,7 +281,7 @@ public class HistogramData {
         }
 
         /**
-         * @return A {@link LinearIterator}<{@link HistogramIterationValue}>
+         * @return A {@link LinearIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
         public Iterator<HistogramIterationValue> iterator() {
             return new LinearIterator(histogram, valueUnitsPerBucket);
@@ -289,7 +291,8 @@ public class HistogramData {
     // Logarithmic iterator support:
 
     /**
-     * An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a {@link LogarithmicIterator}
+     * An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link LogarithmicIterator}
      */
     public class LogarithmicBucketValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
@@ -304,7 +307,7 @@ public class HistogramData {
         }
 
         /**
-         * @return A {@link LogarithmicIterator}<{@link HistogramIterationValue}>
+         * @return A {@link LogarithmicIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
         public Iterator<HistogramIterationValue> iterator() {
             return new LogarithmicIterator(histogram, valueUnitsInFirstBucket, logBase);
@@ -314,7 +317,8 @@ public class HistogramData {
     // Recorded value iterator support:
 
     /**
-     * An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a {@link RecordedValuesIterator}
+     * An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link RecordedValuesIterator}
      */
     public class RecordedValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
@@ -324,7 +328,7 @@ public class HistogramData {
         }
 
         /**
-         * @return A {@link RecordedValuesIterator}<{@link HistogramIterationValue}>
+         * @return A {@link RecordedValuesIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
         public Iterator<HistogramIterationValue> iterator() {
             return new RecordedValuesIterator(histogram);
@@ -334,7 +338,8 @@ public class HistogramData {
     // AllValues iterator support:
 
     /**
-     * An {@link java.lang.Iterable}<{@link HistogramIterationValue}> through the histogram using a {@link AllValuesIterator}
+     * An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >} through the
+     * histogram using a {@link AllValuesIterator}
      */
     public class AllValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
@@ -344,7 +349,7 @@ public class HistogramData {
         }
 
         /**
-         * @return A {@link AllValuesIterator}<{@link HistogramIterationValue}>
+         * @return A {@link AllValuesIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
         public Iterator<HistogramIterationValue> iterator() {
             return new AllValuesIterator(histogram);

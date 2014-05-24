@@ -48,7 +48,7 @@ public class HistogramLogWriter {
     /**
      * Constructs a new HistogramLogWriter around a newly created file with the specified file name.
      * @param outputFileName The name of the file to create
-     * @throws FileNotFoundException
+     * @throws FileNotFoundException when unable to open outputFileName
      */
     public HistogramLogWriter(final String outputFileName) throws FileNotFoundException {
         log = new PrintStream(outputFileName);
@@ -57,7 +57,7 @@ public class HistogramLogWriter {
     /**
      * Constructs a new HistogramLogWriter that will write into the specified file.
      * @param outputFile The File to write to
-     * @throws FileNotFoundException
+     * @throws FileNotFoundException when unable to open outputFile
      */
     public HistogramLogWriter(final File outputFile) throws FileNotFoundException {
         log = new PrintStream(outputFile);
@@ -66,16 +66,14 @@ public class HistogramLogWriter {
     /**
      * Constructs a new HistogramLogWriter that will write into the specified output stream.
      * @param outputStream The OutputStream to write to
-     * @throws FileNotFoundException
      */
-    public HistogramLogWriter(final OutputStream outputStream) throws FileNotFoundException {
+    public HistogramLogWriter(final OutputStream outputStream) {
         log = new PrintStream(outputStream);
     }
 
     /**
      * Constructs a new HistogramLogWriter that will write into the specified print stream.
      * @param printStream The PrintStream to write to
-     * @throws FileNotFoundException
      */
     public HistogramLogWriter(final PrintStream printStream) throws FileNotFoundException {
         log = printStream;

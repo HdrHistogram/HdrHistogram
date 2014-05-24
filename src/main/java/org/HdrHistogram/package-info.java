@@ -58,8 +58,8 @@
  * <br>
  * Code for this use example would include these basic elements:
  * <br>
- * <code>
  * <pre>
+ * <code>
  * {@link org.HdrHistogram.Histogram} histogram = new {@link org.HdrHistogram.Histogram}(3600000000L, 3);
  * .
  * .
@@ -71,15 +71,14 @@
  * .
  * // Report histogram percentiles, expressed in msec units:
  * histogram.{@link org.HdrHistogram.AbstractHistogram#getHistogramData() getHistogramData}().{@link org.HdrHistogram.HistogramData#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0);
- * </pre>
  * </code>
+ * </pre>
  * Specifying 3 decimal points of precision in this example guarantees that value quantization within the value range
  * will be no larger than 1/1,000th (or 0.1%) of any recorded value. This example Histogram can be therefor used to
  * track, analyze and report the counts of observed latencies ranging between 1 microsecond and 1 hour in magnitude,
  * while maintaining a value resolution 1 microsecond (or better) up to 1 millisecond, a resolution of 1 millisecond
  * (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked
  * value (1 hour), it would still maintain a resolution of 3.6 seconds (or better).
- * </p>
  * <h3>Histogram variants and internal representation</h3>
  * The HdrHistogram package includes multiple implementations of the {@link org.HdrHistogram.AbstractHistogram} class:
  * <ul>
@@ -127,39 +126,35 @@
  * via the following {@link org.HdrHistogram.HistogramData} methods:
  * <ul>
  *     <li>{@link org.HdrHistogram.HistogramData#percentiles percentiles} :
- *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}> through the
+ *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through the
  *     histogram using a {@link org.HdrHistogram.PercentileIterator} </li>
  *     <li>{@link org.HdrHistogram.HistogramData#linearBucketValues linearBucketValues} :
- *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}> through
+ *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.LinearIterator} </li>
  *     <li>{@link org.HdrHistogram.HistogramData#logarithmicBucketValues logarithmicBucketValues} :
- *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}>
+ *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >}
  *     through the histogram using a {@link org.HdrHistogram.LogarithmicIterator} </li>
  *     <li>{@link org.HdrHistogram.HistogramData#recordedValues recordedValues} :
- *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}> through
+ *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.RecordedValuesIterator} </li>
  *     <li>{@link org.HdrHistogram.HistogramData#allValues allValues} :
- *     An {@link java.lang.Iterable}<{@link org.HdrHistogram.HistogramIterationValue}> through
+ *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.AllValuesIterator} </li>
  * </ul>
- * </p>
  * <p>
  * Iteration is typically done with a for-each loop statement. E.g.:
- * <br><code>
- * <pre>
+ * <br><pre><code>
  * for (HistogramIterationValue v : histogram.getHistogramData().percentiles(<i>percentileTicksPerHalfDistance</i>)) {
  *     ...
  * }
- * </pre>
- * </code>
+ * </code></pre>
  * or
- * <br><code>
- * <pre>
+ * <br><pre><code>
  * for (HistogramIterationValue v : histogram.getHistogramData().linearBucketValues(<i>valueUnitsPerBucket</i>)) {
  *     ...
  * }
- * </pre>
  * </code>
+ * </pre>
  * The iterators associated with each iteration method are resettable, such that a caller that would like to avoid
  * allocating a new iterator object for each iteration loop can re-use an iterator to repeatedly iterate through the
  * histogram. This iterator re-use usually takes the form of a traditional for loop using the Iterator's
@@ -167,8 +162,8 @@
  *
  * to avoid allocating a new iterator object for each iteration loop:
  * <br>
- * <code>
  * <pre>
+ * <code>
  * PercentileIterator iter = histogram.getHistogramData().percentiles().iterator(<i>percentileTicksPerHalfDistance</i>);
  * ...
  * iter.reset(<i>percentileTicksPerHalfDistance</i>);
@@ -176,10 +171,9 @@
  *     HistogramIterationValue v = iter.next();
  *     ...
  * }
- * </pre>
  * </code>
- * </p>
- * <p><h3>Equivalent Values and value ranges</h3></p>
+ * </pre>
+ * <h3>Equivalent Values and value ranges</h3>
  * <p>
  * Due to the finite (and configurable) resolution of the histogram, multiple adjacent integer data values can
  * be "equivalent". Two values are considered "equivalent" if samples recorded for both are always counted in a
@@ -188,7 +182,7 @@
  * and for finding the next non-equivalent value for a given value (useful when looping through values, in order
  * to avoid double-counting count).
  * </p>
- * <p><h3>Raw vs. corrected recording variants</h3></p>
+ * <h3>Raw vs. corrected recording variants</h3>
  * <p>
  * Regular, raw value data recording into an HdrHistogram is achieved with the
  * {@link org.HdrHistogram.AbstractHistogram#recordValue(long) recordValue()} method.
@@ -255,11 +249,10 @@
  * </p>
  * <p>
  * When used for response time characterization, the recording with the optional
- * </code></b>expectedIntervalBetweenValueSamples</code></b> parameter will tend to produce data sets that would
+ * <code><b>expectedIntervalBetweenValueSamples</b></code> parameter will tend to produce data sets that would
  * much more accurately reflect the response time distribution that a random, uncoordinated request would have
  * experienced.
  * </p>
- * <p>
  * <h3>Footprint estimation</h3>
  * Due to it's dynamic range representation, Histogram is relatively efficient in memory space requirements given
  * the accuracy and dynamic range it covers. Still, it is useful to be able to estimate the memory footprint involved
@@ -276,10 +269,9 @@
  *          (log2RoundedUp((highestTrackableValue) / subBucketSize) + 2) *
  *          subBucketSize
  *
- * </pre></code>
+ * </code></pre>
  * A conservative (high) estimate of a Histogram's footprint in bytes is available via the
  * {@link org.HdrHistogram.AbstractHistogram#getEstimatedFootprintInBytes() getEstimatedFootprintInBytes()} method.
- * </p>
  */
 
 package org.HdrHistogram;
