@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
@@ -75,7 +74,7 @@ public class HistogramLogWriter {
      * Constructs a new HistogramLogWriter that will write into the specified print stream.
      * @param printStream The PrintStream to write to
      */
-    public HistogramLogWriter(final PrintStream printStream) throws FileNotFoundException {
+    public HistogramLogWriter(final PrintStream printStream) {
         log = printStream;
     }
 
