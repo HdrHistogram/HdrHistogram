@@ -130,7 +130,8 @@ bool assert_base64_encode(const char* in, int len, const char* expected)
 
     rewind(fw);
 
-    char* output = (char*) malloc(sizeof(char) * num_bytes);
+    char* output = (char*) malloc(sizeof(char) * (num_bytes + 1));
+    memset(output, 0, num_bytes + 1);
 
     fgets(output, num_bytes + 1, fw);
 
@@ -139,7 +140,7 @@ bool assert_base64_encode(const char* in, int len, const char* expected)
 
     free(output);
 
-    return strncmp(expected, output, num_bytes) == 0;
+    return strncmp(expected, output, strlen(expected)) == 0;
 }
 
 static char* test_encode_to_base64()
