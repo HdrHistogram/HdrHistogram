@@ -161,7 +161,7 @@ public class HistogramLogWriter {
      * Output a legend line to the log.
      */
     public void outputLegend() {
-        log.println("\"StartTimestamp\",\"EndTimestamp\",\"Interval_Max\",\"Interval_Compressed_Histogram\"");
+        log.println("\"StartTimestamp\",\"Interval_Length\",\"Interval_Max\",\"Interval_Compressed_Histogram\"");
     }
 
     /**
