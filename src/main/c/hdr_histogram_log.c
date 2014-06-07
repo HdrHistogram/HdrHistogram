@@ -61,10 +61,11 @@ static int get_base_64(uint32_t _24_bit_value, int shift)
 int base64_encode(uint8_t* buf, int length, FILE* f)
 {
     int i = 0;
+    uint32_t in_val = 0;
 
     for (; length - i >= 3; i += 3)
     {
-        uint32_t in_val = (buf[i] << 16) + (buf[i + 1] << 8) + (buf[i + 2]);
+        in_val = (buf[i] << 16) + (buf[i + 1] << 8) + (buf[i + 2]);
 
         putc(base64_table[get_base_64(in_val, 18)], f);
         putc(base64_table[get_base_64(in_val, 12)], f);
@@ -72,8 +73,25 @@ int base64_encode(uint8_t* buf, int length, FILE* f)
         putc(base64_table[get_base_64(in_val,  0)], f);
     }
 
-    for (int i = 0; i < length; i += 3)
+    int remaining = length - i;
+
+    switch (remaining)
     {
+        case 2:
+            in_val = (buf[i] << 16) + (buf[i + 1] << 8);
+            putc(base64_table[get_base_64(in_val, 18)], f);
+            putc(base64_table[get_base_64(in_val, 12)], f);
+            putc(base64_table[get_base_64(in_val,  6)], f);
+            putc('=', f);
+            break;
+
+        case 1:
+            in_val = (buf[i] << 16);
+            putc(base64_table[get_base_64(in_val, 18)], f);
+            putc(base64_table[get_base_64(in_val, 12)], f);
+            putc('=', f);
+            putc('=', f);
+            break;
     }
 
     return 0;
