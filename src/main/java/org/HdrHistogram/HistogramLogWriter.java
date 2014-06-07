@@ -79,16 +79,19 @@ public class HistogramLogWriter {
     }
 
     /**
-     * Output an interval histogram, with the given timestamp.
+     * Output an interval histogram, with the given timestamp and a configurable maxValueUnitRatio.
      * (note that the specified timestamp will be used, and the timestamp in the actual
-     * histogram will be ignored)
+     * histogram will be ignored).
+     * The max value reported with the interval line will be scaled by the given maxValueUnitRatio.
      * @param startTimeStampSec The start timestamp to log with the interval histogram, in seconds.
      * @param endTimeStampSec The end timestamp to log with the interval histogram, in seconds.
      * @param histogram The interval histogram to log.
+     * @param maxValueUnitRatio The ratio by which to divide the histogram's max value when reporting on it.
      */
     public void outputIntervalHistogram(final double startTimeStampSec,
                                         final double endTimeStampSec,
-                                        final Histogram histogram) {
+                                        final Histogram histogram,
+                                        final double maxValueUnitRatio) {
         if ((targetBuffer == null) || targetBuffer.capacity() < histogram.getNeededByteBufferCapacity()) {
             targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
         }
@@ -100,13 +103,33 @@ public class HistogramLogWriter {
         log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
                 startTimeStampSec,
                 endTimeStampSec - startTimeStampSec,
-                histogram.getMaxValue() / 1000000.0,
+                histogram.getMaxValue() / maxValueUnitRatio,
                 DatatypeConverter.printBase64Binary(compressedArray)
         );
     }
 
     /**
+     * Output an interval histogram, with the given timestamp.
+     * (note that the specified timestamp will be used, and the timestamp in the actual
+     * histogram will be ignored).
+     * The max value in the histogram will be reported scaled down by a default maxValueUnitRatio of
+     * 1,000,000 (which is the msec : nsec ratio). Caller should use the direct form specifying
+     * maxValueUnitRatio some other ratio is needed for the max value output.
+     * @param startTimeStampSec The start timestamp to log with the interval histogram, in seconds.
+     * @param endTimeStampSec The end timestamp to log with the interval histogram, in seconds.
+     * @param histogram The interval histogram to log.
+     */
+    public void outputIntervalHistogram(final double startTimeStampSec,
+                                        final double endTimeStampSec,
+                                        final Histogram histogram) {
+        outputIntervalHistogram(startTimeStampSec, endTimeStampSec, histogram, 1000000.0);
+    }
+
+    /**
      * Output an interval histogram, using the timestamp indicated in the histogram.
+     * The max value in the histogram will be reported scaled down by a default maxValueUnitRatio of
+     * 1,000,000 (which is the msec : nsec ratio). Caller should use the direct form specifying
+     * maxValueUnitRatio some other ratio is needed for the max value output.
      * @param histogram The interval histogram to log.
      */
     public void outputIntervalHistogram(final Histogram histogram) {
