@@ -754,7 +754,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 totalToCurrentIJ += getCountAt(i, j);
                 if (totalToCurrentIJ >= countAtPercentile) {
                     long valueAtIndex = valueFromIndex(i, j);
-                    return valueAtIndex;
+                    return highestEquivalentValue(valueAtIndex);
                 }
             }
         }

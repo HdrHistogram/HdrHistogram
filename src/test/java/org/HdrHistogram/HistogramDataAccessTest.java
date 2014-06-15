@@ -57,8 +57,8 @@ public class HistogramDataAccessTest {
                 histogram.getTotalCount(),
                 scaledHistogram.getTotalCount());
         Assert.assertEquals("99%'iles should be equivalent",
-                histogram.getValueAtPercentile(99.0) * 512,
-                scaledHistogram.getValueAtPercentile(99.0));
+                histogram.lowestEquivalentValue(histogram.getValueAtPercentile(99.0)) * 512,
+                scaledHistogram.lowestEquivalentValue(scaledHistogram.getValueAtPercentile(99.0)));
         Assert.assertEquals("Max should be equivalent",
                 histogram.getMaxValue() * 512,
                 scaledHistogram.getMaxValue());
@@ -70,8 +70,8 @@ public class HistogramDataAccessTest {
                 postCorrectedHistogram.getTotalCount(),
                 postCorrectedScaledHistogram.getTotalCount());
         Assert.assertEquals("99%'iles should be equivalent",
-                postCorrectedHistogram.getValueAtPercentile(99.0) * 512,
-                postCorrectedScaledHistogram.getValueAtPercentile(99.0));
+                postCorrectedHistogram.lowestEquivalentValue(postCorrectedHistogram.getValueAtPercentile(99.0)) * 512,
+                postCorrectedScaledHistogram.lowestEquivalentValue(postCorrectedScaledHistogram.getValueAtPercentile(99.0)));
         Assert.assertEquals("Max should be equivalent",
                 postCorrectedHistogram.getMaxValue() * 512,
                 postCorrectedScaledHistogram.getMaxValue());
