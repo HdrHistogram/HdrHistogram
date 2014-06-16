@@ -17,3 +17,13 @@ format_example
 .sconsign.dblite
 *.o
 *.os
+src/main/csharp/bin/*
+src/main/csharp/obj/*
+src/test/csharp/bin/*
+src/test/csharp/obj/*
+src/examples/csharp/bin/*
+src/examples/csharp/obj/*
+src/vs2013/packages/*
+src/vs2013/HdrHistogram.NET.v12.suo
+*.csproj.user
+*.DotSettings.user
