@@ -25,32 +25,57 @@ int tests_run = 0;
 
 static struct hdr_histogram* raw_histogram = NULL;
 static struct hdr_histogram* cor_histogram = NULL;
+static struct hdr_histogram* scaled_raw_histogram = NULL;
+static struct hdr_histogram* scaled_cor_histogram = NULL;
 
 static void load_histograms()
 {
+    const int64_t highest_trackable_value = 3600L * 1000 * 1000;
+    const int32_t significant_figures = 3;
+
     int i;
     if (raw_histogram)
     {
         free(raw_histogram);
     }
 
-    hdr_alloc(3600L * 1000 * 1000, 3, &raw_histogram);
+    hdr_alloc(highest_trackable_value, significant_figures, &raw_histogram);
 
     if (cor_histogram)
     {
         free(cor_histogram);
     }
 
-    hdr_alloc(3600L * 1000 * 1000, 3, &cor_histogram);
+    hdr_alloc(highest_trackable_value, significant_figures, &cor_histogram);
+
+    if (scaled_raw_histogram)
+    {
+        free(scaled_raw_histogram);
+    }
+
+    hdr_init(1000, highest_trackable_value * 512, significant_figures, &scaled_raw_histogram);
+
+    if (scaled_cor_histogram)
+    {
+        free(scaled_cor_histogram);
+    }
+
+    hdr_init(1000, highest_trackable_value * 512, significant_figures, &scaled_cor_histogram);
 
     for (i = 0; i < 10000; i++)
     {
         hdr_record_value(raw_histogram, 1000L);
         hdr_record_corrected_value(cor_histogram, 1000L, 10000L);
+
+        hdr_record_value(scaled_raw_histogram, 1000L * 512);
+        hdr_record_corrected_value(scaled_cor_histogram, 1000L * 512, 10000L * 512);
     }
 
     hdr_record_value(raw_histogram, 100000000L);
     hdr_record_corrected_value(cor_histogram, 100000000L, 10000L);
+
+    hdr_record_value(scaled_raw_histogram, 1000L * 512);
+    hdr_record_corrected_value(scaled_cor_histogram, 1000L * 512, 10000L * 512);
 }
 
 static char* test_create()
@@ -60,8 +85,8 @@ static char* test_create()
     size_t s = hdr_get_memory_size(h);
 
     mu_assert("Failed to allocate hdr_histogram", r == 0);
-    mu_assert("Failed to allocate hdr_histogram", h != 0);
-    mu_assert("Size is incorrect", s == 1703992);
+    mu_assert("Failed to allocate hdr_histogram", h != NULL);
+    mu_assert("Size is incorrect", s == 1704008);
 
     free(h);
 

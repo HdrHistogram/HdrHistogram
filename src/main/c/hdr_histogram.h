@@ -20,7 +20,9 @@
 
 struct hdr_histogram
 {
+    int64_t lowest_trackable_value;
     int64_t highest_trackable_value;
+    int64_t unit_magnitude;
     int64_t significant_figures;
     int32_t sub_bucket_half_count_magnitude;
     int32_t sub_bucket_half_count;
@@ -40,6 +42,8 @@ struct hdr_histogram
  * The histogram is allocated in a single contigious block so can be delete via free,
  * without any structure specific destructor.
  *
+ * @param lowest_trackable_value The smallest possible value to be put into the
+ * histogram.
  * @param highest_trackable_value The largest possible value to be put into the
  * histogram.
  * @param significant_figures The level of precision for this histogram, i.e. the number
@@ -50,7 +54,20 @@ struct hdr_histogram
  * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
  * or -2 if malloc failed.
  */
+int hdr_init(
+        int64_t lowest_trackable_value,
+        int64_t highest_trackable_value,
+        int significant_figures,
+        struct hdr_histogram** result);
+
+/**
+ * Allocate the memory and initialise the hdr_histogram.  This is the equivalent of calling
+ * hdr_init(1, highest_trackable_value, significant_figures, result);
+ *
+ * @deprecated use hdr_init.
+ */
 int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct hdr_histogram** result);
+
 
 /**
  * Reset a histogram to zero - empty out a histogram and re-initialise it
