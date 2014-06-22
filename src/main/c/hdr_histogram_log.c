@@ -11,6 +11,7 @@
 #include <string.h>
 #include <zlib.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "hdr_histogram.h"
 #include "hdr_histogram_log.h"
@@ -58,6 +59,32 @@ static int get_base_64(uint32_t _24_bit_value, int shift)
     return (0x3F & (_24_bit_value >> shift));
 }
 
+static int from_base_64(int c)
+{
+    if ('A' <= c && c <= 'Z')
+    {
+        return c - 'A';
+    }
+    else if ('a' <= c && c <= 'z')
+    {
+        return c - ('a' + 26);
+    }
+    else if ('0' <= c && c <= '9')
+    {
+        return c - ('0' + 52);
+    }
+    else if ('+' == c)
+    {
+        return 62;
+    }
+    else if ('/' == c)
+    {
+        return 63;
+    }
+
+    return -1;
+}
+
 int base64_encode(uint8_t* buf, int length, FILE* f)
 {
     int i = 0;
@@ -93,6 +120,43 @@ int base64_encode(uint8_t* buf, int length, FILE* f)
             putc('=', f);
             break;
     }
+
+    return 0;
+}
+
+#define _READ_BUF_SIZE 4
+
+int base64_decode(uint8_t* buf, int length, char term, FILE* f)
+{
+    char read_buf[_READ_BUF_SIZE];
+    int ibuf = 0;
+    do
+    {
+        printf("read: %d\n", _READ_BUF_SIZE);
+        fflush(stdout);
+        if (NULL == fgets(read_buf, _READ_BUF_SIZE + 1, f))
+        {
+            return 0;
+        }
+        else if (read_buf[0] == term)
+        {
+            return 0;
+        }
+
+        uint32_t _24_bit_value = 0;
+
+        _24_bit_value |= from_base_64(read_buf[0]) << 18;
+        _24_bit_value |= from_base_64(read_buf[1]) << 12;
+        _24_bit_value |= from_base_64(read_buf[2]) << 6;
+        _24_bit_value |= from_base_64(read_buf[3]);
+
+        buf[ibuf++] = (_24_bit_value >> 16) & 0xFF;
+        buf[ibuf++] = (_24_bit_value >> 8) & 0xFF;
+        buf[ibuf++] = (_24_bit_value) & 0xFF;
+
+        _24_bit_value = 0;
+    }
+    while (true);
 
     return 0;
 }
@@ -237,7 +301,7 @@ int hdr_encode_compressed(struct hdr_histogram* h, uint8_t* buffer, int length)
     memset((void*) buffer, 0, length);
     struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
     size_t histogram_size = hdr_get_memory_size(h);
-    tmp_buffer = (uint8_t*) malloc(sizeof(uint8_t) * histogram_size);
+    tmp_buffer = (uint8_t*) calloc(histogram_size, sizeof(uint8_t));
 
     if (!tmp_buffer)
     {
@@ -348,7 +412,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
     }
 
     size_t counts_size = sizeof(int64_t) * (*result)->counts_len;
-    counts_array = (int64_t*) malloc(counts_size);
+    counts_array = (int64_t*) calloc((*result)->counts_len, sizeof(int64_t));
     if (NULL == counts_array)
     {
         ret = ENOMEM;

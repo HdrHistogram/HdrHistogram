@@ -76,7 +76,10 @@ static int64_t value_from_index(int32_t bucket_index, int32_t sub_bucket_index)
     return ((int64_t) sub_bucket_index) << bucket_index;
 }
 
-static int64_t get_count_at_index(struct hdr_histogram* h, int32_t bucket_index, int32_t sub_bucket_index)
+static int64_t get_count_at_index(
+        struct hdr_histogram* h,
+        int32_t bucket_index,
+        int32_t sub_bucket_index)
 {
     return h->counts[counts_index(h, bucket_index, sub_bucket_index)];
 }

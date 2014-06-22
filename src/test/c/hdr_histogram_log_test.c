@@ -130,17 +130,17 @@ bool assert_base64_encode(const char* in, int len, const char* expected)
 
     rewind(fw);
 
-    char* output = (char*) malloc(sizeof(char) * (num_bytes + 1));
-    memset(output, 0, num_bytes + 1);
+    char* output = (char*) calloc(num_bytes + 1, sizeof(char));
 
     fgets(output, num_bytes + 1, fw);
 
+    bool result = strncmp(expected, output, strlen(expected)) == 0;
+
     fclose(fw);
     remove(file_name);
-
     free(output);
 
-    return strncmp(expected, output, strlen(expected)) == 0;
+    return result;
 }
 
 static char* test_encode_to_base64()
@@ -156,6 +156,40 @@ static char* test_encode_to_base64()
     return 0;
 }
 
+// To prevent exporting the symbol, i.e. visible for testing.
+void base64_decode(uint8_t* buf, int length, uint8_t term, FILE* f);
+
+bool assert_base64_decode(const char* base64_encoded, const char* expected)
+{
+    const char* file_name = "/tmp/foo";
+    size_t expected_len = strlen(expected);
+
+    FILE* fw = fopen(file_name, "w+");
+    fputs(base64_encoded, fw);
+    fflush(fw);
+    rewind(fw);
+
+    uint8_t* output = (uint8_t*) calloc(expected_len, sizeof(uint8_t));
+
+    base64_decode(output, expected_len, '\n', fw);
+
+    bool result = strncmp((const char*) expected, (const char*) output, expected_len) == 0;
+
+    fclose(fw);
+    remove(file_name);
+    free(output);
+
+    return result;
+}
+
+static char* test_decode_from_base64()
+{
+    mu_assert("Decoding 3 bytes", assert_base64_decode("TWFu", "Man"));
+
+    return 0;
+}
+
+
 static struct mu_result all_tests()
 {
     tests_run = 0;
@@ -163,6 +197,7 @@ static struct mu_result all_tests()
     mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
     mu_run_test(test_encode_to_base64);
+    //mu_run_test(test_decode_from_base64);
 
     mu_ok;
 }
