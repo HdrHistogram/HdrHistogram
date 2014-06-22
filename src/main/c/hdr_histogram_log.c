@@ -35,7 +35,7 @@
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #define le64toh(x) OSSwapLittleToHostInt64(x)
 
-#elif __LINUX__
+#elif __linux__
 
 #include <endian.h>
 
