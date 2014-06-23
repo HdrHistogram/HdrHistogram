@@ -67,11 +67,11 @@ static int from_base_64(int c)
     }
     else if ('a' <= c && c <= 'z')
     {
-        return c - ('a' + 26);
+        return (c - 'a') + 26;
     }
     else if ('0' <= c && c <= '9')
     {
-        return c - ('0' + 52);
+        return (c - '0') + 52;
     }
     else if ('+' == c)
     {
@@ -80,6 +80,10 @@ static int from_base_64(int c)
     else if ('/' == c)
     {
         return 63;
+    }
+    else if ('=' == c)
+    {
+        return 0;
     }
 
     return -1;
@@ -126,37 +130,63 @@ int base64_encode(uint8_t* buf, int length, FILE* f)
 
 #define _READ_BUF_SIZE 4
 
-int base64_decode(uint8_t* buf, int length, char term, FILE* f)
+// int base64_decode(uint8_t* buf, int length, char term, FILE* f)
+// {
+//     char read_buf[_READ_BUF_SIZE];
+//     int ibuf = 0;
+//     do
+//     {
+//         printf("read: %d\n", _READ_BUF_SIZE);
+//         fflush(stdout);
+//         if (NULL == fgets(read_buf, _READ_BUF_SIZE + 1, f))
+//         {
+//             return 0;
+//         }
+//         else if (read_buf[0] == term)
+//         {
+//             return 0;
+//         }
+
+//         uint32_t _24_bit_value = 0;
+
+//         _24_bit_value |= from_base_64(read_buf[0]) << 18;
+//         _24_bit_value |= from_base_64(read_buf[1]) << 12;
+//         _24_bit_value |= from_base_64(read_buf[2]) << 6;
+//         _24_bit_value |= from_base_64(read_buf[3]);
+
+//         buf[ibuf++] = (_24_bit_value >> 16) & 0xFF;
+//         buf[ibuf++] = (_24_bit_value >> 8) & 0xFF;
+//         buf[ibuf++] = (_24_bit_value) & 0xFF;
+
+//         _24_bit_value = 0;
+//     }
+//     while (true);
+
+//     return 0;
+// }
+
+int base64_decode_block(const char* input, uint8_t* output)
 {
-    char read_buf[_READ_BUF_SIZE];
-    int ibuf = 0;
-    do
+    uint32_t _24_bit_value = 0;
+
+    _24_bit_value |= from_base_64(input[0]) << 18;
+    _24_bit_value |= from_base_64(input[1]) << 12;
+    _24_bit_value |= from_base_64(input[2]) << 6;
+    _24_bit_value |= from_base_64(input[3]);
+
+    output[0] = (uint8_t) ((_24_bit_value >> 16) & 0xFF);
+    output[1] = (uint8_t) ((_24_bit_value >> 8) & 0xFF);
+    output[2] = (uint8_t) ((_24_bit_value) & 0xFF);
+
+    return 0;
+}
+
+int base64_decode(const char* input, size_t input_len, uint8_t* output, size_t output_len)
+{
+    for (int i = 0, j = 0; i < input_len && j < output_len; i += 4, j += 3)
     {
-        printf("read: %d\n", _READ_BUF_SIZE);
-        fflush(stdout);
-        if (NULL == fgets(read_buf, _READ_BUF_SIZE + 1, f))
-        {
-            return 0;
-        }
-        else if (read_buf[0] == term)
-        {
-            return 0;
-        }
-
-        uint32_t _24_bit_value = 0;
-
-        _24_bit_value |= from_base_64(read_buf[0]) << 18;
-        _24_bit_value |= from_base_64(read_buf[1]) << 12;
-        _24_bit_value |= from_base_64(read_buf[2]) << 6;
-        _24_bit_value |= from_base_64(read_buf[3]);
-
-        buf[ibuf++] = (_24_bit_value >> 16) & 0xFF;
-        buf[ibuf++] = (_24_bit_value >> 8) & 0xFF;
-        buf[ibuf++] = (_24_bit_value) & 0xFF;
-
-        _24_bit_value = 0;
+        base64_decode_block(&input[i], &output[j]);
     }
-    while (true);
 
     return 0;
 }

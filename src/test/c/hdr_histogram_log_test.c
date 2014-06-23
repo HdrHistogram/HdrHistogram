@@ -16,6 +16,17 @@
 #include <hdr_histogram_log.h>
 #include "minunit.h"
 
+static bool compare_string(const char* a, const char* b, int len)
+{
+    if (strncmp(a, b, len) == 0)
+    {
+        return true;
+    }
+
+    printf("%s != %s\n", a, b);
+    return false;
+}
+
 static struct hdr_histogram* raw_histogram = NULL;
 static struct hdr_histogram* cor_histogram = NULL;
 
@@ -156,35 +167,51 @@ static char* test_encode_to_base64()
     return 0;
 }
 
+// Prototype to avoid exporting in header file.
+int base64_decode_block(char* input, uint8_t* output);
+
+bool assert_base64_decode_block(const char* input, const char* expected)
+{
+    uint8_t output[4];
+    output[3] = '\0';
+
+    int result = base64_decode_block(input, &output);
+
+    return result == 0 && compare_string(expected, (char*) output, 3);
+}
+
+
+static char* test_base64_decode_block()
+{
+    mu_assert("Decoding", assert_base64_decode_block("TWFu", "Man"));
+}
+
 // To prevent exporting the symbol, i.e. visible for testing.
-void base64_decode(uint8_t* buf, int length, uint8_t term, FILE* f);
+int base64_decode(char* input, size_t input_len, uint8_t* output, size_t output_len);
 
 bool assert_base64_decode(const char* base64_encoded, const char* expected)
 {
-    const char* file_name = "/tmp/foo";
-    size_t expected_len = strlen(expected);
+    int encoded_len = strlen(base64_encoded);
+    int output_len = (encoded_len / 4) * 3;
 
-    FILE* fw = fopen(file_name, "w+");
-    fputs(base64_encoded, fw);
-    fflush(fw);
-    rewind(fw);
+    uint8_t* output = calloc(sizeof(uint8_t), output_len);
 
-    uint8_t* output = (uint8_t*) calloc(expected_len, sizeof(uint8_t));
+    int result = base64_decode(base64_encoded, encoded_len, output, output_len);
 
-    base64_decode(output, expected_len, '\n', fw);
-
-    bool result = strncmp((const char*) expected, (const char*) output, expected_len) == 0;
-
-    fclose(fw);
-    remove(file_name);
-    free(output);
-
-    return result;
+    return result == 0 && compare_string(expected, output, output_len);
 }
 
 static char* test_decode_from_base64()
 {
-    mu_assert("Decoding 3 bytes", assert_base64_decode("TWFu", "Man"));
+    mu_assert(
+            "Encoding without padding",
+            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3Vy", "any carnal pleasur"));
+    mu_assert(
+            "Encoding with padding '='",
+            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3VyZS4=", "any carnal pleasure."));
+    mu_assert(
+            "Encoding with padding '=='",
+            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3VyZQ==", "any carnal pleasure"));
 
     return 0;
 }
@@ -197,7 +224,8 @@ static struct mu_result all_tests()
     mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
     mu_run_test(test_encode_to_base64);
-    //mu_run_test(test_decode_from_base64);
+    mu_run_test(test_base64_decode_block);
+    mu_run_test(test_decode_from_base64);
 
     mu_ok;
 }
