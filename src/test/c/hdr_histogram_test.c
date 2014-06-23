@@ -45,7 +45,8 @@ bool compare_values(double a, double b, double variation)
 
 bool compare_percentile(int64_t a, double b, double variation)
 {
-    return fabs(a - b) <= b * variation;
+    return compare_values((double) a, b, variation);
+    // return fabs(a - b) <= b * variation;
 }
 
 
@@ -361,10 +362,8 @@ static char* test_reset()
     load_histograms();
 
     // before
-    mu_assert("Value at 99% not 1000.0",
-              compare_percentile(hdr_value_at_percentile(raw_histogram, 99.0), 1000.0, 0.001));
-    mu_assert("Value at 99% not 98000000.0",
-              compare_percentile(hdr_value_at_percentile(cor_histogram, 99.0), 98000000.0, 0.001));
+    mu_assert("Value at 99% == 0.0", hdr_value_at_percentile(raw_histogram, 99.0) != 0);
+    mu_assert("Value at 99% == 0.0", hdr_value_at_percentile(cor_histogram, 99.0) != 0);
 
     hdr_reset(raw_histogram);
     hdr_reset(cor_histogram);
@@ -373,10 +372,8 @@ static char* test_reset()
     mu_assert("Total raw count != 0",       raw_histogram->total_count == 0);
     mu_assert("Total corrected count != 0", cor_histogram->total_count == 0);
 
-    mu_assert("Value at 99% not 0.0",
-              compare_percentile(hdr_value_at_percentile(raw_histogram, 99.0), 0.0, 0.001));
-    mu_assert("Value at 99% not 0.0",
-              compare_percentile(hdr_value_at_percentile(cor_histogram, 99.0), 0.0, 0.001));
+    mu_assert("Value at 99% not 0.0", hdr_value_at_percentile(raw_histogram, 99.0) == 0);
+    mu_assert("Value at 99% not 0.0", hdr_value_at_percentile(cor_histogram, 99.0) == 0);
 
     return 0;
 }
