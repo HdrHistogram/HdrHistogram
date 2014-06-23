@@ -16,10 +16,38 @@
 
 #include "minunit.h"
 
+static bool compare_double(double a, double b, double delta)
+{
+    if (fabs(a - b) < delta)
+    {
+        return true;
+    }
+
+    printf("[compare_double] fabs(%f, %f) < %f == false\n", a, b, delta);
+    return false;
+}
+
+static bool compare_int64(int64_t a, int64_t b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+
+    printf("[compare_int64] %ld == %ld == false\n", a, b);
+    return false;
+}
+
+bool compare_values(double a, double b, double variation)
+{
+    return compare_double(a, b, b * variation);
+}
+
 bool compare_percentile(int64_t a, double b, double variation)
 {
     return fabs(a - b) <= b * variation;
 }
+
 
 int tests_run = 0;
 
@@ -32,6 +60,9 @@ static void load_histograms()
 {
     const int64_t highest_trackable_value = 3600L * 1000 * 1000;
     const int32_t significant_figures = 3;
+    const int64_t interval = 10000L;
+    const int64_t scale = 512;
+    const int64_t scaled_interval = interval * scale;
 
     int i;
     if (raw_histogram)
@@ -65,17 +96,17 @@ static void load_histograms()
     for (i = 0; i < 10000; i++)
     {
         hdr_record_value(raw_histogram, 1000L);
-        hdr_record_corrected_value(cor_histogram, 1000L, 10000L);
+        hdr_record_corrected_value(cor_histogram, 1000L, interval);
 
-        hdr_record_value(scaled_raw_histogram, 1000L * 512);
-        hdr_record_corrected_value(scaled_cor_histogram, 1000L * 512, 10000L * 512);
+        hdr_record_value(scaled_raw_histogram, 1000L * scale);
+        hdr_record_corrected_value(scaled_cor_histogram, 1000L * scale, scaled_interval);
     }
 
     hdr_record_value(raw_histogram, 100000000L);
     hdr_record_corrected_value(cor_histogram, 100000000L, 10000L);
 
-    hdr_record_value(scaled_raw_histogram, 1000L * 512);
-    hdr_record_corrected_value(scaled_cor_histogram, 1000L * 512, 10000L * 512);
+    hdr_record_value(scaled_raw_histogram, 100000000L * scale);
+    hdr_record_corrected_value(scaled_cor_histogram, 100000000L * scale, scaled_interval);
 }
 
 static char* test_create()
@@ -350,6 +381,40 @@ static char* test_reset()
     return 0;
 }
 
+static char* test_scaling_equivalence()
+{
+    load_histograms();
+
+    mu_assert(
+            "Averages should be equivalent",
+            compare_values(
+                    hdr_mean(cor_histogram) * 512,
+                    hdr_mean(scaled_cor_histogram),
+                    0.000001));
+
+    mu_assert(
+            "Total count should be equivalent",
+            compare_int64(
+                    cor_histogram->total_count,
+                    scaled_cor_histogram->total_count));
+
+    mu_assert(
+            "99%'iles should be equivalent",
+            compare_int64(
+                    hdr_lowest_equivalent_value(
+                            cor_histogram,
+                            hdr_value_at_percentile(cor_histogram, 99.0)) * 512,
+                    hdr_lowest_equivalent_value(
+                            scaled_cor_histogram,
+                            hdr_value_at_percentile(scaled_cor_histogram, 99.0))));
+
+    mu_assert(
+            "Max should be equivalent",
+            compare_int64(hdr_max(cor_histogram) * 512, hdr_max(scaled_cor_histogram)));
+
+    return 0;
+}
+
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
@@ -362,6 +427,7 @@ static struct mu_result all_tests()
     mu_run_test(test_linear_values);
     mu_run_test(test_logarithmic_values);
     mu_run_test(test_reset);
+    mu_run_test(test_scaling_equivalence);
 
     mu_ok;
 }

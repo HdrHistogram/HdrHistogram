@@ -124,6 +124,7 @@ int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile);
 
 double hdr_mean(struct hdr_histogram* h);
 bool hdr_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
+int64_t hdr_lowest_equivalent_value(struct hdr_histogram* h, int64_t value);
 
 /**
  * The basic iterator.  This is the equivlent of the

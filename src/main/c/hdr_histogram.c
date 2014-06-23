@@ -88,7 +88,8 @@ static int64_t size_of_equivalent_value_range(struct hdr_histogram* h, int64_t v
 {
     int32_t bucket_index     = get_bucket_index(h, value);
     int32_t sub_bucket_index = get_sub_bucket_index(value, bucket_index, h->unit_magnitude);
-    return (1 << ((sub_bucket_index >= h->sub_bucket_count) ? (bucket_index + 1) : bucket_index));
+    int32_t adjusted_bucket  = (sub_bucket_index >= h->sub_bucket_count) ? (bucket_index + 1) : bucket_index;
+    return 1 << (h->unit_magnitude + adjusted_bucket);
 }
 
 static int64_t lowest_equivalent_value(struct hdr_histogram* h, int64_t value)
@@ -359,6 +360,11 @@ double hdr_stddev(struct hdr_histogram* h)
 bool hdr_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b)
 {
     return lowest_equivalent_value(h, a) == lowest_equivalent_value(h, b);
+}
+
+int64_t hdr_lowest_equivalent_value(struct hdr_histogram* h, int64_t value)
+{
+    return lowest_equivalent_value(h, value);
 }
 
 
