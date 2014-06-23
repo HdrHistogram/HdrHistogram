@@ -398,15 +398,13 @@ static char* test_scaling_equivalence()
                     cor_histogram->total_count,
                     scaled_cor_histogram->total_count));
 
+    int64_t expected_99th = hdr_value_at_percentile(cor_histogram, 99.0) * 512;
+    int64_t scaled_99th = hdr_value_at_percentile(scaled_cor_histogram, 99.0);
     mu_assert(
             "99%'iles should be equivalent",
             compare_int64(
-                    hdr_lowest_equivalent_value(
-                            cor_histogram,
-                            hdr_value_at_percentile(cor_histogram, 99.0)) * 512,
-                    hdr_lowest_equivalent_value(
-                            scaled_cor_histogram,
-                            hdr_value_at_percentile(scaled_cor_histogram, 99.0))));
+                    hdr_lowest_equivalent_value(cor_histogram, expected_99th),
+                    hdr_lowest_equivalent_value(scaled_cor_histogram, scaled_99th)));
 
     mu_assert(
             "Max should be equivalent",
