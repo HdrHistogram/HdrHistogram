@@ -137,7 +137,7 @@ int base64_decode(
 static bool assert_base64_encode(const char* input, const char* expected)
 {
     int input_len = strlen(input);
-    int output_len = ceil((input_len / 3.0) * 4.0);
+    int output_len = (int) (ceil(input_len / 3.0) * 4.0);
 
     char* output = calloc(sizeof(char), output_len);
 
@@ -176,6 +176,14 @@ static char* base64_encode_encodes_with_padding()
     return 0;
 }
 
+static char* base64_encode_fails_with_invalid_lengths()
+{
+    mu_assert(
+        "Output length not 4/3 of input length",
+        base64_encode(NULL, 9, NULL, 11));
+
+    return 0;
+}
 
 static bool assert_base64_encode_block(const char* input, const char* expected)
 {
@@ -255,19 +263,20 @@ static char* base64_decode_decodes_strings_with_padding()
 
 static char* base64_decode_fails_with_invalid_lengths()
 {
-    mu_assert(
-        "Input length not multiple of 4",
-        base64_decode(NULL, 5, NULL, 3) != 0);
+    mu_assert("Input length % 4 != 0", base64_decode(NULL, 5, NULL, 3) != 0);
     mu_assert("Input length < 4", base64_decode(NULL, 3, NULL, 3) != 0);
-    mu_assert("Output length < 3", base64_decode(NULL, 5, NULL, 2) != 0);
+    mu_assert(
+        "Output length not 3/4 of input length",
+        base64_decode(NULL, 8, NULL, 7) != 0);
 
     return 0;
 }
 
 static char* test_parse_log()
 {
+    const char* file_name = "src/test/resources/hiccup.140623.1028.10646.hlog";
     struct hdr_histogram* h;
-    FILE* log_file = fopen("src/test/resources/hiccup.140623.1028.10646.hlog", "r");
+    FILE* log_file = fopen(file_name, "r");
 
     hdr_parse_log(log_file, &h);
 
@@ -288,6 +297,7 @@ static struct mu_result all_tests()
     mu_run_test(base64_decode_decodes_strings_with_padding);
 
     mu_run_test(base64_encode_block_encodes_3_bytes);
+    mu_run_test(base64_encode_fails_with_invalid_lengths);
     mu_run_test(base64_encode_encodes_without_padding);
     mu_run_test(base64_encode_encodes_with_padding);
 

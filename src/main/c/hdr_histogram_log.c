@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "hdr_histogram.h"
 #include "hdr_histogram_log.h"
@@ -140,6 +141,11 @@ void base64_encode_block(const uint8_t* input, char* output)
 int base64_encode(
     const uint8_t* input, size_t input_len, char* output, size_t output_len)
 {
+    if ((size_t) ceil(input_len / 3.0) * 4.0 != output_len)
+    {
+        return -1;
+    }
+
     int i = 0;
     int j = 0;
     for (; input_len - i >= 3 && j < output_len; i += 3, j += 4)
@@ -171,23 +177,17 @@ void base64_decode_block(const char* input, uint8_t* output)
     output[2] = (uint8_t) ((_24_bit_value) & 0xFF);
 }
 
-static size_t clamp_output_len(size_t input_len, size_t output_len)
-{
-    size_t derived_output_len = (input_len / 4) * 3;
-    return (output_len < derived_output_len) ? output_len : derived_output_len;
-}
-
 int base64_decode(
     const char* input, size_t input_len, uint8_t* output, size_t output_len)
 {
-    if (input_len < 4 || output_len < 3 || (input_len & 0x3) != 0)
+    if (input_len < 4 ||
+        (input_len & 3) != 0 ||
+        (input_len / 4) * 3 != output_len)
     {
         return -1;
     }
 
-    output_len = clamp_output_len(input_len, output_len);
-
-    for (int i = 0, j = 0; i < input_len && j < output_len; i += 4, j += 3)
+    for (int i = 0, j = 0; i < input_len; i += 4, j += 3)
     {
         base64_decode_block(&input[i], &output[j]);
     }
