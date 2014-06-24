@@ -216,6 +216,16 @@ static char* test_decode_from_base64()
     return 0;
 }
 
+static char* test_parse_log()
+{
+    struct hdr_histogram* h;
+    FILE* log_file = fopen("src/test/resources/hiccup.140623.1028.10646.hlog", "r");
+
+    int result = hdr_parse_log(log_file, &h);
+
+    return 0;
+}
+
 
 static struct mu_result all_tests()
 {
@@ -226,6 +236,7 @@ static struct mu_result all_tests()
     mu_run_test(test_encode_to_base64);
     mu_run_test(test_base64_decode_block);
     mu_run_test(test_decode_from_base64);
+    mu_run_test(test_parse_log);
 
     mu_ok;
 }

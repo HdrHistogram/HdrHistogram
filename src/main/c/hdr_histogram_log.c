@@ -12,6 +12,7 @@
 #include <zlib.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 #include "hdr_histogram.h"
 #include "hdr_histogram_log.h"
@@ -127,43 +128,6 @@ int base64_encode(uint8_t* buf, int length, FILE* f)
 
     return 0;
 }
-
-#define _READ_BUF_SIZE 4
-
-// int base64_decode(uint8_t* buf, int length, char term, FILE* f)
-// {
-//     char read_buf[_READ_BUF_SIZE];
-//     int ibuf = 0;
-//     do
-//     {
-//         printf("read: %d\n", _READ_BUF_SIZE);
-//         fflush(stdout);
-//         if (NULL == fgets(read_buf, _READ_BUF_SIZE + 1, f))
-//         {
-//             return 0;
-//         }
-//         else if (read_buf[0] == term)
-//         {
-//             return 0;
-//         }
-
-//         uint32_t _24_bit_value = 0;
-
-//         _24_bit_value |= from_base_64(read_buf[0]) << 18;
-//         _24_bit_value |= from_base_64(read_buf[1]) << 12;
-//         _24_bit_value |= from_base_64(read_buf[2]) << 6;
-//         _24_bit_value |= from_base_64(read_buf[3]);
-
-//         buf[ibuf++] = (_24_bit_value >> 16) & 0xFF;
-//         buf[ibuf++] = (_24_bit_value >> 8) & 0xFF;
-//         buf[ibuf++] = (_24_bit_value) & 0xFF;
-
-//         _24_bit_value = 0;
-//     }
-//     while (true);
-
-//     return 0;
-// }
 
 int base64_decode_block(const char* input, uint8_t* output)
 {
@@ -476,3 +440,146 @@ int32_t hdr_get_compressed_length(uint8_t* buffer)
     struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
     return flyweight->length;
 }
+
+static bool starts_with(const char* s, char c)
+{
+    int len = strlen(s);
+
+    for (int i = 0; i < len; i++)
+    {
+        char x = s[i];
+
+        if (!isspace(x))
+        {
+            return x == c;
+        }
+    }
+
+    return true;
+}
+
+static bool is_comment(const char* s)
+{
+    return starts_with(s, '#');
+}
+
+struct log_header
+{
+    int major_version;
+    int minor_version;
+    int64_t start_time_ms;
+};
+
+static int scan_log_format(const char* line, struct log_header* header)
+{
+    const char* format = "#[Histogram log format version %d.%d]";
+    return sscanf(line, format, &header->major_version, &header->minor_version);
+}
+
+static void scan_start_time(const char* line, struct log_header* header)
+{
+    const char* format = "#[StartTime: %d.%d [^\n]";
+    int64_t timestamp_s = 0;
+    int64_t trailing_ms = 0;
+    if (sscanf(line, format, &timestamp_s, &trailing_ms) == 2)
+    {
+        header->start_time_ms = (timestamp_s * 1000) + trailing_ms;
+    }
+}
+
+static int parse_log_comments(FILE* f, struct log_header* header)
+{
+    char buf[4096];
+
+    header->major_version = 0;
+    header->minor_version = 0;
+    header->start_time_ms = 0;
+
+    do
+    {
+        char* line = fgets(buf, 4096, f);
+
+        if (NULL == line)
+        {
+            return -1;
+        }
+        else if (is_comment(line))
+        {
+            scan_log_format(line, header);
+            scan_start_time(line, header);
+        }
+        else
+        {
+            break;
+        }
+    }
+    while (true);
+
+    return 0;
+}
+
+static int parse_lines(FILE* f, struct hdr_histogram** result)
+{
+    const char* format = "%d.%d,%d.%d,%d.%d,%s";
+    const int data_len = (4096 / 4) * 3;
+    char buf[4096];
+    uint8_t data[data_len];
+
+    do
+    {
+        int begin_s = 0;
+        int begin_ms = 0;
+        int end_s = 0;
+        int end_ms = 0;
+        int interval_max_s = 0;
+        int interval_max_ms = 0;
+        char encoded_histogram[4096];
+        memset(encoded_histogram, 0, sizeof(char) * 4096);
+
+        char* line = fgets(buf, 4096, f);
+
+        if (NULL == line)
+        {
+            break;
+        }
+
+        int res = sscanf(
+            line, format, &begin_s, &begin_ms, &end_s, &end_ms,
+            &interval_max_s, &interval_max_ms, encoded_histogram);
+
+        if (res > 0)
+        {
+            int encoded_len = strlen(encoded_histogram);
+            base64_decode(encoded_histogram, encoded_len, data, data_len);
+        }
+        else
+        {
+            break;
+        }
+    }
+    while (true);
+
+    return 0;
+}
+
+int hdr_parse_log(FILE* f, struct hdr_histogram** result)
+{
+    struct log_header header;
+
+    parse_log_comments(f, &header);
+
+    printf(
+        "Version: %d.%d, at: %ld\n",
+        header.major_version,
+        header.minor_version,
+        header.start_time_ms);
+
+    // TODO: Check log file version.
+
+    // The CSV Header will be consumed in the parsing of the log comments
+
+    parse_lines(f, result);
+
+    return 0;
+}
+
