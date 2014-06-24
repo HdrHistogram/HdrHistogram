@@ -65,7 +65,8 @@ static const char base64_table[] =
 
 static int get_base_64(uint32_t _24_bit_value, int shift)
 {
-    return (0x3F & (_24_bit_value >> shift));
+    uint32_t _6_bit_value = 0x3F & (_24_bit_value >> shift);
+    return base64_table[_6_bit_value];
 }
 
 static int from_base_64(int c)
@@ -98,46 +99,65 @@ static int from_base_64(int c)
     return -1;
 }
 
-int base64_encode(uint8_t* buf, int length, FILE* f)
+void base64_encode_block_pad(const uint8_t* input, char* output, int pad)
 {
-    int i = 0;
-    uint32_t in_val = 0;
+    uint32_t _24_bit_value = 0;
 
-    for (; length - i >= 3; i += 3)
-    {
-        in_val = (buf[i] << 16) + (buf[i + 1] << 8) + (buf[i + 2]);
-
-        putc(base64_table[get_base_64(in_val, 18)], f);
-        putc(base64_table[get_base_64(in_val, 12)], f);
-        putc(base64_table[get_base_64(in_val,  6)], f);
-        putc(base64_table[get_base_64(in_val,  0)], f);
-    }
-
-    int remaining = length - i;
-
-    switch (remaining)
+    switch (pad)
     {
         case 2:
-            in_val = (buf[i] << 16) + (buf[i + 1] << 8);
-            putc(base64_table[get_base_64(in_val, 18)], f);
-            putc(base64_table[get_base_64(in_val, 12)], f);
-            putc(base64_table[get_base_64(in_val,  6)], f);
-            putc('=', f);
+            _24_bit_value = (input[0] << 16) + (input[1] << 8);
+
+            output[0] = get_base_64(_24_bit_value, 18);
+            output[1] = get_base_64(_24_bit_value, 12);
+            output[2] = get_base_64(_24_bit_value,  6);
+            output[3] = '=';
+
             break;
 
         case 1:
-            in_val = (buf[i] << 16);
-            putc(base64_table[get_base_64(in_val, 18)], f);
-            putc(base64_table[get_base_64(in_val, 12)], f);
-            putc('=', f);
-            putc('=', f);
+            _24_bit_value = (input[0] << 16);
+
+            output[0] = get_base_64(_24_bit_value, 18);
+            output[1] = get_base_64(_24_bit_value, 12);
+            output[2] = '=';
+            output[3] = '=';
+
             break;
     }
+}
+
+void base64_encode_block(const uint8_t* input, char* output)
+{
+    uint32_t _24_bit_value = (input[0] << 16) + (input[1] << 8) + (input[2]);
+
+    output[0] = get_base_64(_24_bit_value, 18);
+    output[1] = get_base_64(_24_bit_value, 12);
+    output[2] = get_base_64(_24_bit_value,  6);
+    output[3] = get_base_64(_24_bit_value,  0);
+}
+
+int base64_encode(
+    const uint8_t* input, size_t input_len, char* output, size_t output_len)
+{
+    int i = 0;
+    int j = 0;
+    for (; input_len - i >= 3 && j < output_len; i += 3, j += 4)
+    {
+        base64_encode_block(&input[i], &output[j]);
+    }
+
+    int remaining = input_len - i;
+
+    base64_encode_block_pad(&input[i], &output[j], remaining);
 
     return 0;
 }
 
-int base64_decode_block(const char* input, uint8_t* output)
+/**
+ * Assumes that there is 4 input chars available and 3 output chars.
+ */
+void base64_decode_block(const char* input, uint8_t* output)
 {
     uint32_t _24_bit_value = 0;
 
@@ -149,16 +169,23 @@ int base64_decode_block(const char* input, uint8_t* output)
     output[0] = (uint8_t) ((_24_bit_value >> 16) & 0xFF);
     output[1] = (uint8_t) ((_24_bit_value >> 8) & 0xFF);
     output[2] = (uint8_t) ((_24_bit_value) & 0xFF);
-
-    return 0;
 }
 
-int base64_decode(const char* input, size_t input_len, uint8_t* output, size_t output_len)
+static size_t clamp_output_len(size_t input_len, size_t output_len)
+{
+    size_t derived_output_len = (input_len / 4) * 3;
+    return (output_len < derived_output_len) ? output_len : derived_output_len;
+}
+
+int base64_decode(
+    const char* input, size_t input_len, uint8_t* output, size_t output_len)
 {
     if (input_len < 4 || output_len < 3 || (input_len & 0x3) != 0)
     {
         return -1;
     }
+
+    output_len = clamp_output_len(input_len, output_len);
 
     for (int i = 0, j = 0; i < input_len && j < output_len; i += 4, j += 3)
     {

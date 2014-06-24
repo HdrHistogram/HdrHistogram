@@ -125,59 +125,84 @@ static char* test_encode_and_decode_compressed()
     return 0;
 }
 
-// To prevent exporting the symbol, i.e. visible for testing.
-void base64_encode(const uint8_t* buf, int length, FILE* f);
+// Prototypes to avoid exporting in header file.
+void base64_encode_block(const uint8_t* input, char* output);
+int base64_encode(
+    const uint8_t* input, size_t input_len, char* output, size_t output_len);
 
-bool assert_base64_encode(const char* in, int len, const char* expected)
+void base64_decode_block(const char* input, uint8_t* output);
+int base64_decode(
+    const char* input, size_t input_len, uint8_t* output, size_t output_len);
+
+static bool assert_base64_encode(const char* input, const char* expected)
 {
-    const char* file_name = "/tmp/foo";
-    FILE* fw = fopen(file_name, "w+");
+    int input_len = strlen(input);
+    int output_len = ceil((input_len / 3.0) * 4.0);
 
-    base64_encode((const uint8_t*) in, len, fw);
+    char* output = calloc(sizeof(char), output_len);
 
-    fflush(fw);
+    int r = base64_encode((uint8_t*)input, input_len, output, output_len);
+    bool result = r == 0 && compare_string(expected, output, output_len);
 
-    int num_bytes = (int) ftell(fw);
-
-    rewind(fw);
-
-    char* output = (char*) calloc(num_bytes + 1, sizeof(char));
-
-    fgets(output, num_bytes + 1, fw);
-
-    bool result = strncmp(expected, output, strlen(expected)) == 0;
-
-    fclose(fw);
-    remove(file_name);
     free(output);
 
     return result;
 }
 
-static char* test_encode_to_base64()
+static char* base64_encode_encodes_without_padding()
 {
-    mu_assert("Encoding 3 bytes", assert_base64_encode("Man", 3, "TWFu"));
-    mu_assert("Encoding with padding '='",
-              assert_base64_encode("any carnal pleasure.", 20, "YW55IGNhcm5hbCBwbGVhc3VyZS4="));
-    mu_assert("Encoding with padding '=='",
-              assert_base64_encode("any carnal pleasure",  19, "YW55IGNhcm5hbCBwbGVhc3VyZQ=="));
-    mu_assert("Encoding without padding",
-              assert_base64_encode("any carnal pleasur", 18, "YW55IGNhcm5hbCBwbGVhc3Vy"));
+    mu_assert(
+        "Encoding without padding",
+        assert_base64_encode(
+            "any carnal pleasur",
+            "YW55IGNhcm5hbCBwbGVhc3Vy"));
 
     return 0;
 }
 
-// Prototype to avoid exporting in header file.
-int base64_decode_block(const char* input, uint8_t* output);
+static char* base64_encode_encodes_with_padding()
+{
+    mu_assert(
+        "Encoding with padding '='",
+        assert_base64_encode(
+            "any carnal pleasure.",
+            "YW55IGNhcm5hbCBwbGVhc3VyZS4="));
+    mu_assert(
+        "Encoding with padding '=='",
+        assert_base64_encode(
+            "any carnal pleasure",
+            "YW55IGNhcm5hbCBwbGVhc3VyZQ=="));
 
-bool assert_base64_decode_block(const char* input, const char* expected)
+    return 0;
+}
+
+
+static bool assert_base64_encode_block(const char* input, const char* expected)
+{
+    char output[5];
+    output[4] = '\0';
+
+    base64_encode_block((uint8_t*)input, output);
+
+    return compare_string(expected, output, 4);
+}
+
+static char* base64_encode_block_encodes_3_bytes()
+{
+    mu_assert("Encoding", assert_base64_encode_block("Man", "TWFu"));
+
+    return 0;
+}
+
+
+static bool assert_base64_decode_block(const char* input, const char* expected)
 {
     uint8_t output[4];
     output[3] = '\0';
 
-    int result = base64_decode_block(input, output);
+    base64_decode_block(input, output);
 
-    return result == 0 && compare_string(expected, (char*) output, 3);
+    return compare_string(expected, (char*) output, 3);
 }
 
 
@@ -188,10 +213,7 @@ static char* base64_decode_block_decodes_4_chars()
     return 0;
 }
 
-// To prevent exporting the symbol, i.e. visible for testing.
-int base64_decode(const char* input, size_t input_len, uint8_t* output, size_t output_len);
-
-bool assert_base64_decode(const char* base64_encoded, const char* expected)
+static bool assert_base64_decode(const char* base64_encoded, const char* expected)
 {
     int encoded_len = strlen(base64_encoded);
     int output_len = (encoded_len / 4) * 3;
@@ -206,19 +228,27 @@ bool assert_base64_decode(const char* base64_encoded, const char* expected)
 static char* base64_decode_decodes_strings_without_padding()
 {
     mu_assert(
-            "Encoding without padding",
-            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3Vy", "any carnal pleasur"));
+        "Encoding without padding",
+        assert_base64_decode(
+            "YW55IGNhcm5hbCBwbGVhc3Vy",
+            "any carnal pleasur"));
+
     return 0;
 }
 
 static char* base64_decode_decodes_strings_with_padding()
 {
     mu_assert(
-            "Encoding with padding '='",
-            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3VyZS4=", "any carnal pleasure."));
+        "Encoding with padding '='",
+        assert_base64_decode(
+            "YW55IGNhcm5hbCBwbGVhc3VyZS4=",
+            "any carnal pleasure."));
+
     mu_assert(
-            "Encoding with padding '=='",
-            assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3VyZQ==", "any carnal pleasure"));
+        "Encoding with padding '=='",
+        assert_base64_decode(
+            "YW55IGNhcm5hbCBwbGVhc3VyZQ==",
+            "any carnal pleasure"));
 
     return 0;
 }
@@ -251,11 +281,16 @@ static struct mu_result all_tests()
 
     mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
-    mu_run_test(test_encode_to_base64);
+
     mu_run_test(base64_decode_block_decodes_4_chars);
     mu_run_test(base64_decode_fails_with_invalid_lengths);
     mu_run_test(base64_decode_decodes_strings_without_padding);
     mu_run_test(base64_decode_decodes_strings_with_padding);
+
+    mu_run_test(base64_encode_block_encodes_3_bytes);
+    mu_run_test(base64_encode_encodes_without_padding);
+    mu_run_test(base64_encode_encodes_with_padding);
+
     mu_run_test(test_parse_log);
 
     mu_ok;
