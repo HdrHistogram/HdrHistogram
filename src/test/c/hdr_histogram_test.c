@@ -10,6 +10,7 @@
 #include <math.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <stdio.h>
 #include <hdr_histogram.h>
@@ -34,7 +35,7 @@ static bool compare_int64(int64_t a, int64_t b)
         return true;
     }
 
-    printf("[compare_int64] %ld == %ld == false\n", a, b);
+    printf("[compare_int64] %" PRIu64 " == %" PRIu64 " == false\n", a, b);
     return false;
 }
 

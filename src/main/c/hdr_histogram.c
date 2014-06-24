@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <zlib.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "hdr_histogram.h"
 
@@ -574,7 +575,7 @@ void hdr_percentiles_print(struct hdr_histogram* h,
         double max    = hdr_max(h)    / value_scale;
 
         fprintf(stream, "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n", mean, stddev);
-        fprintf(stream, "#[Max     = %12.3f, Total count    = %12lld]\n", max, h->total_count);
+        fprintf(stream, "#[Max     = %12.3f, Total count    = %12" PRIu64 "]\n", max, h->total_count);
         fprintf(stream, "#[Buckets = %12d, SubBuckets     = %12d]\n", h->bucket_count, h->sub_bucket_count);
     }
 
