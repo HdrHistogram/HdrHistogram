@@ -503,20 +503,20 @@ static bool is_comment(const char* s)
     return starts_with(s, '#');
 }
 
-struct log_header
+struct _log_header
 {
     int major_version;
     int minor_version;
     int64_t start_time_ms;
 };
 
-static int scan_log_format(const char* line, struct log_header* header)
+static int scan_log_format(const char* line, struct _log_header* header)
 {
     const char* format = "#[Histogram log format version %d.%d]";
     return sscanf(line, format, &header->major_version, &header->minor_version);
 }
 
-static void scan_start_time(const char* line, struct log_header* header)
+static void scan_start_time(const char* line, struct _log_header* header)
 {
     const char* format = "#[StartTime: %d.%d [^\n]";
     int64_t timestamp_s = 0;
@@ -527,7 +527,7 @@ static void scan_start_time(const char* line, struct log_header* header)
     }
 }
 
-static int parse_log_comments(FILE* f, struct log_header* header)
+static int parse_log_comments(FILE* f, struct _log_header* header)
 {
     char buf[4096];
 
@@ -604,7 +604,7 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
 
 int hdr_parse_log(FILE* f, struct hdr_histogram** result)
 {
-    struct log_header header;
+    struct _log_header header;
 
     parse_log_comments(f, &header);
 
