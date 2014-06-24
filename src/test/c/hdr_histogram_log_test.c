@@ -168,26 +168,28 @@ static char* test_encode_to_base64()
 }
 
 // Prototype to avoid exporting in header file.
-int base64_decode_block(char* input, uint8_t* output);
+int base64_decode_block(const char* input, uint8_t* output);
 
 bool assert_base64_decode_block(const char* input, const char* expected)
 {
     uint8_t output[4];
     output[3] = '\0';
 
-    int result = base64_decode_block(input, &output);
+    int result = base64_decode_block(input, output);
 
     return result == 0 && compare_string(expected, (char*) output, 3);
 }
 
 
-static char* test_base64_decode_block()
+static char* base64_decode_block_decodes_4_chars()
 {
     mu_assert("Decoding", assert_base64_decode_block("TWFu", "Man"));
+
+    return 0;
 }
 
 // To prevent exporting the symbol, i.e. visible for testing.
-int base64_decode(char* input, size_t input_len, uint8_t* output, size_t output_len);
+int base64_decode(const char* input, size_t input_len, uint8_t* output, size_t output_len);
 
 bool assert_base64_decode(const char* base64_encoded, const char* expected)
 {
@@ -198,14 +200,19 @@ bool assert_base64_decode(const char* base64_encoded, const char* expected)
 
     int result = base64_decode(base64_encoded, encoded_len, output, output_len);
 
-    return result == 0 && compare_string(expected, output, output_len);
+    return result == 0 && compare_string(expected, (char*)output, output_len);
 }
 
-static char* test_decode_from_base64()
+static char* base64_decode_decodes_strings_without_padding()
 {
     mu_assert(
             "Encoding without padding",
             assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3Vy", "any carnal pleasur"));
+    return 0;
+}
+
+static char* base64_decode_decodes_strings_with_padding()
+{
     mu_assert(
             "Encoding with padding '='",
             assert_base64_decode("YW55IGNhcm5hbCBwbGVhc3VyZS4=", "any carnal pleasure."));
@@ -216,12 +223,23 @@ static char* test_decode_from_base64()
     return 0;
 }
 
+static char* base64_decode_fails_with_invalid_lengths()
+{
+    mu_assert(
+        "Input length not multiple of 4",
+        base64_decode(NULL, 5, NULL, 3) != 0);
+    mu_assert("Input length < 4", base64_decode(NULL, 3, NULL, 3) != 0);
+    mu_assert("Output length < 3", base64_decode(NULL, 5, NULL, 2) != 0);
+
+    return 0;
+}
+
 static char* test_parse_log()
 {
     struct hdr_histogram* h;
     FILE* log_file = fopen("src/test/resources/hiccup.140623.1028.10646.hlog", "r");
 
-    int result = hdr_parse_log(log_file, &h);
+    hdr_parse_log(log_file, &h);
 
     return 0;
 }
@@ -234,8 +252,10 @@ static struct mu_result all_tests()
     mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
     mu_run_test(test_encode_to_base64);
-    mu_run_test(test_base64_decode_block);
-    mu_run_test(test_decode_from_base64);
+    mu_run_test(base64_decode_block_decodes_4_chars);
+    mu_run_test(base64_decode_fails_with_invalid_lengths);
+    mu_run_test(base64_decode_decodes_strings_without_padding);
+    mu_run_test(base64_decode_decodes_strings_with_padding);
     mu_run_test(test_parse_log);
 
     mu_ok;

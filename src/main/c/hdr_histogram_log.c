@@ -147,6 +147,11 @@ int base64_decode_block(const char* input, uint8_t* output)
 
 int base64_decode(const char* input, size_t input_len, uint8_t* output, size_t output_len)
 {
+    if (input_len < 4 || output_len < 3 || (input_len & 0x3) != 0)
+    {
+        return -1;
+    }
+
     for (int i = 0, j = 0; i < input_len && j < output_len; i += 4, j += 3)
     {
         base64_decode_block(&input[i], &output[j]);
@@ -568,11 +573,11 @@ int hdr_parse_log(FILE* f, struct hdr_histogram** result)
 
     parse_log_comments(f, &header);
 
-    printf(
-        "Version: %d.%d, at: %ld\n",
-        header.major_version,
-        header.minor_version,
-        header.start_time_ms);
+    // printf(
+    //     "Version: %d.%d, at: %ld\n",
+    //     header.major_version,
+    //     header.minor_version,
+    //     header.start_time_ms);
 
     // TODO: Check log file version.
 
