@@ -185,38 +185,22 @@ static char* base64_encode_fails_with_invalid_lengths()
     return 0;
 }
 
-static bool assert_base64_encode_block(const char* input, const char* expected)
-{
-    char output[5];
-    output[4] = '\0';
-
-    base64_encode_block((uint8_t*)input, output);
-
-    return compare_string(expected, output, 4);
-}
-
 static char* base64_encode_block_encodes_3_bytes()
 {
-    mu_assert("Encoding", assert_base64_encode_block("Man", "TWFu"));
+    char output[5] = { 0 };
+
+    base64_encode_block((uint8_t*)"Man", output);
+    mu_assert("Encoding", compare_string("TWFu", output, 4));
 
     return 0;
 }
 
-
-static bool assert_base64_decode_block(const char* input, const char* expected)
-{
-    uint8_t output[4];
-    output[3] = '\0';
-
-    base64_decode_block(input, output);
-
-    return compare_string(expected, (char*) output, 3);
-}
-
-
 static char* base64_decode_block_decodes_4_chars()
 {
-    mu_assert("Decoding", assert_base64_decode_block("TWFu", "Man"));
+    uint8_t output[4] = { 0 };
+
+    base64_decode_block("TWFu", output);
+    mu_assert("Decoding", compare_string("Man", (char*) output, 3));
 
     return 0;
 }

@@ -427,7 +427,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
         goto cleanup;
     }
 
-    strm.next_in = buffer + sizeof(struct _compression_flyweight);
+    strm.next_in = compression_flyweight->data;
     strm.avail_in = compressed_length;
     strm.next_out = (uint8_t *) &encoding_flyweight;
     strm.avail_out = sizeof(struct _encoding_flyweight);
