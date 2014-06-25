@@ -48,6 +48,54 @@
 
 #endif
 
+//  ######  ######## ########  #### ##    ##  ######    ######
+// ##    ##    ##    ##     ##  ##  ###   ## ##    ##  ##    ##
+// ##          ##    ##     ##  ##  ####  ## ##        ##
+//  ######     ##    ########   ##  ## ## ## ##   ####  ######
+//       ##    ##    ##   ##    ##  ##  #### ##    ##        ##
+// ##    ##    ##    ##    ##   ##  ##   ### ##    ##  ##    ##
+//  ######     ##    ##     ## #### ##    ##  ######    ######
+
+int null_trailing_whitespace(char* s, int len)
+{
+    int i = len;
+    while (--i != -1)
+    {
+        if (isspace(s[i]))
+        {
+            s[i] = '\0';
+        }
+        else
+        {
+            return i + 1;
+        }
+    }
+
+    return 0;
+}
+
+static bool starts_with(const char* s, char c)
+{
+    int len = strlen(s);
+
+    for (int i = 0; i < len; i++)
+    {
+        char x = s[i];
+
+        if (!isspace(x))
+        {
+            return x == c;
+        }
+    }
+
+    return true;
+}
+
+static bool is_comment(const char* s)
+{
+    return starts_with(s, '#');
+}
+
 // ########     ###     ######  ########     #######  ##
 // ##     ##   ## ##   ##    ## ##          ##     ## ##    ##
 // ##     ##  ##   ##  ##       ##          ##        ##    ##
@@ -98,7 +146,7 @@ static int from_base_64(int c)
         return 0;
     }
 
-    return -1;
+    return EINVAL;
 }
 
 static size_t base64_encoded_len(size_t decoded_size)
@@ -471,46 +519,6 @@ int32_t hdr_get_compressed_length(uint8_t* buffer)
     return flyweight->length;
 }
 
-int null_trailing_whitespace(char* s, int len)
-{
-    int i = len;
-    while (--i != -1)
-    {
-        if (isspace(s[i]))
-        {
-            s[i] = '\0';
-        }
-        else
-        {
-            return i + 1;
-        }
-    }
-
-    return 0;
-}
-
-static bool starts_with(const char* s, char c)
-{
-    int len = strlen(s);
-
-    for (int i = 0; i < len; i++)
-    {
-        char x = s[i];
-
-        if (!isspace(x))
-        {
-            return x == c;
-        }
-    }
-
-    return true;
-}
-
-static bool is_comment(const char* s)
-{
-    return starts_with(s, '#');
-}
-
 struct _log_header
 {
     int major_version;
@@ -608,9 +616,9 @@ int parse_lines(FILE* f, struct hdr_histogram** result)
         }
 
         if (realloc_buffer(
-                (void**)&base64_histogram, sizeof(char), read) == -1 ||
+                (void**)&base64_histogram, sizeof(char), read) != 0 ||
             realloc_buffer(
-                (void**)&compressed_histogram, sizeof(uint8_t), read) == -1)
+                (void**)&compressed_histogram, sizeof(uint8_t), read) != 0)
         {
             ret = ENOMEM;
             goto cleanup;
@@ -627,9 +635,15 @@ int parse_lines(FILE* f, struct hdr_histogram** result)
             int base64_len = strlen(base64_histogram);
             int compressed_len = base64_decoded_len(base64_len);
 
-            base64_decode(
+            int base64_res = base64_decode(
                 base64_histogram, base64_len,
                 compressed_histogram, compressed_len);
+
+            if (base64_res != 0)
+            {
+                ret = base64_res;
+                goto cleanup;
+            }
 
             struct hdr_histogram* h = NULL;
             if (hdr_decode_compressed(compressed_histogram, compressed_len, &h) == 0)
