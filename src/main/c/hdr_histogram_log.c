@@ -395,8 +395,9 @@ cleanup:
 
 int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result)
 {
-    int ret = -1;
-    int64_t* counts_array = NULL;
+    struct hdr_histogram* h = NULL;
+    int ret = 0;
+    int64_t counts_array[512];
 
     if (length < sizeof(struct _compression_flyweight) || *result != NULL)
     {
@@ -420,8 +421,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
     z_stream strm;
     strm_init(&strm);
 
-    ret = inflateInit(&strm);
-    if (ret != Z_OK)
+    if (inflateInit(&strm) != Z_OK)
     {
         ret = HDR_INFLATE_INIT_FAIL;
         goto cleanup;
@@ -432,50 +432,59 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
     strm.next_out = (uint8_t *) &encoding_flyweight;
     strm.avail_out = sizeof(struct _encoding_flyweight);
 
-    ret = inflate(&strm, Z_SYNC_FLUSH);
-    if (ret != Z_OK)
+    if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
     {
         ret = HDR_INFLATE_FAIL;
         goto cleanup;
     }
 
+    int64_t lowest_trackable_value = be64toh(encoding_flyweight.lowest_trackable_value);
     int64_t highest_trackable_value = be64toh(encoding_flyweight.highest_trackable_value);
-    int32_t significant_figures     = be32toh(encoding_flyweight.significant_figures);
+    int32_t significant_figures = be32toh(encoding_flyweight.significant_figures);
 
-    if (hdr_alloc(highest_trackable_value, significant_figures, result) != 0)
+    if (hdr_init(
+        lowest_trackable_value,
+        highest_trackable_value,
+        significant_figures,
+        &h) != 0)
     {
         ret = ENOMEM;
         goto cleanup;
     }
 
-    size_t counts_size = sizeof(int64_t) * (*result)->counts_len;
-    counts_array = (int64_t*) calloc((*result)->counts_len, sizeof(int64_t));
-    if (NULL == counts_array)
+    h->total_count = be64toh(encoding_flyweight.total_count);
+
+    int counts_index = 0;
+    int available_counts = 0;
+    int inflate_res = 0;
+    do
     {
-        ret = ENOMEM;
-        goto cleanup;
+        strm.next_out = (uint8_t*) counts_array;
+        strm.avail_out = 512 * 8;
+
+        inflate_res = inflate(&strm, Z_SYNC_FLUSH);
+
+        if (Z_STREAM_END != inflate_res && Z_OK != inflate_res)
+        {
+            ret = HDR_INFLATE_FAIL;
+            break;
+        }
+
+        available_counts = strm.avail_out / 8;
+        for (int i = 0; i < available_counts; i++)
+        {
+            h->counts[counts_index++] = be64toh(counts_array[i]);
+        }
+
+        printf("Left over? %d\n", strm.avail_out & 7);
     }
+    while (inflate_res == Z_OK);
 
-    strm.next_out = (uint8_t*) counts_array;
-    strm.avail_out = counts_size;
-
-    ret = inflate(&strm, Z_SYNC_FLUSH);
     inflateEnd(&strm);
-    if (ret != Z_OK)
-    {
-        ret = HDR_INFLATE_FAIL;
-        goto cleanup;
-    }
-
-    do_decode(counts_array, be64toh(encoding_flyweight.total_count), *result);
 
 cleanup:
-    if (NULL != counts_array)
-    {
-        free(counts_array);
-    }
-
-    return 0;
+    *result = h;
+    return ret;
 }
 
 int32_t hdr_get_compressed_length(uint8_t* buffer)
@@ -564,9 +573,9 @@ static int parse_log_comments(FILE* f, struct _log_header* header)
 static int parse_lines(FILE* f, struct hdr_histogram** result)
 {
     const char* format = "%d.%d,%d.%d,%d.%d,%s";
-    const int data_len = (4096 / 4) * 3;
+    char base64_histogram[4096];
+    uint8_t compressed_histogram[(4096 / 4) * 3];
     char buf[4096];
-    uint8_t data[data_len];
 
     do
     {
@@ -576,8 +585,9 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
         int end_ms = 0;
         int interval_max_s = 0;
         int interval_max_ms = 0;
-        char encoded_histogram[4096];
-        memset(encoded_histogram, 0, sizeof(char) * 4096);
+        int compressed_len = 0;
+        memset(base64_histogram, 0, sizeof(char) * 4096);
+        memset(compressed_histogram, 0, sizeof(uint8_t) * 4096);
 
         char* line = fgets(buf, 4096, f);
 
@@ -588,12 +598,21 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
 
         int res = sscanf(
             line, format, &begin_s, &begin_ms, &end_s, &end_ms,
-            &interval_max_s, &interval_max_ms, encoded_histogram);
+            &interval_max_s, &interval_max_ms, base64_histogram);
 
         if (res > 0)
         {
-            int encoded_len = strlen(encoded_histogram);
-            base64_decode(encoded_histogram, encoded_len, data, data_len);
+            int base64_len = strlen(base64_histogram);
+            int compressed_len = (base64_len / 4) * 3;
+            base64_decode(
+                base64_histogram, base64_len,
+                compressed_histogram, compressed_len);
+
+            struct hdr_histogram* h;
+            if (hdr_decode_compressed(compressed_histogram, compressed_len, &h) == 0)
+            {
+                hdr_percentiles_print(h, stdout, 5, 1.0, CSV);
+            }
         }
         else
         {

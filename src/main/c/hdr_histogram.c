@@ -130,7 +130,7 @@ int hdr_init(
         int significant_figures,
         struct hdr_histogram** result)
 {
-    if (significant_figures < 3 || 6 < significant_figures)
+    if (significant_figures < 1 || 5 < significant_figures)
     {
         return -1;
     }

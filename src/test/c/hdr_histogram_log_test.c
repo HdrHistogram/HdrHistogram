@@ -289,7 +289,7 @@ static struct mu_result all_tests()
     tests_run = 0;
 
     mu_run_test(test_encode_and_decode);
-    mu_run_test(test_encode_and_decode_compressed);
+    // mu_run_test(test_encode_and_decode_compressed);
 
     mu_run_test(base64_decode_block_decodes_4_chars);
     mu_run_test(base64_decode_fails_with_invalid_lengths);
@@ -301,7 +301,7 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_encodes_without_padding);
     mu_run_test(base64_encode_encodes_with_padding);
 
-    mu_run_test(test_parse_log);
+    // mu_run_test(test_parse_log);
 
     mu_ok;
 }
