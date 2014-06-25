@@ -4,6 +4,7 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -100,6 +101,16 @@ static int from_base_64(int c)
     return -1;
 }
 
+static size_t base64_encoded_len(size_t decoded_size)
+{
+    return (size_t) (ceil(decoded_size / 3.0) * 4.0);
+}
+
+static size_t base64_decoded_len(size_t encoded_size)
+{
+    return (encoded_size / 4) * 3;
+}
+
 void base64_encode_block_pad(const uint8_t* input, char* output, int pad)
 {
     uint32_t _24_bit_value = 0;
@@ -144,9 +155,9 @@ void base64_encode_block(const uint8_t* input, char* output)
 int base64_encode(
     const uint8_t* input, size_t input_len, char* output, size_t output_len)
 {
-    if ((size_t) ceil(input_len / 3.0) * 4.0 != output_len)
+    if (base64_encoded_len(input_len) != output_len)
     {
-        return -1;
+        return EINVAL;
     }
 
     int i = 0;
@@ -187,7 +198,7 @@ int base64_decode(
         (input_len & 3) != 0 ||
         (input_len / 4) * 3 != output_len)
     {
-        return -1;
+        return EINVAL;
     }
 
     for (int i = 0, j = 0; i < input_len; i += 4, j += 3)
@@ -284,37 +295,6 @@ size_t hdr_encode(struct hdr_histogram* h, uint8_t* buffer, int length)
     }
 
     return 1;
-}
-
-static void do_decode(int64_t* counts, int64_t total_count, struct hdr_histogram* h)
-{
-    for (int i = 0; i < h->counts_len; i++)
-    {
-        h->counts[i] = be64toh(counts[i]);
-    }
-
-    h->total_count = total_count;
-}
-
-bool hdr_decode(uint8_t* buffer, size_t length, struct hdr_histogram** result)
-{
-    struct _encoding_flyweight* flyweight = (struct _encoding_flyweight*) buffer;
-
-    if (*result == NULL)
-    {
-        hdr_alloc(be64toh(flyweight->highest_trackable_value),
-                  be32toh(flyweight->significant_figures),
-                  result);
-    }
-    else
-    {
-        return false;
-    }
-
-    struct hdr_histogram* h = *result;
-    do_decode(flyweight->counts, be64toh(flyweight->total_count), h);
-
-    return true;
 }
 
 struct __attribute__((__packed__)) _compression_flyweight
@@ -470,13 +450,11 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
             break;
         }
 
-        available_counts = strm.avail_out / 8;
+        available_counts = 512 - (strm.avail_out / 8);
         for (int i = 0; i < available_counts; i++)
         {
             h->counts[counts_index++] = be64toh(counts_array[i]);
         }
-
-        printf("Left over? %d\n", strm.avail_out & 7);
     }
     while (inflate_res == Z_OK);
 
@@ -491,6 +469,24 @@ int32_t hdr_get_compressed_length(uint8_t* buffer)
 {
     struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
     return flyweight->length;
+}
+
+int null_trailing_whitespace(char* s, int len)
+{
+    int i = len;
+    while (--i != -1)
+    {
+        if (isspace(s[i]))
+        {
+            s[i] = '\0';
+        }
+        else
+        {
+            return i + 1;
+        }
+    }
+
+    return 0;
 }
 
 static bool starts_with(const char* s, char c)
@@ -539,7 +535,7 @@ static void scan_start_time(const char* line, struct _log_header* header)
     }
 }
 
-static int parse_log_comments(FILE* f, struct _log_header* header)
+static void parse_log_comments(FILE* f, struct _log_header* header)
 {
     char buf[4096];
 
@@ -551,11 +547,7 @@ static int parse_log_comments(FILE* f, struct _log_header* header)
     {
         char* line = fgets(buf, 4096, f);
 
-        if (NULL == line)
-        {
-            return -1;
-        }
-        else if (is_comment(line))
+        if (NULL != line && is_comment(line))
         {
             scan_log_format(line, header);
             scan_start_time(line, header);
@@ -566,16 +558,39 @@ static int parse_log_comments(FILE* f, struct _log_header* header)
         }
     }
     while (true);
-
-    return 0;
 }
 
-static int parse_lines(FILE* f, struct hdr_histogram** result)
+int realloc_buffer(void** buffer, size_t nmemb, size_t size)
+{
+    int len = nmemb * size;
+    if (NULL == *buffer)
+    {
+        *buffer = malloc(len);
+    }
+    else
+    {
+        *buffer = realloc(*buffer, len);
+    }
+
+    if (NULL == *buffer)
+    {
+        return ENOMEM;
+    }
+    else
+    {
+        memset(*buffer, 0, len);
+        return 0;
+    }
+}
+
+int parse_lines(FILE* f, struct hdr_histogram** result)
 {
     const char* format = "%d.%d,%d.%d,%d.%d,%s";
-    char base64_histogram[4096];
-    uint8_t compressed_histogram[(4096 / 4) * 3];
-    char buf[4096];
+    char* base64_histogram = NULL;
+    uint8_t* compressed_histogram = NULL;
+    char* line;
+    size_t line_len;
+    int ret = 0;
 
     do
     {
@@ -585,15 +600,20 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
         int end_ms = 0;
         int interval_max_s = 0;
         int interval_max_ms = 0;
-        int compressed_len = 0;
-        memset(base64_histogram, 0, sizeof(char) * 4096);
-        memset(compressed_histogram, 0, sizeof(uint8_t) * 4096);
 
-        char* line = fgets(buf, 4096, f);
-
-        if (NULL == line)
+        int read = getline(&line, &line_len, f);
+        if (read == -1)
         {
             break;
+        }
+
+        if (realloc_buffer(
+                (void**)&base64_histogram, sizeof(char), read) == -1 ||
+            realloc_buffer(
+                (void**)&compressed_histogram, sizeof(uint8_t), read) == -1)
+        {
+            ret = ENOMEM;
+            goto cleanup;
         }
 
         int res = sscanf(
@@ -602,13 +622,16 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
 
         if (res > 0)
         {
+            null_trailing_whitespace(base64_histogram, strlen(base64_histogram));
+
             int base64_len = strlen(base64_histogram);
-            int compressed_len = (base64_len / 4) * 3;
+            int compressed_len = base64_decoded_len(base64_len);
+
             base64_decode(
                 base64_histogram, base64_len,
                 compressed_histogram, compressed_len);
 
-            struct hdr_histogram* h;
+            struct hdr_histogram* h = NULL;
             if (hdr_decode_compressed(compressed_histogram, compressed_len, &h) == 0)
             {
                 hdr_percentiles_print(h, stdout, 5, 1.0, CSV);
@@ -621,7 +644,12 @@ static int parse_lines(FILE* f, struct hdr_histogram** result)
     }
     while (true);
 
-    return 0;
+cleanup:
+    free(line);
+    free(base64_histogram);
+    free(compressed_histogram);
+
+    return ret;
 }
 
 int hdr_parse_log(FILE* f, struct hdr_histogram** result)
