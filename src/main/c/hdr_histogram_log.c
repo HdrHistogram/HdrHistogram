@@ -128,6 +128,9 @@ void base64_encode_block_pad(const uint8_t* input, char* output, int pad)
     }
 }
 
+/**
+ * Assumes that there is 3 input bytes and 4 output chars.
+ */
 void base64_encode_block(const uint8_t* input, char* output)
 {
     uint32_t _24_bit_value = (input[0] << 16) + (input[1] << 8) + (input[2]);
