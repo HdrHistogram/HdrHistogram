@@ -513,12 +513,6 @@ cleanup:
     return ret;
 }
 
-int32_t hdr_get_compressed_length(uint8_t* buffer)
-{
-    struct _compression_flyweight* flyweight = (struct _compression_flyweight*) buffer;
-    return flyweight->length;
-}
-
 struct _log_header
 {
     int major_version;
