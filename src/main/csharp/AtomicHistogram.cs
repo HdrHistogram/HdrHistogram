@@ -57,9 +57,6 @@ namespace HdrHistogram.NET
             totalCountUpdater.Set(0);
         }
 
-        /**
-         * @inheritDoc
-         */
         public override /*AtomicHistogram*/ AbstractHistogram copy() 
         {
             AtomicHistogram copy = new AtomicHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
@@ -67,9 +64,6 @@ namespace HdrHistogram.NET
             return copy;
         }
 
-        /**
-         * @inheritDoc
-         */
         public override /*AtomicHistogram*/ AbstractHistogram copyCorrectedForCoordinatedOmission(long expectedIntervalBetweenValueSamples) 
         {
             AtomicHistogram toHistogram = new AtomicHistogram(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
@@ -97,7 +91,7 @@ namespace HdrHistogram.NET
             totalCountUpdater.AddAndGet(value);
         }
 
-        public override int getEstimatedFootprintInBytes() 
+        public override int _getEstimatedFootprintInBytes() 
         {
             return (512 + (8 * counts.length()));
         }
@@ -107,7 +101,7 @@ namespace HdrHistogram.NET
          * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
          *
          * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-         *                              integer that is >= 2.
+         *                              integer that is {@literal >=} 2.
          * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
          *                                       maintain value resolution and separation. Must be a non-negative
          *                                       integer between 0 and 5.
@@ -125,10 +119,10 @@ namespace HdrHistogram.NET
          * proper value for lowestTrackableValue would be 1000.
          *
          * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
-         *                             Must be a positive integer that is >= 1. May be internally rounded down to nearest
+         *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
          *                             power of 2.
          * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-         *                              integer that is >= (2 * lowestTrackableValue).
+         *                              integer that is {@literal >=} (2 * lowestTrackableValue).
          * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
          *                                       maintain value resolution and separation. Must be a non-negative
          *                                       integer between 0 and 5.
@@ -140,75 +134,72 @@ namespace HdrHistogram.NET
             wordSizeInBytes = 8;
         }
 
-        ///**
-        // * Construct a new histogram by decoding it from a ByteBuffer.
-        // * @param buffer The buffer to decode from
-        // * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
-        // * @return The newly constructed histogram
-        // */
-        //public static AtomicHistogram decodeFromByteBuffer(ByteBuffer buffer,
-        //                                                   long minBarForHighestTrackableValue) {
-        //    return (AtomicHistogram) decodeFromByteBuffer(buffer, AtomicHistogram.class,
-        //            minBarForHighestTrackableValue);
-        //}
+        /**
+         * Construct a new histogram by decoding it from a ByteBuffer.
+         * @param buffer The buffer to decode from
+         * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+         * @return The newly constructed histogram
+         */
+        public static AtomicHistogram decodeFromByteBuffer(ByteBuffer buffer,
+                                                           long minBarForHighestTrackableValue) 
+        {
+            return (AtomicHistogram)decodeFromByteBuffer(buffer, typeof(AtomicHistogram), minBarForHighestTrackableValue);
+        }
 
-        ///**
-        // * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-        // * @param buffer The buffer to encode into
-        // * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
-        // * @return The newly constructed histogram
-        // * @throws DataFormatException
-        // */
-        //public static AtomicHistogram decodeFromCompressedByteBuffer(ByteBuffer buffer,
-        //                                                             long minBarForHighestTrackableValue) throws DataFormatException {
-        //    return (AtomicHistogram) decodeFromCompressedByteBuffer(buffer, AtomicHistogram.class,
-        //            minBarForHighestTrackableValue);
-        //}
+        /**
+         * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
+         * @param buffer The buffer to encode into
+         * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+         * @return The newly constructed histogram
+         * @throws DataFormatException on error parsing/decompressing the buffer
+         */
+        public static AtomicHistogram decodeFromCompressedByteBuffer(ByteBuffer buffer,
+                                                                     long minBarForHighestTrackableValue) //throws DataFormatException 
+        {
+            return (AtomicHistogram)decodeFromCompressedByteBuffer(buffer, typeof(AtomicHistogram), minBarForHighestTrackableValue);
+        }
 
         //private void readObject(ObjectInputStream o)
         //        throws IOException, ClassNotFoundException {
         //    o.defaultReadObject();
         //}
 
-        /*synchronized*/
-        public override void fillCountsArrayFromBuffer( ByteBuffer buffer, int length)
+        public override void fillCountsArrayFromBuffer(ByteBuffer buffer, int length) 
         {
-            throw new NotImplementedException();
+            lock (updateLock)
+            {
+                WrappedBuffer<long> logbuffer = buffer.asLongBuffer();
+                for (int i = 0; i < length; i++)
+                {
+                    counts.lazySet(i, logbuffer.get());
+                }
+            }
         }
 
-        //// @Override
-        //synchronized void fillCountsArrayFromBuffer(ByteBuffer buffer, int length) {
-        //    LongBuffer logbuffer = buffer.asLongBuffer();
-        //    for (int i = 0; i < length; i++) {
-        //        counts.lazySet(i, logbuffer.get());
-        //    }
-        //}
+        // We try to cache the LongBuffer used in output cases, as repeated
+        // output form the same histogram using the same buffer is likely:
+        private WrappedBuffer<long> cachedDstLongBuffer = null;
+        private ByteBuffer cachedDstByteBuffer = null;
+        private int cachedDstByteBufferPosition = 0;
 
-        //// We try to cache the LongBuffer used in output cases, as repeated
-        //// output form the same histogram using the same buffer is likely:
-        //private LongBuffer cachedDstLongBuffer = null;
-        //private ByteBuffer cachedDstByteBuffer = null;
-        //private int cachedDstByteBufferPosition = 0;
-
-        /*synchronized*/
-        public override void fillBufferFromCountsArray( ByteBuffer buffer, int length)
+        public override void fillBufferFromCountsArray(ByteBuffer buffer, int length)
         {
-            throw new NotImplementedException();
+            lock (updateLock)
+            {
+                if ((cachedDstLongBuffer == null) ||
+                    (buffer != cachedDstByteBuffer) ||
+                    (buffer.position() != cachedDstByteBufferPosition))
+                {
+                    cachedDstByteBuffer = buffer;
+                    cachedDstByteBufferPosition = buffer.position();
+                    cachedDstLongBuffer = buffer.asLongBuffer();
+                }
+                cachedDstLongBuffer.rewind();
+                for (int i = 0; i < length; i++)
+                {
+                    cachedDstLongBuffer.put(counts.get(i));
+                }
+            }
         }
-
-        //// @Override
-        //synchronized void fillBufferFromCountsArray(ByteBuffer buffer, int length) {
-        //    if ((cachedDstLongBuffer == null) ||
-        //            (buffer != cachedDstByteBuffer) ||
-        //            (buffer.position() != cachedDstByteBufferPosition)) {
-        //        cachedDstByteBuffer = buffer;
-        //        cachedDstByteBufferPosition = buffer.position();
-        //        cachedDstLongBuffer = buffer.asLongBuffer();
-        //    }
-        //    cachedDstLongBuffer.rewind();
-        //    for (int i = 0; i < length; i++) {
-        //        cachedDstLongBuffer.put(counts.get(i));
-        //    }
-        //}
     }
 }

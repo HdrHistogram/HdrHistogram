@@ -3,17 +3,22 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30501.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET", "..\main\csharp\HdrHistogram.NET.csproj", "{655D9C4C-5BBD-4494-9828-AE427A1DDD01}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET.Examples", "..\examples\csharp\HdrHistogram.NET.Examples.csproj", "{E210C748-4792-4658-9345-CC073C29EC0B}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET.Test", "..\test\csharp\HdrHistogram.NET.Test.csproj", "{2D189069-FE39-42AE-8169-71ABC4D5A87B}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{B8ADDA1D-E48D-44EA-B483-F07F1AF507A9}"
 	ProjectSection(SolutionItems) = preProject
 		.nuget\NuGet.Config = .nuget\NuGet.Config
 		.nuget\NuGet.exe = .nuget\NuGet.exe
 		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET", "..\src\main\csharp\HdrHistogram.NET.csproj", "{655D9C4C-5BBD-4494-9828-AE427A1DDD01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET.Examples", "..\src\examples\csharp\HdrHistogram.NET.Examples.csproj", "{E210C748-4792-4658-9345-CC073C29EC0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HdrHistogram.NET.Test", "..\src\test\csharp\HdrHistogram.NET.Test.csproj", "{2D189069-FE39-42AE-8169-71ABC4D5A87B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F2800CBA-6CFC-45FE-AA8F-25E4FF912E41}"
+	ProjectSection(SolutionItems) = preProject
+		Latest Java Commit.txt = Latest Java Commit.txt
 	EndProjectSection
 EndProject
 Global

@@ -86,14 +86,13 @@ namespace HdrHistogram.NET.Examples
 
             Console.WriteLine("Recorded latencies [in usec] for Create+Close of a DatagramSocket:");
 
-            var data = histogram.getHistogramData();
             var size = histogram.getEstimatedFootprintInBytes();
             Console.WriteLine("Histogram size = {0} bytes ({1:F2} MB)", size, size / 1024.0 / 1024.0);
 
             // 1 usec = 1000 ns (nanos), results are displayed in usecs, so we need to scale
-            data.outputPercentileDistribution(Console.Out, outputValueUnitScalingRatio: 1000.0);
+            histogram.outputPercentileDistribution(Console.Out, outputValueUnitScalingRatio: 1000.0);
             Console.WriteLine();
-            data.outputPercentileDistribution(Console.Out, outputValueUnitScalingRatio: 1000.0 * 1000.0);
+            histogram.outputPercentileDistribution(Console.Out, outputValueUnitScalingRatio: 1000.0 * 1000.0);
             //Console.WriteLine();
             //data.outputPercentileDistribution(
             //    Console.Out, percentileTicksPerHalfDistance: 5, outputValueUnitScalingRatio: 1000.0, useCsvFormat: true);

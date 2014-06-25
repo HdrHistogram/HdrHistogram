@@ -9,6 +9,8 @@
  */
 
 using CSharp.Atomic;
+using HdrHistogram.NET.Iteration;
+using HdrHistogram.NET.Utilities;
 
 namespace HdrHistogram.NET
 {
@@ -20,23 +22,22 @@ namespace HdrHistogram.NET
         internal long identity;
 
         internal long highestTrackableValue;
-
         internal long lowestTrackableValue;
-
         internal int numberOfSignificantValueDigits;
 
         internal int bucketCount;
-
         internal int subBucketCount;
-
         internal int countsArrayLength;
-
         internal int wordSizeInBytes;
 
         internal long startTimeStampMsec;
-
         internal long endTimeStampMsec;
 
-        internal HistogramData histogramData;
+        internal PercentileIterator percentileIterator;
+        internal RecordedValuesIterator recordedValuesIterator;
+
+        internal ByteBuffer intermediateUncompressedByteBuffer = null;
+
+        protected object updateLock = new object();
     }
 }

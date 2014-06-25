@@ -28,3 +28,5 @@ src/vs2013/HdrHistogram.NET.v12.suo
 *.csproj.user
 *.DotSettings.user
 HdrHistogram.jar
+vs2013/packages/
+*.suo

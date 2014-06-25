@@ -101,9 +101,9 @@ namespace HdrHistogram.NET.Test
                                 label, timingLoopCount, deltaUsec, rate);
             if (multiThreaded == false)
             {
-                rate = 1000000 * histogram.getHistogramData().getTotalCount() / deltaUsec;
+                rate = 1000000 * histogram.getTotalCount() / deltaUsec;
                 Console.WriteLine("{0}{1:N0} raw recorded entries completed in {2:N0} usec, rate = {3:N0} recorded values per sec.",
-                                    label, histogram.getHistogramData().getTotalCount(), deltaUsec, rate);
+                                    label, histogram.getTotalCount(), deltaUsec, rate);
             }
 
             if (assertNoGC)
@@ -129,7 +129,7 @@ namespace HdrHistogram.NET.Test
             testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000, rawtimingLoopCount);
 
             // Check that the histogram contains as many values are we wrote to it
-            Assert.AreEqual(rawtimingLoopCount, histogram.getHistogramData().getTotalCount());
+            Assert.AreEqual(rawtimingLoopCount, histogram.getTotalCount());
         }
 
         [Test]
@@ -141,7 +141,7 @@ namespace HdrHistogram.NET.Test
             testRawRecordingSpeedAtExpectedInterval("SynchronizedHistogram: ", histogram, 1000000000, synchronizedTimingLoopCount);
 
             // Check that the histogram contains as many values are we wrote to it
-            Assert.AreEqual(synchronizedTimingLoopCount, histogram.getHistogramData().getTotalCount());
+            Assert.AreEqual(synchronizedTimingLoopCount, histogram.getTotalCount());
         }
 
         //[Test]
@@ -161,7 +161,7 @@ namespace HdrHistogram.NET.Test
         //    Task.WaitAll(task1, task2, task3);
 
         //    // Check that the histogram contains as many values are we wrote to it
-        //    Assert.AreEqual(synchronizedTimingLoopCount * 3L, histogram.getHistogramData().getTotalCount());
+        //    Assert.AreEqual(synchronizedTimingLoopCount * 3L, histogram.getTotalCount());
         //}
 
         [Test]
@@ -173,7 +173,7 @@ namespace HdrHistogram.NET.Test
             testRawRecordingSpeedAtExpectedInterval("AtomicHistogram: ", histogram, 1000000000, atomicTimingLoopCount);
 
             // Check that the histogram contains as many values are we wrote to it
-            Assert.AreEqual(atomicTimingLoopCount, histogram.getHistogramData().getTotalCount());
+            Assert.AreEqual(atomicTimingLoopCount, histogram.getTotalCount());
         }
 
         //[Test]
@@ -193,7 +193,7 @@ namespace HdrHistogram.NET.Test
         //    Task.WaitAll(task1, task2, task3);
 
         //    // Check that the histogram contains as many values are we wrote to it
-        //    Assert.AreEqual(atomicTimingLoopCount * 3L, histogram.getHistogramData().getTotalCount());
+        //    Assert.AreEqual(atomicTimingLoopCount * 3L, histogram.getTotalCount());
         //}
 
         [Test]
@@ -207,7 +207,7 @@ namespace HdrHistogram.NET.Test
             // 1 microsecond (µs or usec) = 1000 nanosecond (ns or nsec)
             // 1 second = 1,000,000 usec or 1,000 ms
             long deltaUsec = timer.ElapsedMilliseconds * 1000L;
-            long rate = 1000000 * warmupLoopLength * 8 / deltaUsec;
+            long rate = 1000000 * warmupLoopLength / deltaUsec;
             Console.WriteLine("Warmup:\n{0:N0} Leading Zero loops completed in {1:N0} usec, rate = {2:N0} value recording calls per sec.", warmupLoopLength, deltaUsec, rate);
             // Wait a bit to make sure compiler had a chance to do it's stuff:
             try
@@ -225,8 +225,8 @@ namespace HdrHistogram.NET.Test
             timer.Stop();
             var gcAfter = PrintGCAndMemoryStats("GC After ");
             deltaUsec = timer.ElapsedMilliseconds * 1000L;
-            // Each time round hte loop, LeadingZerosSpeedLoop calls MiscUtils.numberOfLeadingZeros(..) 8 times
-            rate = 1000000 * loopCount * 8 / deltaUsec;
+            // Each time round the loop, LeadingZerosSpeedLoop calls MiscUtils.numberOfLeadingZeros(..) 8 times
+            rate = 1000000 * loopCount / deltaUsec;
 
             Console.WriteLine("Hot code timing:");
             Console.WriteLine("{0:N0} leading Zero loops completed in {1:N0} usec, rate = {2:N0} value recording calls per sec.", loopCount, deltaUsec, rate);

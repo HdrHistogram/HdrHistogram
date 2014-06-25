@@ -45,7 +45,6 @@ namespace HdrHistogram.NET.Iteration
             this.reset(histogram, valueUnitsPerBucket);
         }
 
-        //@Override
         public override bool hasNext() 
         {
             if (base.hasNext()) 
@@ -57,20 +56,17 @@ namespace HdrHistogram.NET.Iteration
             return (this.nextValueReportingLevelLowestEquivalent < this.nextValueAtIndex);
         }
 
-        //@Override
         protected override void incrementIterationLevel() 
         {
             this.nextValueReportingLevel += this.valueUnitsPerBucket;
             this.nextValueReportingLevelLowestEquivalent = this.histogram.lowestEquivalentValue(this.nextValueReportingLevel);
         }
 
-        //@Override
         protected override long getValueIteratedTo() 
         {
             return this.nextValueReportingLevel;
         }
 
-        //@Override
         protected override bool reachedIterationLevel() 
         {
             return (this.currentValueAtIndex >= this.nextValueReportingLevelLowestEquivalent);
