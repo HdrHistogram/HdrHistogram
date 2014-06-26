@@ -37,14 +37,53 @@ static bool compare_binary(const void* a, const void* b, int len)
     uint8_t* u_a = (uint8_t*) a;
     uint8_t* u_b = (uint8_t*) b;
 
+    int error_count = 0;
     for (int i = 0; i < len; i++)
     {
         if (u_a[i] != u_b[i])
         {
             printf("%d of %d, a = %d, b = %d\n", i, len, u_a[i], u_b[i]);
+            if (++error_count >= 10)
+            {
+                printf("%d or more mismatches\n", error_count);
+                break;
+            }
         }
     }
     return false;
+}
+
+static bool compare_histogram(struct hdr_histogram* a, struct hdr_histogram* b)
+{
+    size_t a_size = hdr_get_memory_size(a);
+    size_t b_size = hdr_get_memory_size(b);
+
+    if (a_size == b_size && memcmp(a, b, a_size) == 0)
+    {
+        return true;
+    }
+
+    printf("Sizes a: %d, b: %d\n", a_size, b_size);
+
+    struct hdr_iter iter_a;
+    struct hdr_iter iter_b;
+
+    hdr_iter_init(&iter_a, a);
+    hdr_iter_init(&iter_b, b);
+
+    int i = 0;
+    while (hdr_iter_next(&iter_a) && hdr_iter_next(&iter_b))
+    {
+        if (iter_a.count_at_index != iter_b.count_at_index ||
+            iter_a.value_from_index != iter_b.value_from_index)
+        {
+            printf(
+                "A - value: %d, count: %d, B - value: %d, count: %d\n",
+                iter_a.value_from_index, iter_a.count_at_index,
+                iter_b.value_from_index, iter_b.count_at_index);
+        }
+    }
+
 }
 
 static struct hdr_histogram* raw_histogram = NULL;
@@ -117,6 +156,41 @@ static char* test_encode_and_decode_compressed()
 
     return 0;
 }
+
+static char* test_encode_and_decode_compressed_large()
+{
+    const int64_t limit = 3600L * 1000 * 1000;
+    struct hdr_histogram* actual = NULL;
+    struct hdr_histogram* expected = NULL;
+    uint8_t* buffer = NULL;
+    int len = 0;
+    int rc = 0;
+    hdr_init(1, limit, 4, &expected);
+    srand(5);
+
+    for (int i = 0; i < 8070; i++)
+    {
+        hdr_record_value(expected, rand() % limit);
+    }
+
+    rc = hdr_encode_compressed(expected, &buffer, &len);
+    mu_assert("Did not encode", validate_return_code(rc));
+
+    rc = hdr_decode_compressed(buffer, len, &actual);
+    mu_assert("Did not decode", validate_return_code(rc));
+
+    mu_assert("Loaded histogram is null", actual != NULL);
+
+    mu_assert(
+        "Comparison did not match",
+        compare_histogram(expected, actual));
+
+    free(expected);
+    free(actual);
+
+    return 0;
+}
+
 
 static bool assert_base64_encode(const char* input, const char* expected)
 {
@@ -259,6 +333,7 @@ static struct mu_result all_tests()
 
     // mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
+    mu_run_test(test_encode_and_decode_compressed_large);
 
     mu_run_test(base64_decode_block_decodes_4_chars);
     mu_run_test(base64_decode_fails_with_invalid_lengths);

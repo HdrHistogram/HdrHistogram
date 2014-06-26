@@ -431,11 +431,23 @@ int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length
         strm.next_in = (Bytef*) &encode_fw->counts;
         strm.avail_in = counts_per_chunk * sizeof(int64_t);
 
-        // TODO: Handle large compressed output.
         if (strm.avail_out == 0)
         {
-            ret = HDR_DEFLATE_NEED_REALLOC;
-            goto cleanup;
+            printf("Reallocating in loop\n");
+
+            // Reallocate to doubled buffer.
+            size_t new_len = buffer_len * 2;
+            *buffer = (uint8_t*) realloc(*buffer, new_len * sizeof(uint8_t));
+            if (NULL == *buffer)
+            {
+                ret = ENOMEM;
+                goto cleanup;
+            }
+            strm.next_out = &(*buffer)[buffer_len];
+            memset(strm.next_out, 0, buffer_len * sizeof(uint8_t));
+            strm.avail_out = buffer_len;
+            buffer_len = new_len;
+            comp_fw = (struct _compression_flyweight*) *buffer;
         }
     }
     while (counts_index < h->counts_len);
@@ -444,11 +456,22 @@ int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length
     {
         r = deflate(&strm, Z_FINISH);
 
-        // TODO: Handle large compressed output.
         if (strm.avail_out == 0)
         {
-            ret = HDR_DEFLATE_NEED_REALLOC;
-            goto cleanup;
+            printf("Reallocating in finish\n");
+            // Reallocate to doubled buffer.
+            size_t new_len = buffer_len * 2;
+            *buffer = (uint8_t*) realloc(*buffer, new_len * sizeof(uint8_t));
+            if (NULL == *buffer)
+            {
+                ret = ENOMEM;
+                goto cleanup;
+            }
+            strm.next_out = &(*buffer)[buffer_len];
+            memset(strm.next_out, 0, buffer_len * sizeof(uint8_t));
+            strm.avail_out = buffer_len;
+            buffer_len = new_len;
+            comp_fw = (struct _compression_flyweight*) *buffer;
         }
     }
     while (r != Z_STREAM_END);
