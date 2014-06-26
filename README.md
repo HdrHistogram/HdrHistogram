@@ -1,6 +1,6 @@
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
-This project currently include Java, C, and C# implementations of
+This project currently includes Java, C, and C# implementations of
 HdrHistogram, all of which share common concenpts and data
 representation capabolities.
 
