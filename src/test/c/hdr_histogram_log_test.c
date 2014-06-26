@@ -27,103 +27,58 @@ static bool compare_string(const char* a, const char* b, int len)
     return false;
 }
 
-// static struct hdr_histogram* raw_histogram = NULL;
-// static struct hdr_histogram* cor_histogram = NULL;
+static bool compare_binary(const void* a, const void* b, int len)
+{
+    if (memcmp(a, b, len) == 0)
+    {
+        return true;
+    }
 
-// static void load_histograms()
-// {
-//     int i;
-//     if (raw_histogram)
-//     {
-//         free(raw_histogram);
-//     }
+    uint8_t* u_a = (uint8_t*) a;
+    uint8_t* u_b = (uint8_t*) b;
 
-//     hdr_alloc(3600L * 1000 * 1000, 3, &raw_histogram);
+    for (int i = 0; i < len; i++)
+    {
+        if (u_a[i] != u_b[i])
+        {
+            printf("%d of %d, a = %d, b = %d\n", i, len, u_a[i], u_b[i]);
+        }
+    }
+    return false;
+}
 
-//     if (cor_histogram)
-//     {
-//         free(cor_histogram);
-//     }
+static struct hdr_histogram* raw_histogram = NULL;
+static struct hdr_histogram* cor_histogram = NULL;
 
-//     hdr_alloc(3600L * 1000 * 1000, 3, &cor_histogram);
+static void load_histograms()
+{
+    int i;
+    free(raw_histogram);
+    free(cor_histogram);
 
-//     for (i = 0; i < 10000; i++)
-//     {
-//         hdr_record_value(raw_histogram, 1000L);
-//         hdr_record_corrected_value(cor_histogram, 1000L, 10000L);
-//     }
+    hdr_alloc(3600L * 1000 * 1000, 3, &raw_histogram);
+    hdr_alloc(3600L * 1000 * 1000, 3, &cor_histogram);
 
-//     hdr_record_value(raw_histogram, 100000000L);
-//     hdr_record_corrected_value(cor_histogram, 100000000L, 10000L);
-// }
+    for (i = 0; i < 10000; i++)
+    {
+        hdr_record_value(raw_histogram, 1000L);
+        hdr_record_corrected_value(cor_histogram, 1000L, 10000L);
+    }
 
-// static char* test_encode_and_decode()
-// {
-//     load_histograms();
+    hdr_record_value(raw_histogram, 100000000L);
+    hdr_record_corrected_value(cor_histogram, 100000000L, 10000L);
+}
 
-//     size_t raw_histogram_size = hdr_get_memory_size(cor_histogram);
+static bool validate_return_code(int rc)
+{
+    if (rc == 0)
+    {
+        return true;
+    }
 
-//     uint8_t* buffer = (uint8_t*) malloc(hdr_get_memory_size(cor_histogram));
-
-//     size_t encode_result = hdr_encode(cor_histogram, buffer, raw_histogram_size);
-
-//     mu_assert("Did not encode", encode_result != 0);
-//     mu_assert("Incorrect size", encode_result <= raw_histogram_size);
-
-//     struct hdr_histogram* loaded_histogram = NULL;
-//     hdr_decode(buffer, raw_histogram_size, &loaded_histogram);
-
-//     int compare_result = memcmp(cor_histogram, loaded_histogram, raw_histogram_size);
-
-//     if (compare_result != 0)
-//     {
-//         uint8_t* a = (uint8_t*) cor_histogram;
-//         uint8_t* b = (uint8_t*) loaded_histogram;
-//         for (int i = 0; i < raw_histogram_size; i++)
-//         {
-//             if (a[i] != b[i])
-//             {
-//                 printf("Mismatch at %d: %x - %x\n", i, a[i] & 0xFF, b[i] & 0xFF);
-//             }
-//         }
-//     }
-
-//     mu_assert("Comparison did not match", compare_result == 0);
-
-//     return 0;
-// }
-
-
-// static char* test_encode_and_decode_compressed()
-// {
-//     load_histograms();
-
-//     size_t raw_histogram_size = hdr_get_memory_size(raw_histogram);
-
-//     uint8_t* buffer = (uint8_t*) malloc(hdr_get_memory_size(raw_histogram));
-
-//     size_t encode_result = hdr_encode_compressed(raw_histogram, buffer, raw_histogram_size);
-
-//     mu_assert("Did not encode", encode_result == 0);
-
-//     int32_t compressed_length = hdr_get_compressed_length(buffer);
-
-//     struct hdr_histogram* loaded_histogram = NULL;
-//     int decode_result = hdr_decode_compressed(buffer, compressed_length, &loaded_histogram);
-
-//     if (decode_result != 0)
-//     {
-//         printf("%s\n", hdr_strerror(decode_result));
-//     }
-//     mu_assert("Did not decode", decode_result == 0);
-
-//     mu_assert("Loaded histogram is null", loaded_histogram != NULL);
-//     int compare_result = memcmp(raw_histogram, loaded_histogram, raw_histogram_size);
-
-//     mu_assert("Comparison did not match", compare_result == 0);
-
-//     return 0;
-// }
+    printf("%s\n", hdr_strerror(rc));
+    return false;
+}
 
 // Prototypes to avoid exporting in header file.
 void base64_encode_block(const uint8_t* input, char* output);
@@ -133,6 +88,35 @@ int base64_encode(
 void base64_decode_block(const char* input, uint8_t* output);
 int base64_decode(
     const char* input, size_t input_len, uint8_t* output, size_t output_len);
+int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length);
+
+static char* test_encode_and_decode_compressed()
+{
+    load_histograms();
+
+    uint8_t* buffer = NULL;
+    int len = 0;
+    int rc = 0;
+    struct hdr_histogram* actual = NULL;
+    struct hdr_histogram* expected = raw_histogram;
+    size_t histogram_size = hdr_get_memory_size(expected);
+
+    rc = hdr_encode_compressed(expected, &buffer, &len);
+    mu_assert("Did not encode", validate_return_code(rc));
+
+    rc = hdr_decode_compressed(buffer, len, &actual);
+    mu_assert("Did not decode", validate_return_code(rc));
+
+    mu_assert("Loaded histogram is null", actual != NULL);
+
+    mu_assert(
+        "Comparison did not match",
+        compare_binary(expected, actual, histogram_size));
+
+    free(actual);
+
+    return 0;
+}
 
 static bool assert_base64_encode(const char* input, const char* expected)
 {
@@ -274,7 +258,7 @@ static struct mu_result all_tests()
     tests_run = 0;
 
     // mu_run_test(test_encode_and_decode);
-    // mu_run_test(test_encode_and_decode_compressed);
+    mu_run_test(test_encode_and_decode_compressed);
 
     mu_run_test(base64_decode_block_decodes_4_chars);
     mu_run_test(base64_decode_fails_with_invalid_lengths);
@@ -287,6 +271,8 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_encodes_with_padding);
 
     // mu_run_test(test_parse_log);
+    free(raw_histogram);
+    free(cor_histogram);
 
     mu_ok;
 }
