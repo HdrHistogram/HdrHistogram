@@ -1,5 +1,17 @@
 HdrHistogram: A High Dynamic Range (HDR) Histogram
-[excerpt from the Histogram JavaDoc]
+
+This project currently include Java, C, and C# implementations of
+HdrHistogram, all of which share common concenpts and data
+representation capabolities.
+
+Note: The below is an excerpt from a Histogram JavaDoc. While it
+generally applies to C and C# as well, some details may vary by
+implementation (e.g. iteration and synchronization), so you should
+consult the documentation or header information of specific API
+library you intended to use.
+
+HdrHistogram
+----------------------------------------------
 
 HdrHistogram supports the recording and analyzing sampled data value
 counts across a configurable integer value range with configurable value
@@ -79,15 +91,50 @@ highestTrackableValue of 3,600,000,000, and a numberOfSignificantValueDigits
 of 3, and would occupy a fixed, unchanging memory footprint of around 185KB
 (see "Footprint estimation" below).
 
-Synchronization and concurrent access
 
-In the interest of keeping value recording cost to a minimum,
-AbstractHistogram and it's direct implementations are NOT internally
-synchronized, and do NOT use atomic variables. Callers wishing to make
-potentially concurrent, multi-threaded updates or queries against Histogram
-objects should take care to externally synchronize and/or order their access.
+Histogram variants and internal representation
+----------------------------------------------
+
+The HdrHistogram package includes multiple implementations of the
+AbstractHistogram class:
+- Histogram, which is the commonly used Histogram form and tracks
+  value counts in long fields.
+- IntHistogram and ShortHistogram, which track value counts in int
+  and short fields respectively, are provided for use cases where
+  smaller count ranges are practical and smaller overall storage
+  is beneficial (e.g. systems where tens of thousands of in-memory
+  histogram are being tracked).
+- AtomicHistogram and SynchronizedHistogram
+
+Internally, data in HdrHistogram variants is maintained using a concept
+somewhat similar to that of floating point number representation: Using a
+an exponent a (non-normalized) mantissa to support a wide dynamic range at
+a high but varying (by exponent value) resolution. AbstractHistogram uses
+exponentially increasing bucket value ranges (the parallel of the exponent
+portion of a floating point number) with each bucket containing a fixed
+number (per bucket) set of linear sub-buckets (the parallel of a non-normalized
+mantissa portion of a floating point number). Both dynamic range and resolution
+are configurable, with highestTrackableValue controlling dynamic range, and
+numberOfSignificantValueDigits controlling resolution.
+
+Synchronization and concurrent access
+----------------------------------------------
+
+In the interest of keeping value recording cost to a minimum, the commonly
+used Histogram class and it's IntHistogram and ShortHistogram variants are
+NOT internally synchronized, and do NOT use atomic variables. Callers
+wishing to make potentially concurrent, multi-threaded updates or queries
+against Histogram objects should either take care to externally synchronize
+and/or order their access, or use the SynchronizedHistogram or
+AtomicHistogram variants. It is worth mentioning that since Histogram objects
+are additive, it is common practice to use per-thread, non-synchronized
+histograms for the recording fast path, and "flipping" the actively
+recorded-to histogram (usually with some non-locking variants on the fast
+path) and having a summary/reporting thread perform histogram aggregation
+math across time and/or threads.
 
 Iteration
+----------------------------------------------
 
 Histograms supports multiple convenient forms of iterating through the
 histogram data set, including linear, logarithmic, and percentile iteration
@@ -142,6 +189,7 @@ for loop using the Iterator's hasNext() and next() methods:
 
 
 Equivalent Values and value ranges
+----------------------------------------------
 
 Due to the finite (and configurable) resolution of the histogram, multiple
 adjacent integer data values can be "equivalent". Two values are considered
@@ -152,23 +200,22 @@ given value, as we as determining whether two values are equivalent, and
 for finding the next non-equivalent value for a given value (useful when
 looping through values, in order to avoid double-counting count).
 
-Corrected vs. Raw recordValue()calls
+Corrected vs. Raw value recording calls
+----------------------------------------------
 
 In order to support a common use case needed when histogram values are used
 to track response time distribution, Histogram provides for the recording
-of corrected histogram value by supporting an optional
-expectedIntervalBetweenValueSamples parameter to the recordValue() method.
-This form is useful in [common load generator] scenarios where response
-times may exceed the expected interval between issuing requests, leading to
-"dropped" response time measurements that would typically correlate with
-"bad" results.
+of corrected histogram value by supporting a recordValueWithExpectedInterval()
+variant is provided. This value rexording form is useful in [common latency
+measurement] scenarios where response times may exceed the expected interval
+between issuing requests, leading to "dropped" response time measurements
+that would typically correlate with "bad" results.
 
 When a value recorded in the histogram exceeds the
-expectedIntervalBetweenValueSamples parameter (when provided), recorded
-histogram data will reflect an appropriate number of additional values,
-linearly decreasing in steps of expectedIntervalBetweenValueSamples, down
-to the last value that would still be higher than
-expectedIntervalBetweenValueSamples.
+expectedIntervalBetweenValueSamples parameter, recorded histogram data will
+reflect an appropriate number of additional values, linearly decreasing in
+steps of expectedIntervalBetweenValueSamples, down to the last value that
+would still be higher than expectedIntervalBetweenValueSamples.
 
 To illustrate why this corrective behavior is critically needed in order
 to accurately represent value distribution when large value measurements
@@ -202,6 +249,7 @@ that would much more accurately reflect the response time distribution that a
 random, uncoordinated request would have experienced.
 
 Footprint estimation
+----------------------------------------------
 
 Due to it's dynamic range representation, Histogram is relatively efficient
 in memory space requirements given the accuracy and dynamic range it covers.
