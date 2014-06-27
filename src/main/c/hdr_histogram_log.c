@@ -386,8 +386,7 @@ int hdr_encode_compressed(
 
     if ((buf = (uint8_t*) malloc(len * sizeof(uint8_t))) == NULL)
     {
-        result = ENOMEM;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
 
     if (deflateInit(&strm, 4) != Z_OK)
@@ -415,8 +414,7 @@ int hdr_encode_compressed(
 
     if (deflate(&strm, Z_NO_FLUSH) != Z_OK)
     {
-        result = HDR_DEFLATE_FAIL;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
     }
 
     do
@@ -428,8 +426,7 @@ int hdr_encode_compressed(
             uint8_t* new_buf = (uint8_t*) realloc(buf, new_len * sizeof(uint8_t));
             if (NULL == new_buf)
             {
-                result = ENOMEM;
-                goto cleanup;
+                FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
             }
 
             buf = new_buf;
@@ -437,10 +434,10 @@ int hdr_encode_compressed(
             strm.avail_out = len;
             len = new_len;
 
+            // Flush the zlib stream.  Breaks with this.
             if (deflate(&strm, Z_SYNC_FLUSH) != Z_OK)
             {
-                result = HDR_DEFLATE_FAIL;
-                goto cleanup;
+                FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
             }
         }
 
@@ -457,8 +454,7 @@ int hdr_encode_compressed(
         r = deflate(&strm, flush);
         if (r != Z_OK && r != Z_STREAM_END)
         {
-            result = HDR_DEFLATE_FAIL;
-            goto cleanup;
+            FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
         }
     }
     while (r != Z_STREAM_END);
@@ -493,8 +489,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (length < sizeof(struct _compression_flyweight) || *histogram != NULL)
     {
-        result = EINVAL;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, EINVAL);
     }
 
     struct _compression_flyweight* compression_flyweight = (struct _compression_flyweight*) buffer;
@@ -502,8 +497,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (COMPRESSION_COOKIE != be32toh(compression_flyweight->cookie))
     {
-        result = HDR_COMPRESSION_COOKIE_MISMATCH;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, HDR_COMPRESSION_COOKIE_MISMATCH);
     }
 
     int32_t compressed_length = be32toh(compression_flyweight->length);
@@ -512,8 +506,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (inflateInit(&strm) != Z_OK)
     {
-        result = HDR_INFLATE_INIT_FAIL;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
     }
 
     strm.next_in = compression_flyweight->data;
@@ -523,14 +516,12 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
     {
-        result = HDR_INFLATE_FAIL;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
     }
 
     if (ENCODING_COOKIE != be32toh(encoding_flyweight.cookie))
     {
-        result = HDR_ENCODING_COOKIE_MISMATCH;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, HDR_ENCODING_COOKIE_MISMATCH);
     }
 
     int64_t lowest_trackable_value = be64toh(encoding_flyweight.lowest_trackable_value);
@@ -543,8 +534,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
         significant_figures,
         &h) != 0)
     {
-        result = ENOMEM;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
 
     h->total_count = be64toh(encoding_flyweight.total_count);
@@ -561,8 +551,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
         if (Z_STREAM_END != r && Z_OK != r)
         {
-            result = HDR_INFLATE_FAIL;
-            break;
+            FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
         }
 
         available_counts = counts_per_chunk - (strm.avail_out / sizeof(int64_t));
