@@ -48,6 +48,14 @@
 
 #endif
 
+#define FAIL_AND_CLEANUP(label, error_name, error) \
+    do                      \
+    {                       \
+        error_name = error; \
+        goto label;         \
+    }                       \
+    while (0)
+
 enum zero_strategy { ZERO_ALL, ZERO_NONE };
 
 int realloc_buffer(
@@ -342,7 +350,7 @@ static void strm_init(z_stream* strm)
     strm->avail_in = 0;
 }
 
-struct __attribute__((__packed__)) _encoding_flyweight
+typedef struct __attribute__((__packed__))
 {
     int32_t cookie;
     int32_t significant_figures;
@@ -350,22 +358,14 @@ struct __attribute__((__packed__)) _encoding_flyweight
     int64_t highest_trackable_value;
     int64_t total_count;
     int64_t counts[0];
-};
+} _encoding_flyweight;
 
-struct __attribute__((__packed__)) _compression_flyweight
+typedef struct __attribute__((__packed__))
 {
     int32_t cookie;
     int32_t length;
     uint8_t data[0];
-};
-
-#define FAIL_AND_CLEANUP(label, error_name, error) \
-    do                      \
-    {                       \
-        error_name = error; \
-        goto label;         \
-    }                       \
-    while (0)
+} _compression_flyweight;
 
 int hdr_encode_compressed(
     struct hdr_histogram* h,
@@ -395,8 +395,8 @@ int hdr_encode_compressed(
         goto cleanup;
     }
 
-    struct _compression_flyweight* comp_fw = (struct _compression_flyweight*) buf;
-    struct _encoding_flyweight encode_fw;
+    _compression_flyweight* comp_fw = (_compression_flyweight*) buf;
+    _encoding_flyweight encode_fw;
 
     encode_fw.cookie                  = htobe32(ENCODING_COOKIE);
     encode_fw.significant_figures     = htobe32(h->significant_figures);
@@ -407,10 +407,10 @@ int hdr_encode_compressed(
     int counts_index = 0;
 
     strm.next_in = (Bytef*) &encode_fw;
-    strm.avail_in = sizeof(struct _encoding_flyweight);
+    strm.avail_in = sizeof(_encoding_flyweight);
 
     strm.next_out = (Bytef*) &comp_fw->data;
-    strm.avail_out = len - sizeof(struct _compression_flyweight);
+    strm.avail_out = len - sizeof(_compression_flyweight);
 
     if (deflate(&strm, Z_NO_FLUSH) != Z_OK)
     {
@@ -459,11 +459,11 @@ int hdr_encode_compressed(
     }
     while (r != Z_STREAM_END);
 
-    comp_fw = (struct _compression_flyweight*) buf;
+    comp_fw = (_compression_flyweight*) buf;
     comp_fw->cookie = htobe32(COMPRESSION_COOKIE);
     comp_fw->length = htobe32(strm.total_out);
     *compressed_histogram = buf;
-    *compressed_len = sizeof(struct _compression_flyweight) + comp_fw->length;
+    *compressed_len = sizeof(_compression_flyweight) + comp_fw->length;
 
 cleanup:
     (void)deflateEnd(&strm);
@@ -475,7 +475,8 @@ cleanup:
     return result;
 }
 
-int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
+int hdr_decode_compressed(
+    uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
 {
     const int counts_per_chunk = 512;
     int64_t counts_array[counts_per_chunk];
@@ -487,13 +488,13 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     int64_t counts_tally = 0;
 
-    if (length < sizeof(struct _compression_flyweight) || *histogram != NULL)
+    if (length < sizeof(_compression_flyweight) || *histogram != NULL)
     {
         FAIL_AND_CLEANUP(cleanup, result, EINVAL);
     }
 
-    struct _compression_flyweight* compression_flyweight = (struct _compression_flyweight*) buffer;
-    struct _encoding_flyweight encoding_flyweight;
+    _compression_flyweight* compression_flyweight = (_compression_flyweight*) buffer;
+    _encoding_flyweight encoding_flyweight;
 
     if (COMPRESSION_COOKIE != be32toh(compression_flyweight->cookie))
     {
@@ -501,8 +502,6 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
     }
 
     int32_t compressed_length = be32toh(compression_flyweight->length);
-
-    memset((void*) &encoding_flyweight, 0, sizeof(struct _encoding_flyweight));
 
     if (inflateInit(&strm) != Z_OK)
     {
@@ -512,7 +511,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
     strm.next_in = compression_flyweight->data;
     strm.avail_in = compressed_length;
     strm.next_out = (uint8_t *) &encoding_flyweight;
-    strm.avail_out = sizeof(struct _encoding_flyweight);
+    strm.avail_out = sizeof(_encoding_flyweight);
 
     if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
     {
@@ -578,20 +577,20 @@ cleanup:
     return result;
 }
 
-struct _log_header
+typedef struct
 {
     int major_version;
     int minor_version;
     int64_t start_time_ms;
-};
+} _log_header;
 
-static int scan_log_format(const char* line, struct _log_header* header)
+static int scan_log_format(const char* line, _log_header* header)
 {
     const char* format = "#[Histogram log format version %d.%d]";
     return sscanf(line, format, &header->major_version, &header->minor_version);
 }
 
-static void scan_start_time(const char* line, struct _log_header* header)
+static void scan_start_time(const char* line, _log_header* header)
 {
     const char* format = "#[StartTime: %d.%d [^\n]";
     int64_t timestamp_s = 0;
@@ -602,7 +601,7 @@ static void scan_start_time(const char* line, struct _log_header* header)
     }
 }
 
-static void parse_log_comments(FILE* f, struct _log_header* header)
+static void parse_log_comments(FILE* f, _log_header* header)
 {
     char buf[4096];
 
@@ -707,7 +706,7 @@ cleanup:
 
 int hdr_parse_log(FILE* f, struct hdr_histogram** result)
 {
-    struct _log_header header;
+    _log_header header;
 
     parse_log_comments(f, &header);
 
