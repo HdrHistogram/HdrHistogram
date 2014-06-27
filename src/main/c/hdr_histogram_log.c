@@ -656,16 +656,14 @@ int parse_lines(FILE* f, struct hdr_histogram** histogram)
             (void**)&base64_histogram, sizeof(char), read, ZERO_ALL);
         if (r != 0)
         {
-            result = ENOMEM;
-            goto cleanup;
+            FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
         }
 
         r = realloc_buffer(
             (void**)&compressed_histogram, sizeof(uint8_t), read, ZERO_ALL);
         if (r != 0)
         {
-            result = ENOMEM;
-            goto cleanup;
+            FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
         }
 
         int num_tokens = sscanf(
@@ -674,8 +672,7 @@ int parse_lines(FILE* f, struct hdr_histogram** histogram)
 
         if (num_tokens != 7)
         {
-            result = EINVAL;
-            goto cleanup;
+            FAIL_AND_CLEANUP(cleanup, result, EINVAL);
         }
 
         null_trailing_whitespace(base64_histogram, strlen(base64_histogram));
@@ -689,8 +686,7 @@ int parse_lines(FILE* f, struct hdr_histogram** histogram)
 
         if (base64_result != 0)
         {
-            result = base64_result;
-            goto cleanup;
+            FAIL_AND_CLEANUP(cleanup, result, base64_result);
         }
 
         struct hdr_histogram* h = NULL;
