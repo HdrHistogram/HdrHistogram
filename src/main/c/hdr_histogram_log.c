@@ -359,145 +359,141 @@ struct __attribute__((__packed__)) _compression_flyweight
     uint8_t data[0];
 };
 
-int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length)
+#define FAIL_AND_CLEANUP(label, error_name, error) \
+    do                      \
+    {                       \
+        error_name = error; \
+        goto label;         \
+    }                       \
+    while (0)
+
+int hdr_encode_compressed(
+    struct hdr_histogram* h,
+    uint8_t** compressed_histogram,
+    int* compressed_len)
 {
     const int counts_per_chunk = 512;
-    const int chunk_len =
-        sizeof(struct _encoding_flyweight) + counts_per_chunk * sizeof(int64_t);
-    uint8_t chunk[chunk_len];
-    int buffer_len = 4096;
+    int64_t chunk[counts_per_chunk];
 
-    int ret = 0;
+    uint8_t* buf = NULL;
+    int len = 4096;
+
+    int result = 0;
     int r;
+
     z_stream strm;
     strm_init(&strm);
 
-    if (NULL == *buffer)
+    if ((buf = (uint8_t*) malloc(len * sizeof(uint8_t))) == NULL)
     {
-        if ((*buffer = (uint8_t*) calloc(buffer_len, sizeof(uint8_t))) == NULL)
-        {
-            ret = ENOMEM;
-            goto cleanup;
-        }
-    }
-    else
-    {
-        buffer_len = *length;
-    }
-
-    struct _compression_flyweight* comp_fw = (struct _compression_flyweight*) *buffer;
-
-    comp_fw->cookie = htobe32(COMPRESSION_COOKIE);
-    comp_fw->length = 0; // Figure this out later.
-
-
-    if (deflateInit(&strm, 4) != Z_OK)
-    {
-        ret = HDR_DEFLATE_INIT_FAIL;
+        result = ENOMEM;
         goto cleanup;
     }
 
-    struct _encoding_flyweight* encode_fw = (struct _encoding_flyweight*) chunk;
+    if (deflateInit(&strm, 4) != Z_OK)
+    {
+        result = HDR_DEFLATE_INIT_FAIL;
+        goto cleanup;
+    }
 
-    encode_fw->cookie                  = htobe32(ENCODING_COOKIE);
-    encode_fw->significant_figures     = htobe32(h->significant_figures);
-    encode_fw->lowest_trackable_value  = htobe64(h->lowest_trackable_value);
-    encode_fw->highest_trackable_value = htobe64(h->highest_trackable_value);
-    encode_fw->total_count             = htobe64(h->total_count);
+    struct _compression_flyweight* comp_fw = (struct _compression_flyweight*) buf;
+    struct _encoding_flyweight encode_fw;
+
+    encode_fw.cookie                  = htobe32(ENCODING_COOKIE);
+    encode_fw.significant_figures     = htobe32(h->significant_figures);
+    encode_fw.lowest_trackable_value  = htobe64(h->lowest_trackable_value);
+    encode_fw.highest_trackable_value = htobe64(h->highest_trackable_value);
+    encode_fw.total_count             = htobe64(h->total_count);
 
     int counts_index = 0;
 
-    strm.next_in = chunk;
-    strm.avail_in = chunk_len;
+    strm.next_in = (Bytef*) &encode_fw;
+    strm.avail_in = sizeof(struct _encoding_flyweight);
 
     strm.next_out = (Bytef*) &comp_fw->data;
-    strm.avail_out = buffer_len - sizeof(struct _compression_flyweight);
+    strm.avail_out = len - sizeof(struct _compression_flyweight);
+
+    if (deflate(&strm, Z_NO_FLUSH) != Z_OK)
+    {
+        result = HDR_DEFLATE_FAIL;
+        goto cleanup;
+    }
 
     do
     {
-        for (int i = 0; i < counts_per_chunk && counts_index < h->counts_len; i++)
+        while (strm.avail_out == 0)
         {
-            encode_fw->counts[i] = htobe64(h->counts[counts_index++]);
+            // Reallocate to doubled buffer.
+            int new_len = len * 2;
+            uint8_t* new_buf = (uint8_t*) realloc(buf, new_len * sizeof(uint8_t));
+            if (NULL == new_buf)
+            {
+                result = ENOMEM;
+                goto cleanup;
+            }
+
+            buf = new_buf;
+            strm.next_out = &buf[len];
+            strm.avail_out = len;
+            len = new_len;
+
+            if (deflate(&strm, Z_SYNC_FLUSH) != Z_OK)
+            {
+                result = HDR_DEFLATE_FAIL;
+                goto cleanup;
+            }
         }
 
-        r = deflate(&strm, Z_NO_FLUSH);
+        int i = 0;
+        while (i < counts_per_chunk && counts_index < h->counts_len)
+        {
+            chunk[i++] = htobe64(h->counts[counts_index++]);
+        }
 
+        strm.next_in = (Bytef*) chunk;
+        strm.avail_in = i * sizeof(int64_t);
+
+        int flush = i == 0 ? Z_FINISH : Z_NO_FLUSH;
+        r = deflate(&strm, flush);
         if (r != Z_OK && r != Z_STREAM_END)
         {
-            ret = HDR_DEFLATE_FAIL;
+            result = HDR_DEFLATE_FAIL;
             goto cleanup;
-        }
-
-        strm.next_in = (Bytef*) &encode_fw->counts;
-        strm.avail_in = counts_per_chunk * sizeof(int64_t);
-
-        if (strm.avail_out == 0)
-        {
-            printf("Reallocating in loop\n");
-
-            // Reallocate to doubled buffer.
-            size_t new_len = buffer_len * 2;
-            *buffer = (uint8_t*) realloc(*buffer, new_len * sizeof(uint8_t));
-            if (NULL == *buffer)
-            {
-                ret = ENOMEM;
-                goto cleanup;
-            }
-            strm.next_out = &(*buffer)[buffer_len];
-            memset(strm.next_out, 0, buffer_len * sizeof(uint8_t));
-            strm.avail_out = buffer_len;
-            buffer_len = new_len;
-            comp_fw = (struct _compression_flyweight*) *buffer;
-        }
-    }
-    while (counts_index < h->counts_len);
-
-    do
-    {
-        r = deflate(&strm, Z_FINISH);
-
-        if (strm.avail_out == 0)
-        {
-            printf("Reallocating in finish\n");
-            // Reallocate to doubled buffer.
-            size_t new_len = buffer_len * 2;
-            *buffer = (uint8_t*) realloc(*buffer, new_len * sizeof(uint8_t));
-            if (NULL == *buffer)
-            {
-                ret = ENOMEM;
-                goto cleanup;
-            }
-            strm.next_out = &(*buffer)[buffer_len];
-            memset(strm.next_out, 0, buffer_len * sizeof(uint8_t));
-            strm.avail_out = buffer_len;
-            buffer_len = new_len;
-            comp_fw = (struct _compression_flyweight*) *buffer;
         }
     }
     while (r != Z_STREAM_END);
 
+    comp_fw = (struct _compression_flyweight*) buf;
     comp_fw->cookie = htobe32(COMPRESSION_COOKIE);
     comp_fw->length = htobe32(strm.total_out);
-    *length = sizeof(struct _compression_flyweight) + comp_fw->length;
+    *compressed_histogram = buf;
+    *compressed_len = sizeof(struct _compression_flyweight) + comp_fw->length;
 
 cleanup:
     (void)deflateEnd(&strm);
+    if (result != 0)
+    {
+        free(buf);
+    }
 
-    return ret;
+    return result;
 }
 
-int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result)
+int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
 {
     const int counts_per_chunk = 512;
-    int ret = 0;
     int64_t counts_array[counts_per_chunk];
+
+    struct hdr_histogram* h;
+    int result = 0;
     z_stream strm;
     strm_init(&strm);
-    struct hdr_histogram* h;
 
-    if (length < sizeof(struct _compression_flyweight) || *result != NULL)
+    int64_t counts_tally = 0;
+
+    if (length < sizeof(struct _compression_flyweight) || *histogram != NULL)
     {
-        ret = EINVAL;
+        result = EINVAL;
         goto cleanup;
     }
 
@@ -506,7 +502,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (COMPRESSION_COOKIE != be32toh(compression_flyweight->cookie))
     {
-        ret = HDR_COMPRESSION_COOKIE_MISMATCH;
+        result = HDR_COMPRESSION_COOKIE_MISMATCH;
         goto cleanup;
     }
 
@@ -516,7 +512,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (inflateInit(&strm) != Z_OK)
     {
-        ret = HDR_INFLATE_INIT_FAIL;
+        result = HDR_INFLATE_INIT_FAIL;
         goto cleanup;
     }
 
@@ -527,13 +523,13 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
     {
-        ret = HDR_INFLATE_FAIL;
+        result = HDR_INFLATE_FAIL;
         goto cleanup;
     }
 
     if (ENCODING_COOKIE != be32toh(encoding_flyweight.cookie))
     {
-        ret = HDR_ENCODING_COOKIE_MISMATCH;
+        result = HDR_ENCODING_COOKIE_MISMATCH;
         goto cleanup;
     }
 
@@ -547,7 +543,7 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
         significant_figures,
         &h) != 0)
     {
-        ret = ENOMEM;
+        result = ENOMEM;
         goto cleanup;
     }
 
@@ -555,17 +551,17 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
 
     int counts_index = 0;
     int available_counts = 0;
-    int inflate_res = 0;
+    int r = 0;
     do
     {
         strm.next_out = (uint8_t*) counts_array;
         strm.avail_out = counts_per_chunk * sizeof(int64_t);
 
-        inflate_res = inflate(&strm, Z_NO_FLUSH);
+        r = inflate(&strm, Z_SYNC_FLUSH);
 
-        if (Z_STREAM_END != inflate_res && Z_OK != inflate_res)
+        if (Z_STREAM_END != r && Z_OK != r)
         {
-            ret = HDR_INFLATE_FAIL;
+            result = HDR_INFLATE_FAIL;
             break;
         }
 
@@ -573,23 +569,24 @@ int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram**
         for (int i = 0; i < available_counts && counts_index < h->counts_len; i++)
         {
             h->counts[counts_index++] = be64toh(counts_array[i]);
+            counts_tally += h->counts[counts_index - 1];
         }
     }
-    while (inflate_res == Z_OK);
+    while (r == Z_OK);
 
 cleanup:
     (void)inflateEnd(&strm);
 
-    if (ret != 0)
+    if (result != 0)
     {
         free(h);
     }
     else
     {
-        *result = h;
+        *histogram = h;
     }
 
-    return ret;
+    return result;
 }
 
 struct _log_header
@@ -641,14 +638,14 @@ static void parse_log_comments(FILE* f, struct _log_header* header)
     while (true);
 }
 
-int parse_lines(FILE* f, struct hdr_histogram** result)
+int parse_lines(FILE* f, struct hdr_histogram** histogram)
 {
     const char* format = "%d.%d,%d.%d,%d.%d,%s";
     char* base64_histogram = NULL;
     uint8_t* compressed_histogram = NULL;
     char* line;
     size_t line_len;
-    int ret = 0;
+    int result = 0;
 
     do
     {
@@ -670,7 +667,7 @@ int parse_lines(FILE* f, struct hdr_histogram** result)
             (void**)&base64_histogram, sizeof(char), read, ZERO_ALL);
         if (r != 0)
         {
-            ret = ENOMEM;
+            result = ENOMEM;
             goto cleanup;
         }
 
@@ -678,40 +675,39 @@ int parse_lines(FILE* f, struct hdr_histogram** result)
             (void**)&compressed_histogram, sizeof(uint8_t), read, ZERO_ALL);
         if (r != 0)
         {
-            ret = ENOMEM;
+            result = ENOMEM;
             goto cleanup;
         }
 
-        int res = sscanf(
+        int num_tokens = sscanf(
             line, format, &begin_s, &begin_ms, &end_s, &end_ms,
             &interval_max_s, &interval_max_ms, base64_histogram);
 
-        if (res > 0)
+        if (num_tokens != 7)
         {
-            null_trailing_whitespace(base64_histogram, strlen(base64_histogram));
-
-            int base64_len = strlen(base64_histogram);
-            int compressed_len = base64_decoded_len(base64_len);
-
-            int base64_res = base64_decode(
-                base64_histogram, base64_len,
-                compressed_histogram, compressed_len);
-
-            if (base64_res != 0)
-            {
-                ret = base64_res;
-                goto cleanup;
-            }
-
-            struct hdr_histogram* h = NULL;
-            if (hdr_decode_compressed(compressed_histogram, compressed_len, &h) == 0)
-            {
-                hdr_percentiles_print(h, stdout, 5, 1.0, CSV);
-            }
+            result = EINVAL;
+            goto cleanup;
         }
-        else
+
+        null_trailing_whitespace(base64_histogram, strlen(base64_histogram));
+
+        int base64_len = strlen(base64_histogram);
+        int compressed_len = base64_decoded_len(base64_len);
+
+        int base64_result = base64_decode(
+            base64_histogram, base64_len,
+            compressed_histogram, compressed_len);
+
+        if (base64_result != 0)
         {
-            break;
+            result = base64_result;
+            goto cleanup;
+        }
+
+        struct hdr_histogram* h = NULL;
+        if (hdr_decode_compressed(compressed_histogram, compressed_len, &h) == 0)
+        {
+            hdr_percentiles_print(h, stdout, 5, 1.0, CSV);
         }
     }
     while (true);
@@ -721,7 +717,7 @@ cleanup:
     free(base64_histogram);
     free(compressed_histogram);
 
-    return ret;
+    return result;
 }
 
 int hdr_parse_log(FILE* f, struct hdr_histogram** result)

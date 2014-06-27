@@ -10,6 +10,7 @@
 #include <math.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <stdio.h>
 #include <hdr_histogram.h>
@@ -63,7 +64,7 @@ static bool compare_histogram(struct hdr_histogram* a, struct hdr_histogram* b)
         return true;
     }
 
-    printf("Sizes a: %d, b: %d\n", a_size, b_size);
+    printf("Sizes a: %zu, b: %zu\n", a_size, b_size);
 
     struct hdr_iter iter_a;
     struct hdr_iter iter_b;
@@ -71,19 +72,19 @@ static bool compare_histogram(struct hdr_histogram* a, struct hdr_histogram* b)
     hdr_iter_init(&iter_a, a);
     hdr_iter_init(&iter_b, b);
 
-    int i = 0;
     while (hdr_iter_next(&iter_a) && hdr_iter_next(&iter_b))
     {
         if (iter_a.count_at_index != iter_b.count_at_index ||
             iter_a.value_from_index != iter_b.value_from_index)
         {
             printf(
-                "A - value: %d, count: %d, B - value: %d, count: %d\n",
+                "A - value: %"PRIu64", count: %"PRIu64", B - value: %"PRIu64", count: %"PRIu64"\n",
                 iter_a.value_from_index, iter_a.count_at_index,
                 iter_b.value_from_index, iter_b.count_at_index);
         }
     }
 
+    return false;
 }
 
 static struct hdr_histogram* raw_histogram = NULL;
@@ -91,14 +92,13 @@ static struct hdr_histogram* cor_histogram = NULL;
 
 static void load_histograms()
 {
-    int i;
     free(raw_histogram);
     free(cor_histogram);
 
     hdr_alloc(3600L * 1000 * 1000, 3, &raw_histogram);
     hdr_alloc(3600L * 1000 * 1000, 3, &cor_histogram);
 
-    for (i = 0; i < 10000; i++)
+    for (int i = 0; i < 10000; i++)
     {
         hdr_record_value(raw_histogram, 1000L);
         hdr_record_corrected_value(cor_histogram, 1000L, 10000L);
