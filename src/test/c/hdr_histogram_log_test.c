@@ -11,8 +11,10 @@
 #include <string.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <time.h>
 
 #include <stdio.h>
+#include "hdr_time.h"
 #include <hdr_histogram.h>
 #include <hdr_histogram_log.h>
 #include "minunit.h"
@@ -326,6 +328,52 @@ static char* test_parse_log()
     return 0;
 }
 
+static char* writes_and_reads_log()
+{
+    const char* file_name = "histogram.log";
+    struct timespec timestamp;
+    struct timespec interval;
+
+    hdr_gettime(&timestamp);
+    interval.tv_sec = 5;
+    interval.tv_nsec = 2000000;
+
+    struct hdr_log_writer writer;
+    struct hdr_log_reader reader;
+    hdr_log_writer_init(&writer);
+    hdr_log_reader_init(&reader);
+    int rc = 0;
+
+    FILE* log_file = fopen(file_name, "w+");
+
+    rc = hdr_log_write_header(&writer, log_file, "Test log", &timestamp);
+    mu_assert("Failed header write", validate_return_code(rc));
+    hdr_log_write(&writer, log_file, &timestamp, &interval, cor_histogram);
+    mu_assert("Failed corrected write", validate_return_code(rc));
+    hdr_log_write(&writer, log_file, &timestamp, &interval, raw_histogram);
+    mu_assert("Failed raw write", validate_return_code(rc));
+
+    struct hdr_histogram* read_cor_histogram;
+    struct hdr_histogram* read_raw_histogram;
+
+    rc = hdr_log_read_header(&reader, log_file);
+    mu_assert("Failed header read", validate_return_code(rc));
+    rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
+    mu_assert("Failed corrected read", validate_return_code(rc));
+    rc = hdr_log_read(&reader, log_file, &read_raw_histogram);
+    mu_assert("Failed raw read", validate_return_code(rc));
+
+    mu_assert(
+        "Histograms do not match",
+        compare_histogram(cor_histogram, read_cor_histogram));
+
+    mu_assert(
+        "Histograms do not match",
+        compare_histogram(raw_histogram, read_raw_histogram));
+
+    return 0;
+}
+
 
 static struct mu_result all_tests()
 {
@@ -344,6 +392,8 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_fails_with_invalid_lengths);
     mu_run_test(base64_encode_encodes_without_padding);
     mu_run_test(base64_encode_encodes_with_padding);
+
+    mu_run_test(writes_and_reads_log);
 
     // mu_run_test(test_parse_log);
     free(raw_histogram);

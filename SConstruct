@@ -40,6 +40,7 @@ tst = env.Clone()
 tst['CPPPATH'] = ['src/main/c']
 tst['LIBS'] = ['hdr_histogram.a', 'm', 'z']
 tst['LIBPATH'] = [lib_directory]
+tst.Append(CPPDEFINES = '_POSIX_C_SOURCE=199309L')
 tst.Program(bin_directory + 'alltests', Glob('src/test/c/*_test.c'))
 
 os_libs = {'darwin': [], 'posix': ['rt']}

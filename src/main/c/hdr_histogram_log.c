@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <math.h>
+#include <time.h>
 
 #include "hdr_histogram.h"
 #include "hdr_histogram_log.h"
@@ -463,7 +464,7 @@ int hdr_encode_compressed(
     comp_fw->cookie = htobe32(COMPRESSION_COOKIE);
     comp_fw->length = htobe32(strm.total_out);
     *compressed_histogram = buf;
-    *compressed_len = sizeof(_compression_flyweight) + comp_fw->length;
+    *compressed_len = sizeof(_compression_flyweight) + strm.total_out;
 
 cleanup:
     (void)deflateEnd(&strm);
@@ -725,3 +726,138 @@ int hdr_parse_log(FILE* f, struct hdr_histogram** result)
     return 0;
 }
 
+int hdr_log_writer_init(struct hdr_log_writer* writer)
+{
+    return 0;
+}
+
+#define LOG_VERION "1.01"
+
+static int print_user_prefix(FILE* f, const char* prefix)
+{
+    if (!prefix)
+    {
+        return 0;
+    }
+
+    return fprintf(f, "#[%s]\n", prefix);
+}
+
+static int print_version(FILE* f, const char* version)
+{
+    return fprintf(f, "#[Histogram log format version %s]\n", version);
+}
+
+static int print_time(FILE* f, struct timespec* timestamp)
+{
+    char time_str[128];
+    struct tm date_time;
+
+    if (!timestamp)
+    {
+        return 0;
+    }
+
+    gmtime_r(&timestamp->tv_sec, &date_time);
+    long ms = timestamp->tv_nsec / 1000000;
+    strftime(time_str, 128, "%a %b %X %Z %Y", &date_time);
+
+    return fprintf(
+        f, "#[StartTime: %d.%ld (seconds since epoch), %s]\n",
+        (int) timestamp->tv_sec, ms, time_str);
+}
+
+static int print_header(FILE* f)
+{
+    return fprintf(f, "\"StartTimestamp\",\"EndTimestamp\",\"Interval_Max\",\"Interval_Compressed_Histogram\"\n");
+}
+
+// #[Logged with jHiccup version 2.0.3-SNAPSHOT]
+// #[Histogram log format version 1.01]
+// #[StartTime: 1403476110.183 (seconds since epoch), Mon Jun 23 10:28:30 NZST 2014]
+// "StartTimestamp","EndTimestamp","Interval_Max","Interval_Compressed_Histogram"
+int hdr_log_write_header(
+    struct hdr_log_writer* writer, FILE* file,
+    const char* user_prefix, struct timespec* timestamp)
+{
+    int rc = 0;
+
+    if ((rc = print_user_prefix(file, user_prefix)) < 0)
+    {
+        return rc;
+    }
+    if ((rc = print_version(file, LOG_VERION)) < 0)
+    {
+        return rc;
+    }
+    if ((rc = print_time(file, timestamp)) < 0)
+    {
+        return rc;
+    }
+    if ((rc = print_header(file)) < 0)
+    {
+        return rc;
+    }
+
+    return 0;
+}
+
+int hdr_log_write(
+    struct hdr_log_writer* writer,
+    FILE* file,
+    const struct timespec* start_timestamp,
+    const struct timespec* end_timestamp,
+    struct hdr_histogram* histogram)
+{
+    uint8_t* compressed_histogram = NULL;
+    int compressed_len = 0;
+    char* encoded_histogram = NULL;
+    int rc = 0;
+    int result = 0;
+    size_t encoded_len;
+
+    rc = hdr_encode_compressed(histogram, &compressed_histogram, &compressed_len);
+    if (rc != 0)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, rc);
+    }
+
+    encoded_len = base64_encoded_len(compressed_len);
+    encoded_histogram = calloc(encoded_len + 1, sizeof(char));
+
+    rc = base64_encode(
+        compressed_histogram, compressed_len, encoded_histogram, encoded_len);
+    if (rc != 0)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, rc);
+    }
+
+    fprintf(
+        file, "%d.%d,%d.%d,%ld,%s\n",
+        (int) start_timestamp->tv_sec, (int) (start_timestamp->tv_nsec / 1000000),
+        (int) end_timestamp->tv_sec, (int) (end_timestamp->tv_nsec / 1000000),
+        hdr_max(histogram),
+        encoded_histogram);
+
+cleanup:
+    free(compressed_histogram);
+    free(encoded_histogram);
+
+    return result;
+}
+
+int hdr_log_reader_init(struct hdr_log_reader* reader)
+{
+    return 0;
+}
+
+int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file)
+{
+    return ENOSYS;
+}
+
+int hdr_log_read(
+    struct hdr_log_reader* reader, FILE* file, struct hdr_histogram** histogram)
+{
+    return ENOSYS;
+}
