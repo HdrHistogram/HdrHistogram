@@ -52,6 +52,7 @@ static time_t compare_time_t(time_t a, time_t b)
     char b_str[128];
 
     printf("%s != %s\n", ctime_r(&a, a_str), ctime_r(&b, b_str));
+    return false;
 }
 
 static bool compare_string(const char* a, const char* b, int len)
@@ -381,8 +382,8 @@ static char* writes_and_reads_log()
 
     log_file = fopen(file_name, "r");
 
-    struct hdr_histogram* read_cor_histogram;
-    struct hdr_histogram* read_raw_histogram;
+    struct hdr_histogram* read_cor_histogram = NULL;
+    struct hdr_histogram* read_raw_histogram = NULL;
     long expected_nsec = (timestamp.tv_nsec / 1000000) * 1000000;
 
     rc = hdr_log_read_header(&reader, log_file);
@@ -406,6 +407,9 @@ static char* writes_and_reads_log()
     mu_assert(
         "Histograms do not match",
         compare_histogram(raw_histogram, read_raw_histogram));
+
+    fclose(log_file);
+    remove(file_name);
 
     return 0;
 }
