@@ -44,7 +44,9 @@ int hdr_log_write(
 
 struct hdr_log_reader
 {
-
+    int major_version;
+    int minor_version;
+    struct timespec start_timestamp;
 };
 
 int hdr_log_reader_init(struct hdr_log_reader* reader);

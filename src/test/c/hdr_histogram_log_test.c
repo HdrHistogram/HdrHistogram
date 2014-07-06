@@ -19,6 +19,41 @@
 #include <hdr_histogram_log.h>
 #include "minunit.h"
 
+static bool compare_int(int a, int b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+
+    printf("%d != %d\n", a, b);
+    return false;
+}
+
+static bool compare_long(long a, long b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+
+    printf("%ld != %ld\n", a, b);
+    return false;
+}
+
+static time_t compare_time_t(time_t a, time_t b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+
+    char a_str[128];
+    char b_str[128];
+
+    printf("%s != %s\n", ctime_r(&a, a_str), ctime_r(&b, b_str));
+}
+
 static bool compare_string(const char* a, const char* b, int len)
 {
     if (strncmp(a, b, len) == 0)
@@ -316,18 +351,6 @@ static char* base64_decode_fails_with_invalid_lengths()
     return 0;
 }
 
-static char* test_parse_log()
-{
-    // const char* file_name = "src/test/resources/hiccup.140623.1028.10646.hlog";
-    const char* file_name = "histogram.log";
-    struct hdr_histogram* h;
-    FILE* log_file = fopen(file_name, "r");
-
-    hdr_parse_log(log_file, &h);
-
-    return 0;
-}
-
 static char* writes_and_reads_log()
 {
     const char* file_name = "histogram.log";
@@ -353,11 +376,24 @@ static char* writes_and_reads_log()
     hdr_log_write(&writer, log_file, &timestamp, &interval, raw_histogram);
     mu_assert("Failed raw write", validate_return_code(rc));
 
+    fflush(log_file);
+    fclose(log_file);
+
+    log_file = fopen(file_name, "r");
+
     struct hdr_histogram* read_cor_histogram;
     struct hdr_histogram* read_raw_histogram;
+    long expected_nsec = (timestamp.tv_nsec / 1000000) * 1000000;
 
     rc = hdr_log_read_header(&reader, log_file);
     mu_assert("Failed header read", validate_return_code(rc));
+    mu_assert("Incorrect major version", compare_int(reader.major_version, 1));
+    mu_assert("Incorrect minor version", compare_int(reader.minor_version, 1));
+    mu_assert("Incorrect timestamp (sec)",
+        compare_time_t(reader.start_timestamp.tv_sec, timestamp.tv_sec));
+    mu_assert("Incorrect timestamp (nsec)",
+        compare_long(reader.start_timestamp.tv_nsec, expected_nsec));
+
     rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
     mu_assert("Failed corrected read", validate_return_code(rc));
     rc = hdr_log_read(&reader, log_file, &read_raw_histogram);

@@ -578,55 +578,6 @@ cleanup:
     return result;
 }
 
-typedef struct
-{
-    int major_version;
-    int minor_version;
-    int64_t start_time_ms;
-} _log_header;
-
-static int scan_log_format(const char* line, _log_header* header)
-{
-    const char* format = "#[Histogram log format version %d.%d]";
-    return sscanf(line, format, &header->major_version, &header->minor_version);
-}
-
-static void scan_start_time(const char* line, _log_header* header)
-{
-    const char* format = "#[StartTime: %d.%d [^\n]";
-    int64_t timestamp_s = 0;
-    int64_t trailing_ms = 0;
-    if (sscanf(line, format, &timestamp_s, &trailing_ms) == 2)
-    {
-        header->start_time_ms = (timestamp_s * 1000) + trailing_ms;
-    }
-}
-
-static void parse_log_comments(FILE* f, _log_header* header)
-{
-    char buf[4096];
-
-    header->major_version = 0;
-    header->minor_version = 0;
-    header->start_time_ms = 0;
-
-    do
-    {
-        char* line = fgets(buf, 4096, f);
-
-        if (NULL != line && is_comment(line))
-        {
-            scan_log_format(line, header);
-            scan_start_time(line, header);
-        }
-        else
-        {
-            break;
-        }
-    }
-    while (true);
-}
-
 int parse_lines(FILE* f, struct hdr_histogram** histogram)
 {
     const char* format = "%d.%d,%d.%d,%d.%d,%s";
@@ -703,27 +654,6 @@ cleanup:
     free(compressed_histogram);
 
     return result;
-}
-
-int hdr_parse_log(FILE* f, struct hdr_histogram** result)
-{
-    _log_header header;
-
-    parse_log_comments(f, &header);
-
-    // printf(
-    //     "Version: %d.%d, at: %ld\n",
-    //     header.major_version,
-    //     header.minor_version,
-    //     header.start_time_ms);
-
-    // TODO: Check log file version.
-
-    // The CSV Header will be consumed in the parsing of the log comments
-
-    parse_lines(f, result);
-
-    return 0;
 }
 
 int hdr_log_writer_init(struct hdr_log_writer* writer)
@@ -848,12 +778,81 @@ cleanup:
 
 int hdr_log_reader_init(struct hdr_log_reader* reader)
 {
+    reader->major_version = 0;
+    reader->minor_version = 0;
+    reader->start_timestamp.tv_sec = 0;
+    reader->start_timestamp.tv_nsec = 0;
+
     return 0;
 }
 
+
+static int scan_log_format(struct hdr_log_reader* reader, const char* line)
+{
+    const char* format = "#[Histogram log format version %d.%d]";
+    return sscanf(line, format, &reader->major_version, &reader->minor_version);
+}
+
+static void scan_start_time(struct hdr_log_reader* reader, const char* line)
+{
+    const char* format = "#[StartTime: %d.%d [^\n]";
+    int timestamp_s = 0;
+    int trailing_ms = 0;
+
+    if (sscanf(line, format, &timestamp_s, &trailing_ms) == 2)
+    {
+        reader->start_timestamp.tv_sec = timestamp_s;
+        reader->start_timestamp.tv_nsec = trailing_ms * 1000000;
+    }
+}
+
+static void scan_header_line(struct hdr_log_reader* reader, const char* line)
+{
+    scan_log_format(reader, line);
+    scan_start_time(reader, line);
+}
+
+#define HEADER_LINE_LENGTH 128
+
 int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file)
 {
-    return ENOSYS;
+    char line[HEADER_LINE_LENGTH]; // TODO: check for overflow.
+
+    bool parsing_header = true;
+
+    do
+    {
+        int c = fgetc(file);
+        ungetc(c, file);
+
+        switch (c)
+        {
+
+        case '#':
+            if (fgets(line, HEADER_LINE_LENGTH, file) == NULL)
+            {
+                return EIO;
+            }
+
+            scan_header_line(reader, line);
+            break;
+
+        case '"':
+            if (fgets(line, HEADER_LINE_LENGTH, file) == NULL)
+            {
+                return EIO;
+            }
+
+            parsing_header = false;
+            break;
+
+        default:
+            parsing_header = false;
+        }
+    }
+    while (parsing_header);
+
+    return 0;
 }
 
 int hdr_log_read(
