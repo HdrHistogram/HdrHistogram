@@ -414,7 +414,7 @@ static char* writes_and_reads_log()
     mu_assert("No EOF at end of file", rc == EOF);
 
     fclose(log_file);
-    // remove(file_name);
+    remove(file_name);
 
     return 0;
 }
@@ -441,6 +441,9 @@ static char* log_read_fails_with_incorrect_version()
 
     mu_assert("Should error with incorrect version", r == HDR_LOG_INVALID_VERSION);
 
+    fclose(log_file);
+    remove(file_name);
+
     return 0;
 }
 
@@ -449,7 +452,6 @@ static struct mu_result all_tests()
 {
     tests_run = 0;
 
-    // mu_run_test(test_encode_and_decode);
     mu_run_test(test_encode_and_decode_compressed);
     mu_run_test(test_encode_and_decode_compressed_large);
 
@@ -466,7 +468,6 @@ static struct mu_result all_tests()
     mu_run_test(writes_and_reads_log);
     mu_run_test(log_read_fails_with_incorrect_version);
 
-    // mu_run_test(test_parse_log);
     free(raw_histogram);
     free(cor_histogram);
 
