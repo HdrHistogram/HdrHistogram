@@ -19,6 +19,15 @@
  * to link against -lz in order to link applications that include this header.
  */
 
+#define HDR_COMPRESSION_COOKIE_MISMATCH -29999
+#define HDR_ENCODING_COOKIE_MISMATCH -29998
+#define HDR_DEFLATE_INIT_FAIL -29997
+#define HDR_DEFLATE_FAIL -29996
+#define HDR_INFLATE_INIT_FAIL -29995
+#define HDR_INFLATE_FAIL -29994
+#define HDR_LOG_INVALID_VERSION -29993
+
+
 int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result);
 
 int hdr_parse_log(FILE* log, struct hdr_histogram** result);

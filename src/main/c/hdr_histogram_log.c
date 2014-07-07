@@ -285,22 +285,10 @@ int base64_decode(
 static const int32_t ENCODING_COOKIE    = 0x1c849308 + (8 << 4);
 static const int32_t COMPRESSION_COOKIE = 0x1c849309 + (8 << 4);
 
-#define HDR_COMPRESSION_COOKIE_MISMATCH -29999
-#define HDR_ENCODING_COOKIE_MISMATCH -29998
-#define HDR_DEFLATE_INIT_FAIL -29997
-#define HDR_DEFLATE_FAIL -29996
-#define HDR_INFLATE_INIT_FAIL -29995
-#define HDR_INFLATE_FAIL -29994
-#define HDR_DEFLATE_NEED_REALLOC -29993
-
 const char* hdr_strerror(int errnum)
 {
     switch (errnum)
     {
-        case EINVAL:
-            return "Invalid argument";
-        case ENOMEM:
-            return "Out of memory";
         case HDR_COMPRESSION_COOKIE_MISMATCH:
             return "Compression cookie mismatch";
         case HDR_ENCODING_COOKIE_MISMATCH:
@@ -313,10 +301,10 @@ const char* hdr_strerror(int errnum)
             return "Inflate initialisation failed";
         case HDR_INFLATE_FAIL:
             return "Inflate failed";
-        case HDR_DEFLATE_NEED_REALLOC:
-            return "Deflate - need to realloc buffer";
+        case HDR_LOG_INVALID_VERSION:
+            return "Log - invalid version in log header";
         default:
-            return "Unknown error";
+            return strerror(errnum);
     }
 }
 
@@ -562,6 +550,8 @@ int hdr_log_writer_init(struct hdr_log_writer* writer)
 }
 
 #define LOG_VERION "1.01"
+#define LOG_MAJOR_VERSION 1
+#define LOG_MINOR_VERSION 1
 
 static int print_user_prefix(FILE* f, const char* prefix)
 {
@@ -752,6 +742,12 @@ int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file)
         }
     }
     while (parsing_header);
+
+    if (LOG_MAJOR_VERSION != reader->major_version ||
+        LOG_MINOR_VERSION != reader->minor_version)
+    {
+        return HDR_LOG_INVALID_VERSION;
+    }
 
     return 0;
 }

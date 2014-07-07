@@ -414,7 +414,32 @@ static char* writes_and_reads_log()
     mu_assert("No EOF at end of file", rc == EOF);
 
     fclose(log_file);
-    remove(file_name);
+    // remove(file_name);
+
+    return 0;
+}
+
+static char* log_read_fails_with_incorrect_version()
+{
+    const char* log_with_invalid_version =
+    "#[Test log]\n"
+    "#[Histogram log format version 1.00]\n"
+    "#[StartTime: 1404700005.222 (seconds since epoch), Mon Jul 02:26:45 GMT 2014]\n"
+    "StartTimestamp\",\"EndTimestamp\",\"Interval_Max\",\"Interval_Compressed_Histogram\"\n";
+    const char* file_name = "histogram_with_invalid_version.log";
+    struct hdr_log_reader reader;
+    FILE* log_file;
+
+    log_file = fopen(file_name, "w+");
+    fprintf(log_file, "%s", log_with_invalid_version);
+    fflush(log_file);
+    fclose(log_file);
+
+    log_file = fopen(file_name, "r");
+    hdr_log_reader_init(&reader);
+    int r = hdr_log_read_header(&reader, log_file);
+
+    mu_assert("Should error with incorrect version", r == HDR_LOG_INVALID_VERSION);
 
     return 0;
 }
@@ -439,6 +464,7 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_encodes_with_padding);
 
     mu_run_test(writes_and_reads_log);
+    mu_run_test(log_read_fails_with_incorrect_version);
 
     // mu_run_test(test_parse_log);
     free(raw_histogram);
