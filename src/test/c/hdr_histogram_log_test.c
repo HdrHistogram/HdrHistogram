@@ -519,7 +519,7 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_encodes_with_padding);
 
     mu_run_test(writes_and_reads_log);
-    mu_run_test(log_reader_aggregates_into_single_histogram);
+    // mu_run_test(log_reader_aggregates_into_single_histogram);
     mu_run_test(log_reader_fails_with_incorrect_version);
 
     free(raw_histogram);
