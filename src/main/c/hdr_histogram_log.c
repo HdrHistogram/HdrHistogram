@@ -447,15 +447,15 @@ int hdr_decode_compressed(
 {
     const int counts_per_chunk = 512;
     int64_t counts_array[counts_per_chunk];
-
-    struct hdr_histogram* h;
+    struct hdr_histogram* h = NULL;
     int result = 0;
+
     z_stream strm;
     strm_init(&strm);
 
     int64_t counts_tally = 0;
 
-    if (length < sizeof(_compression_flyweight) || *histogram != NULL)
+    if (length < sizeof(_compression_flyweight))
     {
         FAIL_AND_CLEANUP(cleanup, result, EINVAL);
     }
@@ -536,9 +536,14 @@ cleanup:
     {
         free(h);
     }
-    else
+    else if (NULL == *histogram)
     {
         *histogram = h;
+    }
+    else
+    {
+        hdr_add(*histogram, h);
+        free(h);
     }
 
     return result;

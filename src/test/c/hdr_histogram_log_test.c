@@ -41,6 +41,17 @@ static bool compare_long(long a, long b)
     return false;
 }
 
+static bool compare_int64_t(int64_t a, int64_t b)
+{
+    if (a == b)
+    {
+        return true;
+    }
+
+    printf("%"PRIu64" != %"PRIu64"\n", a, b);
+    return false;
+}
+
 static time_t compare_time_t(time_t a, time_t b)
 {
     if (a == b)
@@ -455,19 +466,30 @@ static char* log_reader_aggregates_into_single_histogram()
     rc = hdr_log_read(&reader, log_file, &histogram);
     mu_assert("Failed raw read", validate_return_code(rc));
 
-    // mu_assert(
-    //     "Histograms do not match",
-    //     compare_histogram(cor_histogram, read_cor_histogram));
+    struct hdr_recorded_iter iter;
+    hdr_recorded_iter_init(&iter, histogram);
+    int64_t expected_total_count =
+        raw_histogram->total_count + cor_histogram->total_count;
 
-    // mu_assert(
-    //     "Histograms do not match",
-    //     compare_histogram(raw_histogram, read_raw_histogram));
+    mu_assert(
+        "Total counts incorrect",
+        compare_int64_t(histogram->total_count, expected_total_count));
 
-    // rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
-    // mu_assert("No EOF at end of file", rc == EOF);
+    while (hdr_recorded_iter_next(&iter))
+    {
+        int64_t count = iter.iter.count_at_index;
+        int64_t value = iter.iter.value_from_index;
+
+        int64_t expected_count =
+            hdr_count_at_value(raw_histogram, value) +
+            hdr_count_at_value(cor_histogram, value);
+
+        mu_assert("Incorrect count", compare_int64_t(count, expected_count));
+    }
 
     fclose(log_file);
     remove(file_name);
+    free(histogram);
 
     return 0;
 }
@@ -519,7 +541,7 @@ static struct mu_result all_tests()
     mu_run_test(base64_encode_encodes_with_padding);
 
     mu_run_test(writes_and_reads_log);
-    // mu_run_test(log_reader_aggregates_into_single_histogram);
+    mu_run_test(log_reader_aggregates_into_single_histogram);
     mu_run_test(log_reader_fails_with_incorrect_version);
 
     free(raw_histogram);

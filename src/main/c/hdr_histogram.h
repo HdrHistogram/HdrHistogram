@@ -89,17 +89,28 @@ void hdr_reset(struct hdr_histogram *h);
 size_t hdr_get_memory_size(struct hdr_histogram *h);
 
 /**
- * Record a value in the histogram.
- *
  * Records a value in the histogram, will round this value of to a precision at or better
  * than the significant_figure specified at contruction time.
-
+ *
  * @param h "This" pointer
  * @param value Value to add to the histogram
  * @return false if the value is larger than the highest_trackable_value and can't be recorded,
  * true otherwise.
  */
 bool hdr_record_value(struct hdr_histogram* h, int64_t value);
+
+/**
+ * Records count values in the histogram, will round this value of to a
+ * precision at or better than the significant_figure specified at contruction
+ * time.
+ *
+ * @param h "This" pointer
+ * @param value Value to add to the histogram
+ * @return false if the value is larger than the highest_trackable_value and can't be recorded,
+ * true otherwise.
+ */
+bool hdr_record_values(struct hdr_histogram* h, int64_t value, int64_t count);
+
 
 /**
  * Record a value in the histogram and backfill based on an expected interval.
@@ -118,6 +129,18 @@ bool hdr_record_value(struct hdr_histogram* h, int64_t value);
  */
 bool hdr_record_corrected_value(struct hdr_histogram* h, int64_t value, int64_t expexcted_interval);
 
+/**
+ * Adds all of the values from 'from' to 'this' histogram.  Will return the
+ * number of values that are dropped when copying.  Values will be dropped
+ * if they around outside of h.lowest_trackable_value and
+ * h.highest_trackable_value.
+ *
+ * @param h "This" pointer
+ * @param from Histogram to copy values from.
+ * @return The number of values dropped when copying.
+ */
+int64_t hdr_add(struct hdr_histogram* h, struct hdr_histogram* from);
+
 int64_t hdr_min(struct hdr_histogram* h);
 int64_t hdr_max(struct hdr_histogram* h);
 int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile);
@@ -125,6 +148,7 @@ int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile);
 double hdr_mean(struct hdr_histogram* h);
 bool hdr_values_are_equivalent(struct hdr_histogram* h, int64_t a, int64_t b);
 int64_t hdr_lowest_equivalent_value(struct hdr_histogram* h, int64_t value);
+int64_t hdr_count_at_value(struct hdr_histogram* h, int64_t value);
 
 /**
  * The basic iterator.  This is the equivlent of the
