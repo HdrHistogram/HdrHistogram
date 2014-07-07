@@ -779,6 +779,12 @@ int hdr_log_read(
         FAIL_AND_CLEANUP(cleanup, result, EIO);
     }
 
+    null_trailing_whitespace(line, read);
+    if (strlen(line) == 0)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, EOF);
+    }
+
     int r;
     r = realloc_buffer(
         (void**)&base64_histogram, sizeof(char), read, ZERO_ALL);
@@ -802,8 +808,6 @@ int hdr_log_read(
     {
         FAIL_AND_CLEANUP(cleanup, result, EINVAL);
     }
-
-    null_trailing_whitespace(base64_histogram, strlen(base64_histogram));
 
     int base64_len = strlen(base64_histogram);
     int compressed_len = base64_decoded_len(base64_len);

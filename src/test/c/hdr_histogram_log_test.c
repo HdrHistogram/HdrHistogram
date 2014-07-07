@@ -377,6 +377,8 @@ static char* writes_and_reads_log()
     hdr_log_write(&writer, log_file, &timestamp, &interval, raw_histogram);
     mu_assert("Failed raw write", validate_return_code(rc));
 
+    fprintf(log_file, "\n");
+
     fflush(log_file);
     fclose(log_file);
 
@@ -407,6 +409,9 @@ static char* writes_and_reads_log()
     mu_assert(
         "Histograms do not match",
         compare_histogram(raw_histogram, read_raw_histogram));
+
+    rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
+    mu_assert("No EOF at end of file", rc == EOF);
 
     fclose(log_file);
     remove(file_name);
