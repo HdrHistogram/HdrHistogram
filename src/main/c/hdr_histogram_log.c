@@ -682,7 +682,6 @@ int hdr_log_reader_init(struct hdr_log_reader* reader)
     return 0;
 }
 
-
 static void scan_log_format(struct hdr_log_reader* reader, const char* line)
 {
     const char* format = "#[Histogram log format version %d.%d]";
@@ -757,8 +756,20 @@ int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file)
     return 0;
 }
 
+static void update_timespec(struct timespec* ts, int time_s, int time_ms)
+{
+    if (NULL == ts)
+    {
+        return;
+    }
+
+    ts->tv_sec = time_s;
+    ts->tv_nsec = time_ms * 1000000;
+}
+
 int hdr_log_read(
-    struct hdr_log_reader* reader, FILE* file, struct hdr_histogram** histogram)
+    struct hdr_log_reader* reader, FILE* file, struct hdr_histogram** histogram,
+    struct timespec* timestamp, struct timespec* interval)
 {
     const char* format = "%d.%d,%d.%d,%d.%d,%s";
     char* base64_histogram = NULL;
@@ -826,6 +837,9 @@ int hdr_log_read(
     {
         FAIL_AND_CLEANUP(cleanup, result, r);
     }
+
+    update_timespec(timestamp, begin_s, begin_ms);
+    update_timespec(interval, end_s, end_ms);
 
 cleanup:
     free(line);

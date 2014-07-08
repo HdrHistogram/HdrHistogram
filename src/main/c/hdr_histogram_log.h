@@ -61,7 +61,8 @@ struct hdr_log_reader
 int hdr_log_reader_init(struct hdr_log_reader* reader);
 int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file);
 int hdr_log_read(
-    struct hdr_log_reader* reader, FILE* file, struct hdr_histogram** histogram);
+    struct hdr_log_reader* reader, FILE* file, struct hdr_histogram** histogram,
+    struct timespec* timestamp, struct timespec* interval);
 
 
 const char* hdr_strerror(int errnum);

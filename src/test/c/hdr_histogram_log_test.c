@@ -30,17 +30,6 @@ static bool compare_int(int a, int b)
     return false;
 }
 
-static bool compare_long(long a, long b)
-{
-    if (a == b)
-    {
-        return true;
-    }
-
-    printf("%ld != %ld\n", a, b);
-    return false;
-}
-
 static bool compare_int64_t(int64_t a, int64_t b)
 {
     if (a == b)
@@ -52,17 +41,37 @@ static bool compare_int64_t(int64_t a, int64_t b)
     return false;
 }
 
-static time_t compare_time_t(time_t a, time_t b)
+static long ns_to_ms(long ns)
 {
-    if (a == b)
+    return (ns / 1000000) * 1000000;
+}
+
+static bool compare_timespec(struct timespec* a, struct timespec* b)
+{
+    char a_str[128];
+    char b_str[128];
+
+    long a_tv_msec = ns_to_ms(a->tv_nsec);
+    long b_tv_msec = ns_to_ms(b->tv_nsec);
+
+    if (a->tv_sec == a->tv_sec && a_tv_msec == b_tv_msec)
     {
         return true;
     }
 
-    char a_str[128];
-    char b_str[128];
+    if (a->tv_sec != b->tv_sec)
+    {
+        printf(
+            "tv_sec: %s != %s\n",
+            ctime_r(&a->tv_sec, a_str),
+            ctime_r(&b->tv_sec, b_str));
+    }
 
-    printf("%s != %s\n", ctime_r(&a, a_str), ctime_r(&b, b_str));
+    if (a_tv_msec == b_tv_msec)
+    {
+        printf("%ld != %ld\n", a->tv_nsec, b->tv_nsec);
+    }
+
     return false;
 }
 
@@ -403,14 +412,23 @@ static char* writes_and_reads_log()
     mu_assert("Failed header read", validate_return_code(rc));
     mu_assert("Incorrect major version", compare_int(reader.major_version, 1));
     mu_assert("Incorrect minor version", compare_int(reader.minor_version, 1));
-    mu_assert("Incorrect timestamp (sec)",
-        compare_time_t(reader.start_timestamp.tv_sec, timestamp.tv_sec));
-    mu_assert("Incorrect timestamp (nsec)",
-        compare_long(reader.start_timestamp.tv_nsec, expected_nsec));
+    mu_assert(
+        "Incorrect start timestamp",
+        compare_timespec(&reader.start_timestamp, &timestamp));
 
-    rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
+    struct timespec actual_timestamp;
+    struct timespec actual_interval;
+
+    rc = hdr_log_read(
+        &reader, log_file, &read_cor_histogram,
+        &actual_timestamp, &actual_interval);
     mu_assert("Failed corrected read", validate_return_code(rc));
-    rc = hdr_log_read(&reader, log_file, &read_raw_histogram);
+    mu_assert(
+        "Incorrect first timestamp", compare_timespec(&actual_timestamp, &timestamp));
+    mu_assert(
+        "Incorrect first interval", compare_timespec(&actual_interval, &interval));
+
+    rc = hdr_log_read(&reader, log_file, &read_raw_histogram, NULL, NULL);
     mu_assert("Failed raw read", validate_return_code(rc));
 
     mu_assert(
@@ -421,7 +439,7 @@ static char* writes_and_reads_log()
         "Histograms do not match",
         compare_histogram(raw_histogram, read_raw_histogram));
 
-    rc = hdr_log_read(&reader, log_file, &read_cor_histogram);
+    rc = hdr_log_read(&reader, log_file, &read_cor_histogram, NULL, NULL);
     mu_assert("No EOF at end of file", rc == EOF);
 
     fclose(log_file);
@@ -461,9 +479,9 @@ static char* log_reader_aggregates_into_single_histogram()
 
     rc = hdr_log_read_header(&reader, log_file);
     mu_assert("Failed header read", validate_return_code(rc));
-    rc = hdr_log_read(&reader, log_file, &histogram);
+    rc = hdr_log_read(&reader, log_file, &histogram, NULL, NULL);
     mu_assert("Failed corrected read", validate_return_code(rc));
-    rc = hdr_log_read(&reader, log_file, &histogram);
+    rc = hdr_log_read(&reader, log_file, &histogram, NULL, NULL);
     mu_assert("Failed raw read", validate_return_code(rc));
 
     struct hdr_recorded_iter iter;
