@@ -131,11 +131,11 @@ static char* test_invalid_significant_figures()
     struct hdr_histogram* h = NULL;
 
     int r = hdr_alloc(36000000, -1, &h);
-    mu_assert("Result was not -1",      r == -1);
+    mu_assert("Result was not EINVAL", r == EINVAL);
     mu_assert("Histogram was not null", h == 0);
 
     r = hdr_alloc(36000000, 6, &h);
-    mu_assert("Result was not -1",      r == -1);
+    mu_assert("Result was not EINVAL", r == EINVAL);
     mu_assert("Histogram was not null", h == 0);
 
     return 0;

@@ -132,7 +132,7 @@ int hdr_init(
 {
     if (significant_figures < 1 || 5 < significant_figures)
     {
-        return -1;
+        return EINVAL;
     }
 
     int64_t largest_value_with_single_unit_resolution = 2 * power(10, significant_figures);
@@ -161,7 +161,7 @@ int hdr_init(
 
     if (!histogram)
     {
-        return -2;
+        return ENOMEM;
     }
 
     memset((void*) histogram, 0, histogram_size);

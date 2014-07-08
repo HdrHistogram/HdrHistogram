@@ -406,7 +406,6 @@ static char* writes_and_reads_log()
 
     struct hdr_histogram* read_cor_histogram = NULL;
     struct hdr_histogram* read_raw_histogram = NULL;
-    long expected_nsec = (timestamp.tv_nsec / 1000000) * 1000000;
 
     rc = hdr_log_read_header(&reader, log_file);
     mu_assert("Failed header read", validate_return_code(rc));

@@ -49,10 +49,10 @@ struct hdr_histogram
  * @param significant_figures The level of precision for this histogram, i.e. the number
  * of figures in a decimal number that will be maintained.  E.g. a value of 3 will mean
  * the results from the histogram will be accurate up to the first three digits.  Must
- * be a value between 3 and 6 (inclusive).
+ * be a value between 1 and 5 (inclusive).
  * @param result Output parameter to capture allocated histogram.
- * @return 0 on success, -1 if the significant_figure value is outside of the allowed range.
- * or -2 if malloc failed.
+ * @return 0 on success, EINVAL if the significant_figure value is outside of the
+ * allowed range or ENOMEM if malloc failed.
  */
 int hdr_init(
         int64_t lowest_trackable_value,
