@@ -338,7 +338,8 @@ int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile)
     hdr_iter_init(&iter, h);
 
     double requested_percentile = percentile < 100.0 ? percentile : 100.0;
-    int64_t count_at_percentile = (int64_t) (((requested_percentile / 100) * h->total_count) + 0.5);
+    int64_t count_at_percentile =
+        (int64_t) (((requested_percentile / 100) * h->total_count) + 0.5);
     count_at_percentile = count_at_percentile > 1 ? count_at_percentile : 1;
     int64_t total = 0;
 
@@ -348,7 +349,8 @@ int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile)
 
         if (total >= count_at_percentile)
         {
-            return iter.value_from_index;
+            int64_t value_from_index = iter.value_from_index;
+            return highest_equivalent_value(h, value_from_index);
         }
     }
 
