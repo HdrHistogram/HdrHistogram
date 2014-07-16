@@ -228,12 +228,12 @@ typedef enum {
  * @param ticks_per_half_distance The number of iteration steps per half-distance to 100%
  * @param value_scale Scale the output values by this amount
  * @param format_type Format to use, e.g. CSV.
+ * @return 0 on success, error code on failure.  EIO if a fprintf failes, if
+ * a function like fflush fails, the return code will be the errno.
  */
-void hdr_percentiles_print(struct hdr_histogram* h,
-                            FILE* stream,
-                            int32_t ticks_per_half_distance,
-                            double value_scale,
-                            format_type format);
+int hdr_percentiles_print(
+    struct hdr_histogram* h, FILE* stream, int32_t ticks_per_half_distance,
+    double value_scale, format_type format);
 
 /**
  * Iterator for recorded values.  Will only return when it encounters a value

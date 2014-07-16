@@ -26,6 +26,6 @@ int main(int argc, char **argv)
     hdr_record_value(raw_histogram, 100000000L);
     hdr_record_corrected_value(cor_histogram, 100000000L, 10000L);
 
-    hdr_percentiles_print(raw_histogram, stdout, 5, 1.0, CSV);
-    hdr_percentiles_print(cor_histogram, stdout, 5, 1.0, CSV);
+    hdr_percentiles_print(raw_histogram, stdout, 5, 1.0, CLASSIC);
+    hdr_percentiles_print(cor_histogram, stdout, 5, 1.0, CLASSIC);
 }

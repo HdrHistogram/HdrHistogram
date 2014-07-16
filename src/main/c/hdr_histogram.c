@@ -585,20 +585,30 @@ static const char* format_head_string(format_type format)
     }
 }
 
-void hdr_percentiles_print(struct hdr_histogram* h,
-                            FILE* stream,
-                            int32_t ticks_per_half_distance,
-                            double value_scale,
-                            format_type format)
+static const char* CLASSIC_FOOTER =
+    "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n"
+    "#[Max     = %12.3f, Total count    = %12" PRIu64 "]\n"
+    "#[Buckets = %12d, SubBuckets     = %12d]\n";
+
+int hdr_percentiles_print(
+    struct hdr_histogram* h, FILE* stream, int32_t ticks_per_half_distance,
+    double value_scale, format_type format)
 {
     char line_format[25];
     format_line_string(line_format, 25, h->significant_figures, format);
     const char* head_format = format_head_string(format);
+    int rc = 0;
 
     struct hdr_percentile_iter percentiles;
     hdr_percentile_iter_init(&percentiles, h, ticks_per_half_distance);
 
-    fprintf(stream, head_format, "Value", "Percentile", "TotalCount", "1/(1-Percentile)");
+    if (fprintf(
+        stream, head_format,
+        "Value", "Percentile", "TotalCount", "1/(1-Percentile)") < 0)
+    {
+        rc = EIO;
+        goto cleanup;
+    }
 
     while (hdr_percentile_iter_next(&percentiles))
     {
@@ -607,7 +617,12 @@ void hdr_percentiles_print(struct hdr_histogram* h,
         int64_t total_count         = percentiles.iter.count_to_index;
         double  inverted_percentile = (1.0 / (1.0 - percentile));
 
-        fprintf(stream, line_format, value, percentile, total_count, inverted_percentile);
+        if (fprintf(
+            stream, line_format, value, percentile, total_count, inverted_percentile) < 0)
+        {
+            rc = EIO;
+            goto cleanup;
+        }
     }
 
     if (CLASSIC == format)
@@ -616,12 +631,22 @@ void hdr_percentiles_print(struct hdr_histogram* h,
         double stddev = hdr_stddev(h) / value_scale;
         double max    = hdr_max(h)    / value_scale;
 
-        fprintf(stream, "#[Mean    = %12.3f, StdDeviation   = %12.3f]\n", mean, stddev);
-        fprintf(stream, "#[Max     = %12.3f, Total count    = %12" PRIu64 "]\n", max, h->total_count);
-        fprintf(stream, "#[Buckets = %12d, SubBuckets     = %12d]\n", h->bucket_count, h->sub_bucket_count);
+        if (fprintf(
+            stream, CLASSIC_FOOTER,  mean, stddev, max,
+            h->total_count, h->bucket_count, h->sub_bucket_count) < 0)
+        {
+            rc = EIO;
+            goto cleanup;
+        }
     }
 
-    fflush(stream);
+    if (fflush(stream) < 0)
+    {
+        rc = errno;
+    }
+
+cleanup:
+    return rc;
 }
 
 
