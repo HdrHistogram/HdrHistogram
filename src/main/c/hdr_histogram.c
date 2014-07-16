@@ -640,11 +640,6 @@ int hdr_percentiles_print(
         }
     }
 
-    if (fflush(stream) < 0)
-    {
-        rc = errno;
-    }
-
 cleanup:
     return rc;
 }
