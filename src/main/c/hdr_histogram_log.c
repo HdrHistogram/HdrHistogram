@@ -622,23 +622,21 @@ int hdr_log_write_header(
     struct hdr_log_writer* writer, FILE* file,
     const char* user_prefix, struct timespec* timestamp)
 {
-    int rc = 0;
-
-    if ((rc = print_user_prefix(file, user_prefix)) < 0)
+    if (print_user_prefix(file, user_prefix) < 0)
     {
-        return rc;
+        return EIO;
     }
-    if ((rc = print_version(file, LOG_VERION)) < 0)
+    if (print_version(file, LOG_VERION) < 0)
     {
-        return rc;
+        return EIO;
     }
-    if ((rc = print_time(file, timestamp)) < 0)
+    if (print_time(file, timestamp) < 0)
     {
-        return rc;
+        return EIO;
     }
-    if ((rc = print_header(file)) < 0)
+    if (print_header(file) < 0)
     {
-        return rc;
+        return EIO;
     }
 
     return 0;
@@ -674,12 +672,15 @@ int hdr_log_write(
         FAIL_AND_CLEANUP(cleanup, result, rc);
     }
 
-    fprintf(
+    if (fprintf(
         file, "%d.%d,%d.%d,%ld.0,%s\n",
         (int) start_timestamp->tv_sec, (int) (start_timestamp->tv_nsec / 1000000),
         (int) end_timestamp->tv_sec, (int) (end_timestamp->tv_nsec / 1000000),
         hdr_max(histogram),
-        encoded_histogram);
+        encoded_histogram) < 0)
+    {
+        result = EIO;
+    }
 
 cleanup:
     free(compressed_histogram);
