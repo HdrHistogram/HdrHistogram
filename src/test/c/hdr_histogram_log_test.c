@@ -186,6 +186,8 @@ void base64_decode_block(const char* input, uint8_t* output);
 int base64_decode(
     const char* input, size_t input_len, uint8_t* output, size_t output_len);
 int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length);
+int hdr_decode_compressed(
+    uint8_t* buffer, size_t length, struct hdr_histogram** histogram);
 
 static char* test_encode_and_decode_compressed()
 {

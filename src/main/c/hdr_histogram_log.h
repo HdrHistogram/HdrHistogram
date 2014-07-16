@@ -27,14 +27,8 @@
 #define HDR_INFLATE_FAIL -29994
 #define HDR_LOG_INVALID_VERSION -29993
 
-
-int hdr_decode_compressed(uint8_t* buffer, size_t length, struct hdr_histogram** result);
-
-int hdr_parse_log(FILE* log, struct hdr_histogram** result);
-
 struct hdr_log_writer
 {
-
 };
 
 int hdr_log_writer_init(struct hdr_log_writer* writer);
