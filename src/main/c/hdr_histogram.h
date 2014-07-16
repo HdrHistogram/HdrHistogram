@@ -15,8 +15,8 @@
  * the use of stdint/stdbool and inline variable declaration.
  */
 
-#ifndef _HDR_HISTOGRAM_H_
-#define _HDR_HISTOGRAM_H_ 1
+#ifndef HDR_HISTOGRAM_H
+#define HDR_HISTOGRAM_H 1
 
 struct hdr_histogram
 {

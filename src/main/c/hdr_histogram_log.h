@@ -19,6 +19,9 @@
  * to link against -lz in order to link applications that include this header.
  */
 
+#ifndef HDR_HISTOGRAM_H_LOG
+#define HDR_HISTOGRAM_H_LOG 1
+
 #define HDR_COMPRESSION_COOKIE_MISMATCH -29999
 #define HDR_ENCODING_COOKIE_MISMATCH -29998
 #define HDR_DEFLATE_INIT_FAIL -29997
@@ -140,3 +143,5 @@ int hdr_log_read(
  * @return The user readable representation of the error.
  */
 const char* hdr_strerror(int errnum);
+
+#endif
