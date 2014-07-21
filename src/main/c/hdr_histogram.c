@@ -146,7 +146,7 @@ int hdr_init(
     int32_t sub_bucket_mask       = (sub_bucket_count - 1) << unit_magnitude;
 
     // determine exponent range needed to support the trackable value with no overflow:
-    int64_t trackable_value = (int64_t) sub_bucket_count - 1;
+    int64_t trackable_value = (int64_t) sub_bucket_mask;
     int32_t buckets_needed  = 1;
     while (trackable_value < highest_trackable_value)
     {
