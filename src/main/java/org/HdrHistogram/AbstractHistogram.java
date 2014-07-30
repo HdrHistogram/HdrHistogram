@@ -404,10 +404,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 (subBucketCount == fromHistogram.subBucketCount) &&
                 (unitMagnitude == fromHistogram.unitMagnitude)) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
+            long totalCount = 0;
             for (int i = 0; i < fromHistogram.countsArrayLength; i++) {
-                addToCountAtIndex(i, fromHistogram.getCountAtIndex(i));
+                long count = fromHistogram.getCountAtIndex(i);
+                addToCountAtIndex(i, count);
+                totalCount += count;
             }
-            setTotalCount(getTotalCount() + fromHistogram.getTotalCount());
+            // Use the accumulated totalCount because reading it from fromHistogram could lead to a different count
+            // if concurrently modified:
+            setTotalCount(getTotalCount() + totalCount);
         } else {
             // Arrays are not a direct match, so we can't just stream through and add them.
             // Instead, go through the array and add each non-zero value found at it's proper value:
