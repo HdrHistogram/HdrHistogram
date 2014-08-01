@@ -27,6 +27,11 @@ public class HistogramPerfTest {
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
+    void recordLoopDoubleWithExpectedInterval(DoubleHistogram histogram, long loopCount, double expectedInterval) {
+        for (long i = 0; i < loopCount; i++)
+            histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
+    }
+
     long LeadingZerosSpeedLoop(long loopCount) {
         long sum = 0;
         for (long i = 0; i < loopCount; i++) {
@@ -74,12 +79,51 @@ public class HistogramPerfTest {
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
+    public void testRawDoubleRecordingSpeedAtExpectedInterval(String label, DoubleHistogram histogram,
+                                                        long expectedInterval, long timingLoopCount) throws Exception {
+        System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
+        // Warm up:
+        long startTime = System.nanoTime();
+        recordLoopDoubleWithExpectedInterval(histogram, warmupLoopLength, expectedInterval);
+        long endTime = System.nanoTime();
+        long deltaUsec = (endTime - startTime) / 1000L;
+        long rate = 1000000 * warmupLoopLength / deltaUsec;
+        System.out.println(label + "Warmup: " + warmupLoopLength + " value recordings completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+        histogram.reset();
+        // Wait a bit to make sure compiler had a cache to do it's stuff:
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+        startTime = System.nanoTime();
+        recordLoopDoubleWithExpectedInterval(histogram, timingLoopCount, expectedInterval);
+        endTime = System.nanoTime();
+        deltaUsec = (endTime - startTime) / 1000L;
+        rate = 1000000 * timingLoopCount / deltaUsec;
+        System.out.println(label + "Hot code timing:");
+        System.out.println(label + timingLoopCount + " value recordings completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+        rate = 1000000 * histogram.getTotalCount() / deltaUsec;
+        System.out.println(label + histogram.getTotalCount() + " raw recorded entries completed in " +
+                deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
+    }
+
     @Test
     public void testRawRecordingSpeed() throws Exception {
         AbstractHistogram histogram;
         histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming Histogram:");
         testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000, rawtimingLoopCount);
+    }
+
+
+    @Test
+    public void testRawDoubleRecordingSpeed() throws Exception {
+        DoubleHistogram histogram;
+        histogram = new DoubleHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming DoubleHistogram:");
+        testRawDoubleRecordingSpeedAtExpectedInterval("DoubleHistogram: ", histogram, 1000000000, atomicTimingLoopCount);
     }
 
     @Test
