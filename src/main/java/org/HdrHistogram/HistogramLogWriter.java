@@ -90,7 +90,7 @@ public class HistogramLogWriter {
      */
     public void outputIntervalHistogram(final double startTimeStampSec,
                                         final double endTimeStampSec,
-                                        final Histogram histogram,
+                                        final EncodableHistogram histogram,
                                         final double maxValueUnitRatio) {
         if ((targetBuffer == null) || targetBuffer.capacity() < histogram.getNeededByteBufferCapacity()) {
             targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
@@ -103,7 +103,7 @@ public class HistogramLogWriter {
         log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
                 startTimeStampSec,
                 endTimeStampSec - startTimeStampSec,
-                histogram.getMaxValue() / maxValueUnitRatio,
+                histogram.getMaxValueAsDouble() / maxValueUnitRatio,
                 DatatypeConverter.printBase64Binary(compressedArray)
         );
     }
@@ -121,7 +121,7 @@ public class HistogramLogWriter {
      */
     public void outputIntervalHistogram(final double startTimeStampSec,
                                         final double endTimeStampSec,
-                                        final Histogram histogram) {
+                                        final EncodableHistogram histogram) {
         outputIntervalHistogram(startTimeStampSec, endTimeStampSec, histogram, 1000000.0);
     }
 
@@ -132,7 +132,7 @@ public class HistogramLogWriter {
      * maxValueUnitRatio some other ratio is needed for the max value output.
      * @param histogram The interval histogram to log.
      */
-    public void outputIntervalHistogram(final Histogram histogram) {
+    public void outputIntervalHistogram(final EncodableHistogram histogram) {
         outputIntervalHistogram(histogram.getStartTimeStamp()/1000.0,
                 histogram.getEndTimeStamp()/1000.0,
                 histogram);

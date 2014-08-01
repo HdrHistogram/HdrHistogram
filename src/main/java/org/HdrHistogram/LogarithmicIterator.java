@@ -43,7 +43,7 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
      * @param valueUnitsInFirstBucket the size (in value units) of the first value bucket step
      * @param logBase the multiplier by which the bucket size is expanded in each iteration step.
      */
-    public LogarithmicIterator(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final double logBase) {
+    public LogarithmicIterator(final AbstractHistogram histogram, final long valueUnitsInFirstBucket, final double logBase) {
         reset(histogram, valueUnitsInFirstBucket, logBase);
     }
 

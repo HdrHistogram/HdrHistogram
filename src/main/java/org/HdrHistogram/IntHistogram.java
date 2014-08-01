@@ -39,6 +39,11 @@ public class IntHistogram extends AbstractHistogram {
     }
 
     @Override
+    void setCountAtIndex(int index, long value) {
+        counts[index] = (int) value;
+    }
+
+    @Override
     void clearCounts() {
         java.util.Arrays.fill(counts, 0);
         totalCount = 0;
@@ -99,22 +104,22 @@ public class IntHistogram extends AbstractHistogram {
 
     /**
      * Construct a IntHistogram given the Lowest and Highest values to be tracked and a number of significant
-     * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
+     * decimal digits. Providing a lowestDiscernibleValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
-     * proper value for lowestTrackableValue would be 1000.
+     * proper value for lowestDiscernibleValue would be 1000.
      *
-     * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
+     * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
      *                             power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is {@literal >=} (2 * lowestTrackableValue).
+     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public IntHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+    public IntHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
         counts = new int[countsArrayLength];
         wordSizeInBytes = 4;
     }

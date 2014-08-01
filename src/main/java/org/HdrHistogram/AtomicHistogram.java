@@ -16,6 +16,15 @@ import java.util.zip.DataFormatException;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram using atomic <b><code>long</code></b> count type </h3>
+ * An AtomicHistogram guarantees lossless recording of values into the hsitogram even when the
+ * histogram is updated by mutliple threads. It is important to note though that this lossless
+ * recording capability is the only thread-safe beahvior provided by AtomicHistogram, and that it
+ * is not otherwise synchronized. Specifically, AtomicHistogram provides no implicit synchronization
+ * that would prevent the contents of the histogram from changing during iterations, copies, or
+ * addition operations on the histogram. Callers wishing to make potentially concurrent,
+ * multi-threaded updates that would safely work in the presence of queries, copies, or additions
+ * of histogram objects should either take care to externally synchronize and/or order their access,
+ * or use the {@link org.HdrHistogram.SynchronizedHistogram} variant.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
@@ -39,6 +48,11 @@ public class AtomicHistogram extends AbstractHistogram {
     @Override
     void addToCountAtIndex(final int index, final long value) {
         counts.addAndGet(index, value);
+    }
+
+    @Override
+    void setCountAtIndex(int index, long value) {
+        counts.lazySet(index, value);
     }
 
     @Override
@@ -103,16 +117,16 @@ public class AtomicHistogram extends AbstractHistogram {
 
     /**
      * Construct a AtomicHistogram given the Lowest and Highest values to be tracked and a number of significant
-     * decimal digits. Providing a lowestTrackableValue is useful is situations where the units used
+     * decimal digits. Providing a lowestDiscernibleValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
-     * proper value for lowestTrackableValue would be 1000.
+     * proper value for lowestDiscernibleValue would be 1000.
      *
      * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
      *                             power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is {@literal >=} (2 * lowestTrackableValue).
+     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.

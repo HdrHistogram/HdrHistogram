@@ -34,19 +34,20 @@ package org.HdrHistogram;
  */
 
 public class HistogramIterationValue {
-    long valueIteratedTo;
-    long valueIteratedFrom;
-    long countAtValueIteratedTo;
-    long countAddedInThisIterationStep;
-    long totalCountToThisValue;
-    long totalValueToThisValue;
-    double percentile;
-    double percentileLevelIteratedTo;
+    private long valueIteratedTo;
+    private long valueIteratedFrom;
+    private long countAtValueIteratedTo;
+    private long countAddedInThisIterationStep;
+    private long totalCountToThisValue;
+    private long totalValueToThisValue;
+    private double percentile;
+    private double percentileLevelIteratedTo;
+    private double integerToDoubleValueConversionRatio;
 
     // Set is all-or-nothing to avoid the potential for accidental omission of some values...
     void set(final long valueIteratedTo, final long valueIteratedFrom, final long countAtValueIteratedTo,
              final long countInThisIterationStep, final long totalCountToThisValue, final long totalValueToThisValue,
-             final double percentile, final double percentileLevelIteratedTo) {
+             final double percentile, final double percentileLevelIteratedTo, double integerToDoubleValueConversionRatio) {
         this.valueIteratedTo = valueIteratedTo;
         this.valueIteratedFrom = valueIteratedFrom;
         this.countAtValueIteratedTo = countAtValueIteratedTo;
@@ -55,6 +56,7 @@ public class HistogramIterationValue {
         this.totalValueToThisValue = totalValueToThisValue;
         this.percentile = percentile;
         this.percentileLevelIteratedTo = percentileLevelIteratedTo;
+        this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
     }
 
     void reset() {
@@ -86,8 +88,16 @@ public class HistogramIterationValue {
         return valueIteratedTo;
     }
 
+    public double getDoubleValueIteratedTo() {
+        return valueIteratedTo * integerToDoubleValueConversionRatio;
+    }
+
     public long getValueIteratedFrom() {
         return valueIteratedFrom;
+    }
+
+    public double getDoubleValueIteratedFrom() {
+        return valueIteratedFrom * integerToDoubleValueConversionRatio;
     }
 
     public long getCountAtValueIteratedTo() {
