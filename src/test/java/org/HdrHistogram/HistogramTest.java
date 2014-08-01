@@ -61,11 +61,11 @@ public class HistogramTest {
     @Test
     public void testConstructionArgumentGets() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
-        Assert.assertEquals(1, histogram.getLowestTrackableValue());
+        Assert.assertEquals(1, histogram.getLowestDiscernibleValue());
         Assert.assertEquals(highestTrackableValue, histogram.getHighestTrackableValue());
         Assert.assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
         Histogram histogram2 = new Histogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        Assert.assertEquals(1000, histogram2.getLowestTrackableValue());
+        Assert.assertEquals(1000, histogram2.getLowestDiscernibleValue());
     }
 
     @Test
@@ -77,7 +77,7 @@ public class HistogramTest {
 
         *     expectedHistogramFootprintInBytes = 512 +
         *          ({primitive type size} / 2) *
-        *          (log2RoundedUp((highestTrackableValue) / subBucketSize) + 2) *
+        *          (log2RoundedUp((trackableValueRangeSize) / subBucketSize) + 2) *
         *          subBucketSize
         */
         long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
@@ -312,7 +312,7 @@ public class HistogramTest {
     void testAbstractSerialization(AbstractHistogram histogram) throws Exception {
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
-        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 31);
+        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 255);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = null;
         ByteArrayInputStream bis = null;
@@ -326,7 +326,7 @@ public class HistogramTest {
             compresser.finish();
             byte [] compressedOutput = new byte[1024*1024];
             int compressedDataLength = compresser.deflate(compressedOutput);
-            System.out.println("Serialized form of " + histogram.getClass() + " with highestTrackableValue = " +
+            System.out.println("Serialized form of " + histogram.getClass() + " with trackableValueRangeSize = " +
                     histogram.getHighestTrackableValue() + "\n and a numberOfSignificantValueDigits = " +
                     histogram.getNumberOfSignificantValueDigits() + " is " + bos.toByteArray().length +
                     " bytes long. Compressed form is " + compressedDataLength + " bytes long.");
@@ -557,7 +557,7 @@ public class HistogramTest {
         SynchronizedHistogram targetSyncHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         syncHistogram.recordValue(testValueLevel);
         syncHistogram.recordValue(testValueLevel * 10);
-        syncHistogram.recordValueWithExpectedInterval(syncHistogram.getHighestTrackableValue() - 1, 31);
+        syncHistogram.recordValueWithExpectedInterval(syncHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copyInto for SynchronizedHistogram:");
         syncHistogram.copyInto(targetSyncHistogram);

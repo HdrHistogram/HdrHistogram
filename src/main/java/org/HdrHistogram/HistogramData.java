@@ -239,7 +239,7 @@ public class HistogramData {
      * histogram using a {@link RecordedValuesIterator}
      */
     public AllValues allValues() {
-        return new AllValues(histogram);
+        return new AllValues(histogram, 0);
     }
 
     // Percentile iterator support:
@@ -343,8 +343,10 @@ public class HistogramData {
      */
     public class AllValues implements Iterable<HistogramIterationValue> {
         final AbstractHistogram histogram;
+        final long startValue;
 
-        private AllValues(final AbstractHistogram histogram) {
+        private AllValues(final AbstractHistogram histogram, long startValue) {
+            this.startValue = startValue;
             this.histogram = histogram;
         }
 

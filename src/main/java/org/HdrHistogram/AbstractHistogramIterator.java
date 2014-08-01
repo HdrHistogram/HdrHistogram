@@ -37,10 +37,13 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     private boolean freshSubBucket;
     HistogramIterationValue currentIterationValue;
 
+    private double integerToDoubleValueConversionRatio;
+
     void resetIterator(final AbstractHistogram histogram) {
         this.histogram = histogram;
         this.savedHistogramTotalRawCount = histogram.getTotalCount();
         this.arrayTotalCount = histogram.getTotalCount();
+        this.integerToDoubleValueConversionRatio = histogram.getIntegerToDoubleValueConversionRatio();
         this.currentBucketIndex = 0;
         this.currentSubBucketIndex = 0;
         this.currentValueAtIndex = 0;
@@ -90,7 +93,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
                 currentIterationValue.set(valueIteratedTo, prevValueIteratedTo, countAtThisValue,
                         (totalCountToCurrentIndex - totalCountToPrevIndex), totalCountToCurrentIndex,
                         totalValueToCurrentIndex, ((100.0 * totalCountToCurrentIndex) / arrayTotalCount),
-                        getPercentileIteratedTo());
+                        getPercentileIteratedTo(), integerToDoubleValueConversionRatio);
                 prevValueIteratedTo = valueIteratedTo;
                 totalCountToPrevIndex = totalCountToCurrentIndex;
                 // move the next iteration level forward:
