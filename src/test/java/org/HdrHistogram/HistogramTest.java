@@ -66,6 +66,7 @@ public class HistogramTest {
         Assert.assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
         Histogram histogram2 = new Histogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals(1000, histogram2.getLowestDiscernibleValue());
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -95,6 +96,7 @@ public class HistogramTest {
                     (1 << (64 - Long.numberOfLeadingZeros(2 * (long) Math.pow(10, numberOfSignificantValueDigits))))
                  ) / 2);
         Assert.assertEquals(expectedSize, histogram.getEstimatedFootprintInBytes());
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -103,6 +105,7 @@ public class HistogramTest {
         histogram.recordValue(testValueLevel);
         Assert.assertEquals(1L, histogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(1L, histogram.getTotalCount());
+        verifyMaxValue(histogram);
     }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
@@ -141,6 +144,8 @@ public class HistogramTest {
         Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 3 )/4));
         Assert.assertEquals(1L, rawHistogram.getCountAtValue((testValueLevel * 4 )/4));
         Assert.assertEquals(1L, rawHistogram.getTotalCount());
+
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -150,6 +155,7 @@ public class HistogramTest {
         histogram.reset();
         Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(0L, histogram.getTotalCount());
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -185,7 +191,9 @@ public class HistogramTest {
         }
         Assert.assertTrue(thrown);
 
-
+        verifyMaxValue(histogram);
+        verifyMaxValue(other);
+        verifyMaxValue(biggerOther);
     }
 
 
@@ -202,6 +210,7 @@ public class HistogramTest {
                 8, histogram.sizeOfEquivalentValueRange(8192));
         Assert.assertEquals("Size of equivalent range for value 10000 is 8",
                 8, histogram.sizeOfEquivalentValueRange(10000));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -217,6 +226,7 @@ public class HistogramTest {
                 8 * 1024, histogram.sizeOfEquivalentValueRange(8192 * 1024));
         Assert.assertEquals("Size of equivalent range for value 10000 * 1024 is 8 * 1024",
                 8 * 1024, histogram.sizeOfEquivalentValueRange(10000 * 1024));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -226,6 +236,7 @@ public class HistogramTest {
                 10000, histogram.lowestEquivalentValue(10007));
         Assert.assertEquals("The lowest equivalent value to 10009 is 10008",
                 10008, histogram.lowestEquivalentValue(10009));
+        verifyMaxValue(histogram);
     }
 
 
@@ -236,6 +247,7 @@ public class HistogramTest {
                 10000 * 1024, histogram.lowestEquivalentValue(10007 * 1024));
         Assert.assertEquals("The lowest equivalent value to 10009 * 1024 is 10008 * 1024",
                 10008 * 1024, histogram.lowestEquivalentValue(10009 * 1024));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -253,6 +265,7 @@ public class HistogramTest {
                 10007 * 1024 + 1023, histogram.highestEquivalentValue(10007 * 1024));
         Assert.assertEquals("The highest equivalent value to 10008 * 1024 is 10015 * 1024 + 1023",
                 10015 * 1024 + 1023, histogram.highestEquivalentValue(10008 * 1024));
+        verifyMaxValue(histogram);
     }
 
 
@@ -271,6 +284,7 @@ public class HistogramTest {
                 10007, histogram.highestEquivalentValue(10007));
         Assert.assertEquals("The highest equivalent value to 10008 is 10015",
                 10015, histogram.highestEquivalentValue(10008));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -286,6 +300,7 @@ public class HistogramTest {
                 8002, histogram.medianEquivalentValue(8000));
         Assert.assertEquals("The median equivalent value to 10007 is 10004",
                 10004, histogram.medianEquivalentValue(10007));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -301,6 +316,7 @@ public class HistogramTest {
                 8002 * 1024, histogram.medianEquivalentValue(8000 * 1024));
         Assert.assertEquals("The median equivalent value to 10007 * 1024 is 10004 * 1024",
                 10004 * 1024, histogram.medianEquivalentValue(10007 * 1024));
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -355,6 +371,8 @@ public class HistogramTest {
         Assert.assertEquals(
                 expectedHistogram.getTotalCount(),
                 actualHistogram.getTotalCount());
+        verifyMaxValue(expectedHistogram);
+        verifyMaxValue(actualHistogram);
     }
 
     @Test
@@ -386,6 +404,7 @@ public class HistogramTest {
         histogram.outputPercentileDistribution(System.out, 5, 100.0);
         System.out.println("\nHistogram percentile output should be in CSV format and show overflow:");
         histogram.outputPercentileDistribution(System.out, 5, 100.0, true);
+        verifyMaxValue(histogram);
     }
 
     @Test
@@ -399,6 +418,7 @@ public class HistogramTest {
         Assert.assertTrue(histogram.hasOverflowed());
         histogram.reestablishTotalCount();
         Assert.assertFalse(histogram.hasOverflowed());
+        verifyMaxValue(histogram);
     }
     
     @Test
@@ -410,7 +430,7 @@ public class HistogramTest {
 
         System.out.println("Testing copy of Histogram:");
         assertEqual(histogram, histogram.copy());
-  
+
         IntHistogram intHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         intHistogram.recordValue(testValueLevel);
         intHistogram.recordValue(testValueLevel * 10);
@@ -649,5 +669,19 @@ public class HistogramTest {
 
         syncHistogram.copyInto(targetSyncHistogram);
         assertEqual(syncHistogram, targetSyncHistogram);
+    }
+
+    public void verifyMaxValue(AbstractHistogram histogram) {
+        if (histogram.hasOverflowed()) {
+            histogram.reestablishMaxValue();
+        }
+        long computedMaxValue = 0;
+        for (int i = 0; i < histogram.countsArrayLength; i++) {
+            if (histogram.getCountAtIndex(i) > 0) {
+                computedMaxValue = histogram.valueFromIndex(i);
+            }
+        }
+        computedMaxValue = (computedMaxValue == 0) ? 0 : histogram.highestEquivalentValue(computedMaxValue);
+        Assert.assertEquals(computedMaxValue, histogram.getMaxValue());
     }
 }
