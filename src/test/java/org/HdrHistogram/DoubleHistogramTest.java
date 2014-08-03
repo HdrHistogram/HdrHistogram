@@ -325,16 +325,16 @@ public class DoubleHistogramTest {
                 new DoubleHistogram(trackableValueRangeSize, 3);
         testDoubleHistogramSerialization(histogram);
         DoubleHistogram withIntHistogram =
-                new DoubleHistogram(trackableValueRangeSize, 3, IntHistogram.class);
+                new DoubleHistogram(trackableValueRangeSize, 3, IntCountsHistogram.class);
         testDoubleHistogramSerialization(withIntHistogram);
         DoubleHistogram withShortHistogram =
-                new DoubleHistogram(trackableValueRangeSize, 3, ShortHistogram.class);
+                new DoubleHistogram(trackableValueRangeSize, 3, ShortCountsHistogram.class);
         testDoubleHistogramSerialization(withShortHistogram);
         histogram = new DoubleHistogram(trackableValueRangeSize, 2, Histogram.class);
         testDoubleHistogramSerialization(histogram);
-        withIntHistogram = new DoubleHistogram(trackableValueRangeSize, 2, IntHistogram.class);
+        withIntHistogram = new DoubleHistogram(trackableValueRangeSize, 2, IntCountsHistogram.class);
         testDoubleHistogramSerialization(withIntHistogram);
-        withShortHistogram = new DoubleHistogram(trackableValueRangeSize, 2, ShortHistogram.class);
+        withShortHistogram = new DoubleHistogram(trackableValueRangeSize, 2, ShortCountsHistogram.class);
         testDoubleHistogramSerialization(withShortHistogram);
     }
     
@@ -349,7 +349,7 @@ public class DoubleHistogramTest {
         assertEqual(histogram, histogram.copy());
 
         DoubleHistogram withIntHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                IntHistogram.class);
+                IntCountsHistogram.class);
         withIntHistogram.recordValue(testValueLevel);
         withIntHistogram.recordValue(testValueLevel * 10);
         withIntHistogram.recordValueWithExpectedInterval(withIntHistogram.getCurrentHighestTrackableValue() - 1, 31000);
@@ -358,7 +358,7 @@ public class DoubleHistogramTest {
         assertEqual(withIntHistogram, withIntHistogram.copy());
 
         DoubleHistogram withShortHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                ShortHistogram.class);
+                ShortCountsHistogram.class);
         withShortHistogram.recordValue(testValueLevel);
         withShortHistogram.recordValue(testValueLevel * 10);
         withShortHistogram.recordValueWithExpectedInterval(withShortHistogram.getCurrentHighestTrackableValue() - 1, 31000);
@@ -405,9 +405,9 @@ public class DoubleHistogramTest {
 
 
         DoubleHistogram withIntHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                IntHistogram.class);
+                IntCountsHistogram.class);
         DoubleHistogram targetWithIntHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                IntHistogram.class);
+                IntCountsHistogram.class);
         withIntHistogram.recordValue(testValueLevel);
         withIntHistogram.recordValue(testValueLevel * 10);
         withIntHistogram.recordValueWithExpectedInterval(withIntHistogram.getCurrentHighestTrackableValue() - 1,
@@ -424,9 +424,9 @@ public class DoubleHistogramTest {
 
 
         DoubleHistogram withShortHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                ShortHistogram.class);
+                ShortCountsHistogram.class);
         DoubleHistogram targetWithShortHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                ShortHistogram.class);
+                ShortCountsHistogram.class);
         withShortHistogram.recordValue(testValueLevel);
         withShortHistogram.recordValue(testValueLevel * 10);
         withShortHistogram.recordValueWithExpectedInterval(withShortHistogram.getCurrentHighestTrackableValue() - 1,

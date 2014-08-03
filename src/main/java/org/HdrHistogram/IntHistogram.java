@@ -14,79 +14,14 @@ import java.nio.IntBuffer;
 import java.util.zip.DataFormatException;
 
 /**
- * <h3>A High Dynamic Range (HDR) Histogram using an <b><code>int</code></b> count type </h3>
+ * <h3>A High Dynamic Range (HDR) Histogram using an <b><code>int</code></b> count type </h3>. Deprecated and
+ * replaced by the more appropriately named IntCountsHistogram.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
 
-public class IntHistogram extends AbstractHistogram {
-    long totalCount;
-    final int[] counts;
-
-    @Override
-    long getCountAtIndex(final int index) {
-        return counts[index];
-    }
-
-    @Override
-    void incrementCountAtIndex(final int index) {
-        counts[index]++;
-    }
-
-    @Override
-    void addToCountAtIndex(final int index, final long value) {
-        counts[index] += value;
-    }
-
-    @Override
-    void setCountAtIndex(int index, long value) {
-        counts[index] = (int) value;
-    }
-
-    @Override
-    void clearCounts() {
-        java.util.Arrays.fill(counts, 0);
-        totalCount = 0;
-    }
-
-    @Override
-    public IntHistogram copy() {
-      IntHistogram copy = new IntHistogram(this);
-      copy.add(this);
-      return copy;
-    }
-
-    @Override
-    public IntHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        IntHistogram toHistogram = new IntHistogram(this);
-        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
-        return toHistogram;
-    }
-
-    @Override
-    public long getTotalCount() {
-        return totalCount;
-    }
-
-    @Override
-    void setTotalCount(final long totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    @Override
-    void incrementTotalCount() {
-        totalCount++;
-    }
-
-    @Override
-    void addToTotalCount(long value) {
-        totalCount += value;
-    }
-
-    @Override
-    int _getEstimatedFootprintInBytes() {
-        return (512 + (4 * counts.length));
-    }
+@Deprecated
+public class IntHistogram extends IntCountsHistogram {
 
     /**
      * Construct a IntHistogram given the Highest value to be tracked and a number of significant decimal digits. The
@@ -99,7 +34,7 @@ public class IntHistogram extends AbstractHistogram {
      *                                       integer between 0 and 5.
      */
     public IntHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        this(1, highestTrackableValue, numberOfSignificantValueDigits);
+        super(1, highestTrackableValue, numberOfSignificantValueDigits);
     }
 
     /**
@@ -118,69 +53,8 @@ public class IntHistogram extends AbstractHistogram {
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public IntHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+    public IntHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
+                        final int numberOfSignificantValueDigits) {
         super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
-        counts = new int[countsArrayLength];
-        wordSizeInBytes = 4;
-    }
-
-    private IntHistogram(final AbstractHistogram source) {
-        super(source);
-        counts = new int[countsArrayLength];
-        wordSizeInBytes = 4;
-    }
-
-    /**
-     * Construct a new histogram by decoding it from a ByteBuffer.
-     * @param buffer The buffer to decode from
-     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
-     * @return The newly constructed histogram
-     */
-    public static IntHistogram decodeFromByteBuffer(final ByteBuffer buffer,
-                                                    final long minBarForHighestTrackableValue) {
-        return (IntHistogram) decodeFromByteBuffer(buffer, IntHistogram.class,
-                minBarForHighestTrackableValue);
-    }
-
-    /**
-     * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
-     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
-     * @return The newly constructed histogram
-     * @throws DataFormatException on error parsing/decompressing the buffer
-     */
-    public static IntHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                              final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (IntHistogram) decodeFromCompressedByteBuffer(buffer, IntHistogram.class,
-                minBarForHighestTrackableValue);
-    }
-
-    private void readObject(final ObjectInputStream o)
-            throws IOException, ClassNotFoundException {
-        o.defaultReadObject();
-    }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asIntBuffer().get(counts, 0, length);
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private IntBuffer cachedDstIntBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstIntBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstIntBuffer = buffer.asIntBuffer();
-        }
-        cachedDstIntBuffer.rewind();
-        cachedDstIntBuffer.put(counts, 0, length);
     }
 }

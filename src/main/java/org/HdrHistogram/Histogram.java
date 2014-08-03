@@ -9,13 +9,9 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
-import java.util.zip.Inflater;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
@@ -34,7 +30,7 @@ import java.util.zip.Inflater;
  * maximum tracked value (1 hour), it would still maintain a resolution of 3.6 seconds (or better).
  * <p>
  * Histogram tracks value counts in <b><code>long</code></b> fields. Smaller field types are available in the
- * {@link org.HdrHistogram.IntHistogram} and {@link org.HdrHistogram.ShortHistogram} implementations of
+ * {@link IntCountsHistogram} and {@link ShortCountsHistogram} implementations of
  * {@link org.HdrHistogram.AbstractHistogram}.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.

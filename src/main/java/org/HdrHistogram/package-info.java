@@ -84,7 +84,7 @@
  * <ul>
  *  <li> {@link org.HdrHistogram.Histogram}, which is the commonly used Histogram form and tracks value counts
  * in <b><code>long</code></b> fields. </li>
- *  <li>{@link org.HdrHistogram.IntHistogram} and {@link org.HdrHistogram.ShortHistogram}, which track value counts
+ *  <li>{@link org.HdrHistogram.IntCountsHistogram} and {@link org.HdrHistogram.ShortCountsHistogram}, which track value counts
  * in <b><code>int</code></b> and
  * <b><code>short</code></b> fields respectively, are provided for use cases where smaller count ranges are practical
  * and smaller overall storage is beneficial (e.g. systems where tens of thousands of in-memory histogram are
@@ -105,7 +105,7 @@
  * </p>
  * <h3>Synchronization and concurrent access</h3>
  * In the interest of keeping value recording cost to a minimum, the commonly used {@link org.HdrHistogram.Histogram}
- * class and it's {@link org.HdrHistogram.IntHistogram} and {@link org.HdrHistogram.ShortHistogram} variants are NOT
+ * class and it's {@link org.HdrHistogram.IntCountsHistogram} and {@link org.HdrHistogram.ShortCountsHistogram} variants are NOT
  * internally synchronized, and do NOT use atomic variables. Callers wishing to make potentially concurrent,
  * multi-threaded updates or queries against Histogram objects should either take care to externally synchronize and/or
  * order their access, or use the {@link org.HdrHistogram.SynchronizedHistogram} or

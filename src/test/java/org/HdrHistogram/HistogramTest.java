@@ -379,21 +379,21 @@ public class HistogramTest {
     public void testSerialization() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, 3);
         testAbstractSerialization(histogram);
-        IntHistogram intHistogram = new IntHistogram(highestTrackableValue, 3);
-        testAbstractSerialization(intHistogram);
-        ShortHistogram shortHistogram = new ShortHistogram(highestTrackableValue, 3);
-        testAbstractSerialization(shortHistogram);
+        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(intCountsHistogram);
+        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(shortCountsHistogram);
         histogram = new Histogram(highestTrackableValue, 2);
         testAbstractSerialization(histogram);
-        intHistogram = new IntHistogram(highestTrackableValue, 2);
-        testAbstractSerialization(intHistogram);
-        shortHistogram = new ShortHistogram(highestTrackableValue, 2);
-        testAbstractSerialization(shortHistogram);
+        intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(intCountsHistogram);
+        shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(shortCountsHistogram);
     }
 
     @Test
     public void testOverflow() throws Exception {
-        ShortHistogram histogram = new ShortHistogram(highestTrackableValue, 2);
+        ShortCountsHistogram histogram = new ShortCountsHistogram(highestTrackableValue, 2);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
         Assert.assertFalse(histogram.hasOverflowed());
@@ -409,7 +409,7 @@ public class HistogramTest {
 
     @Test
     public void testReestablishTotalCount() throws Exception {
-        ShortHistogram histogram = new ShortHistogram(highestTrackableValue, 2);
+        ShortCountsHistogram histogram = new ShortCountsHistogram(highestTrackableValue, 2);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
         Assert.assertFalse(histogram.hasOverflowed());
@@ -431,21 +431,21 @@ public class HistogramTest {
         System.out.println("Testing copy of Histogram:");
         assertEqual(histogram, histogram.copy());
 
-        IntHistogram intHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        intHistogram.recordValue(testValueLevel);
-        intHistogram.recordValue(testValueLevel * 10);
-        intHistogram.recordValueWithExpectedInterval(intHistogram.getHighestTrackableValue() - 1, 31000);
+        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        intCountsHistogram.recordValue(testValueLevel);
+        intCountsHistogram.recordValue(testValueLevel * 10);
+        intCountsHistogram.recordValueWithExpectedInterval(intCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copy of IntHistogram:");
-        assertEqual(intHistogram, intHistogram.copy());
+        assertEqual(intCountsHistogram, intCountsHistogram.copy());
   
-        ShortHistogram shortHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        shortHistogram.recordValue(testValueLevel);
-        shortHistogram.recordValue(testValueLevel * 10);
-        shortHistogram.recordValueWithExpectedInterval(shortHistogram.getHighestTrackableValue() - 1, 31000);
+        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        shortCountsHistogram.recordValue(testValueLevel);
+        shortCountsHistogram.recordValue(testValueLevel * 10);
+        shortCountsHistogram.recordValueWithExpectedInterval(shortCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copy of ShortHistogram:");
-        assertEqual(shortHistogram, shortHistogram.copy());
+        assertEqual(shortCountsHistogram, shortCountsHistogram.copy());
   
         AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         atomicHistogram.recordValue(testValueLevel);
@@ -474,21 +474,21 @@ public class HistogramTest {
         System.out.println("Testing copy of scaled Histogram:");
         assertEqual(histogram, histogram.copy());
 
-        IntHistogram intHistogram = new IntHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        intHistogram.recordValue(testValueLevel);
-        intHistogram.recordValue(testValueLevel * 10);
-        intHistogram.recordValueWithExpectedInterval(intHistogram.getHighestTrackableValue() - 1, 31000);
+        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        intCountsHistogram.recordValue(testValueLevel);
+        intCountsHistogram.recordValue(testValueLevel * 10);
+        intCountsHistogram.recordValueWithExpectedInterval(intCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copy of scaled IntHistogram:");
-        assertEqual(intHistogram, intHistogram.copy());
+        assertEqual(intCountsHistogram, intCountsHistogram.copy());
 
-        ShortHistogram shortHistogram = new ShortHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        shortHistogram.recordValue(testValueLevel);
-        shortHistogram.recordValue(testValueLevel * 10);
-        shortHistogram.recordValueWithExpectedInterval(shortHistogram.getHighestTrackableValue() - 1, 31000);
+        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        shortCountsHistogram.recordValue(testValueLevel);
+        shortCountsHistogram.recordValue(testValueLevel * 10);
+        shortCountsHistogram.recordValueWithExpectedInterval(shortCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copy of scaled ShortHistogram:");
-        assertEqual(shortHistogram, shortHistogram.copy());
+        assertEqual(shortCountsHistogram, shortCountsHistogram.copy());
 
         AtomicHistogram atomicHistogram = new AtomicHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
         atomicHistogram.recordValue(testValueLevel);
@@ -525,36 +525,36 @@ public class HistogramTest {
         assertEqual(histogram, targetHistogram);
 
 
-        IntHistogram intHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        IntHistogram targetIntHistogram = new IntHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        intHistogram.recordValue(testValueLevel);
-        intHistogram.recordValue(testValueLevel * 10);
-        intHistogram.recordValueWithExpectedInterval(intHistogram.getHighestTrackableValue() - 1, 31000);
+        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        IntCountsHistogram targetIntCountsHistogram = new IntCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        intCountsHistogram.recordValue(testValueLevel);
+        intCountsHistogram.recordValue(testValueLevel * 10);
+        intCountsHistogram.recordValueWithExpectedInterval(intCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copyInto for IntHistogram:");
-        intHistogram.copyInto(targetIntHistogram);
-        assertEqual(intHistogram, targetIntHistogram);
+        intCountsHistogram.copyInto(targetIntCountsHistogram);
+        assertEqual(intCountsHistogram, targetIntCountsHistogram);
 
-        intHistogram.recordValue(testValueLevel * 20);
+        intCountsHistogram.recordValue(testValueLevel * 20);
 
-        intHistogram.copyInto(targetIntHistogram);
-        assertEqual(intHistogram, targetIntHistogram);
+        intCountsHistogram.copyInto(targetIntCountsHistogram);
+        assertEqual(intCountsHistogram, targetIntCountsHistogram);
 
 
-        ShortHistogram shortHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        ShortHistogram targetShortHistogram = new ShortHistogram(highestTrackableValue, numberOfSignificantValueDigits);
-        shortHistogram.recordValue(testValueLevel);
-        shortHistogram.recordValue(testValueLevel * 10);
-        shortHistogram.recordValueWithExpectedInterval(shortHistogram.getHighestTrackableValue() - 1, 31000);
+        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        ShortCountsHistogram targetShortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        shortCountsHistogram.recordValue(testValueLevel);
+        shortCountsHistogram.recordValue(testValueLevel * 10);
+        shortCountsHistogram.recordValueWithExpectedInterval(shortCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copyInto for ShortHistogram:");
-        shortHistogram.copyInto(targetShortHistogram);
-        assertEqual(shortHistogram, targetShortHistogram);
+        shortCountsHistogram.copyInto(targetShortCountsHistogram);
+        assertEqual(shortCountsHistogram, targetShortCountsHistogram);
 
-        shortHistogram.recordValue(testValueLevel * 20);
+        shortCountsHistogram.recordValue(testValueLevel * 20);
 
-        shortHistogram.copyInto(targetShortHistogram);
-        assertEqual(shortHistogram, targetShortHistogram);
+        shortCountsHistogram.copyInto(targetShortCountsHistogram);
+        assertEqual(shortCountsHistogram, targetShortCountsHistogram);
 
 
         AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, numberOfSignificantValueDigits);
@@ -607,36 +607,36 @@ public class HistogramTest {
         assertEqual(histogram, targetHistogram);
 
 
-        IntHistogram intHistogram = new IntHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        IntHistogram targetIntHistogram = new IntHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        intHistogram.recordValue(testValueLevel);
-        intHistogram.recordValue(testValueLevel * 10);
-        intHistogram.recordValueWithExpectedInterval(intHistogram.getHighestTrackableValue() - 1, 31000);
+        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        IntCountsHistogram targetIntCountsHistogram = new IntCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        intCountsHistogram.recordValue(testValueLevel);
+        intCountsHistogram.recordValue(testValueLevel * 10);
+        intCountsHistogram.recordValueWithExpectedInterval(intCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copyInto for scaled IntHistogram:");
-        intHistogram.copyInto(targetIntHistogram);
-        assertEqual(intHistogram, targetIntHistogram);
+        intCountsHistogram.copyInto(targetIntCountsHistogram);
+        assertEqual(intCountsHistogram, targetIntCountsHistogram);
 
-        intHistogram.recordValue(testValueLevel * 20);
+        intCountsHistogram.recordValue(testValueLevel * 20);
 
-        intHistogram.copyInto(targetIntHistogram);
-        assertEqual(intHistogram, targetIntHistogram);
+        intCountsHistogram.copyInto(targetIntCountsHistogram);
+        assertEqual(intCountsHistogram, targetIntCountsHistogram);
 
 
-        ShortHistogram shortHistogram = new ShortHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        ShortHistogram targetShortHistogram = new ShortHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
-        shortHistogram.recordValue(testValueLevel);
-        shortHistogram.recordValue(testValueLevel * 10);
-        shortHistogram.recordValueWithExpectedInterval(shortHistogram.getHighestTrackableValue() - 1, 31000);
+        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        ShortCountsHistogram targetShortCountsHistogram = new ShortCountsHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        shortCountsHistogram.recordValue(testValueLevel);
+        shortCountsHistogram.recordValue(testValueLevel * 10);
+        shortCountsHistogram.recordValueWithExpectedInterval(shortCountsHistogram.getHighestTrackableValue() - 1, 31000);
 
         System.out.println("Testing copyInto for scaled ShortHistogram:");
-        shortHistogram.copyInto(targetShortHistogram);
-        assertEqual(shortHistogram, targetShortHistogram);
+        shortCountsHistogram.copyInto(targetShortCountsHistogram);
+        assertEqual(shortCountsHistogram, targetShortCountsHistogram);
 
-        shortHistogram.recordValue(testValueLevel * 20);
+        shortCountsHistogram.recordValue(testValueLevel * 20);
 
-        shortHistogram.copyInto(targetShortHistogram);
-        assertEqual(shortHistogram, targetShortHistogram);
+        shortCountsHistogram.copyInto(targetShortCountsHistogram);
+        assertEqual(shortCountsHistogram, targetShortCountsHistogram);
 
 
         AtomicHistogram atomicHistogram = new AtomicHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
