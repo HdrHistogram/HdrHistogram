@@ -95,7 +95,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     int unitMagnitude;
     int subBucketHalfCount;
     long subBucketMask;
-    long maxValue;
+    long internallyTrackedMaxValue;
 
     // Sub-classes will typically add a totalCount field and a counts array field, which will likely be laid out
     // right around here due to the subclass layout rules in most practical JVM implementations.
@@ -133,7 +133,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     abstract public long getTotalCount();
 
     void setMaxValue(final long maxValue) {
-        this.maxValue = maxValue;
+        this.internallyTrackedMaxValue = maxValue;
     }
 
     //
@@ -304,8 +304,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
         addToCountAtIndex(countsIndex, count);
-        if (value > maxValue) {
-            maxValue = value;
+        if (value > internallyTrackedMaxValue) {
+            internallyTrackedMaxValue = value;
         }
         addToTotalCount(count);
     }
@@ -313,8 +313,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
         incrementCountAtIndex(countsIndex);
-        if (value > maxValue) {
-            maxValue = value;
+        if (value > internallyTrackedMaxValue) {
+            internallyTrackedMaxValue = value;
         }
         incrementTotalCount();
     }
@@ -447,7 +447,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 observedOtherTotalCount += otherCount;
             }
             setTotalCount(getTotalCount() + observedOtherTotalCount);
-            setMaxValue(Math.max(this.maxValue, otherHistogram.maxValue));
+            setMaxValue(Math.max(this.internallyTrackedMaxValue, otherHistogram.internallyTrackedMaxValue));
         } else {
             // Arrays are not a direct match, so we can't just stream through and add them.
             // Instead, go through the array and add each non-zero value found at it's proper value:
@@ -485,7 +485,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 addToCountAtIndex(i, -otherCount);
             }
             setTotalCount(getTotalCount() + otherHistogram.getTotalCount());
-            setMaxValue(Math.max(this.maxValue, otherHistogram.maxValue));
+            setMaxValue(Math.max(this.internallyTrackedMaxValue, otherHistogram.internallyTrackedMaxValue));
         } else {
             // Arrays are not a direct match, so we can't just stream through and add them.
             // Instead, go through the array and add each non-zero value found at it's proper value:
@@ -558,7 +558,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         unitMagnitude += numberOfBinaryOrdersOfMagnitude;
         lowestDiscernibleValue <<= numberOfBinaryOrdersOfMagnitude;
         highestTrackableValue <<= numberOfBinaryOrdersOfMagnitude;
-        maxValue <<= numberOfBinaryOrdersOfMagnitude;
+        internallyTrackedMaxValue <<= numberOfBinaryOrdersOfMagnitude;
     }
 
     /**
@@ -586,7 +586,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         unitMagnitude -= numberOfBinaryOrdersOfMagnitude;
         lowestDiscernibleValue >>= numberOfBinaryOrdersOfMagnitude;
         highestTrackableValue >>= numberOfBinaryOrdersOfMagnitude;
-        maxValue >>= numberOfBinaryOrdersOfMagnitude;
+        internallyTrackedMaxValue >>= numberOfBinaryOrdersOfMagnitude;
     }
 
     /**
@@ -650,7 +650,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
 
-        maxValue <<= numberOfBinaryOrdersOfMagnitude;
+        internallyTrackedMaxValue <<= numberOfBinaryOrdersOfMagnitude;
     }
 
     /**
@@ -751,7 +751,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 setCountAtIndex(i, 0);
             }
         }
-        maxValue >>= numberOfBinaryOrdersOfMagnitude;
+        internallyTrackedMaxValue >>= numberOfBinaryOrdersOfMagnitude;
     }
 
     //
@@ -1000,7 +1000,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the Max value recorded in the histogram
      */
     public long getMaxValue() {
-        return (maxValue == 0) ? 0 : highestEquivalentValue(maxValue);
+        return (internallyTrackedMaxValue == 0) ? 0 : highestEquivalentValue(internallyTrackedMaxValue);
     }
 
     /**
