@@ -20,7 +20,7 @@
 
 
         <p class="view"><a href="https://github.com/HdrHistogram/HdrHistogram" target='_top'>
-              View the Project on GitHub <small>HdrHistogram/HdrHistogram</small></a></p>
+              View the Project on GitHub <small>HdrHistogram/HdrHistogram<br>(Java, C, and C# versions)</small></a></p>
 
         <p class="view"><a href="http://hdrhistogram.github.com/HdrHistogram/JavaDoc">
             View the Project JavaDoc <small>hdrhistogram.github.com/HdrHistogram/JavaDoc</small></a></p>
@@ -30,8 +30,16 @@
           <li><a href="https://github.com/HdrHistogram/HdrHistogram/tarball/master">Download <strong>TAR Ball</strong></a></li>
           <li><a href="https://github.com/HdrHistogram/HdrHistogram" target='_top'>View On <strong>GitHub</strong></a></li>
         </ul>
+          <p align="center">
+              <br>
+              <br>
+              Get data for full percentile spectrum views:
+          </p>
+          <img src="PercentileHistogramExample.png">
 
       </header>
+
+
       <section>
         <h3>HdrHistogram: A High Dynamic Range Histogram.</h3>
 
@@ -53,7 +61,7 @@
 <p>
     HDR Histogram is designed for recoding histograms of value measurements in latency and performance
     sensitive applications. Measurements show value recording times as low as 3-6 nanoseconds on modern
-    (circa 2012) Intel CPUs. The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory
+    (circa 2014) Intel CPUs. The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory
     footprint is constant, with no allocation operations involved in recording data values or in iterating through
     them. The memory footprint is fixed regardless of the number of data value samples recorded, and depends solely
     on the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
