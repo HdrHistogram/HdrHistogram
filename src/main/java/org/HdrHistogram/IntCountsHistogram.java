@@ -24,22 +24,38 @@ public class IntCountsHistogram extends AbstractHistogram {
     final int[] counts;
 
     @Override
-    long getCountAtIndex(final int index) {
+    long getCountAtNormalizedIndex(final int index) {
         return counts[index];
     }
 
     @Override
-    void incrementCountAtIndex(final int index) {
-        counts[index]++;
+    void incrementCountAtNormalizedIndex(final int index) {
+        int currentCount = counts[index];
+        int newCount = currentCount + 1;
+        if (newCount < 0) {
+            throw new IllegalStateException("would overflow integer count");
+        }
+        counts[index] = newCount;
     }
 
     @Override
-    void addToCountAtIndex(final int index, final long value) {
-        counts[index] += value;
+    void addToCountAtNormalizedIndex(final int index, final long value) {
+        int currentCount = counts[index];
+        if ((value < 0) || (value > Integer.MAX_VALUE)) {
+            throw new IllegalArgumentException("would overflow short integer count");
+        }
+        int newCount = (int) (currentCount + value);
+        if (newCount < 0) {
+            throw new IllegalStateException("would overflow short integer count");
+        }
+        counts[index] = newCount;
     }
 
     @Override
-    void setCountAtIndex(int index, long value) {
+    void setCountAtNormalizedIndex(int index, long value) {
+        if ((value < 0) || (value > Integer.MAX_VALUE)) {
+            throw new IllegalArgumentException("would overflow short integer count");
+        }
         counts[index] = (int) value;
     }
 
