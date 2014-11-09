@@ -51,7 +51,29 @@
 
         var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-        chart.draw(data, options);
+	// add tooptips with correct percentile text to data:
+	var columns = [0];
+	for (var i = 1; i < data.getNumberOfColumns(); i++) {
+	    columns.push(i);
+	    columns.push({
+		type: 'string',
+		properties: {
+		    role: 'tooltip'
+		},
+		calc: (function (j) {
+		    return function (dt, row) {
+			var percentile = 100.0 - (100.0/dt.getValue(row, 0));
+			return dt.getColumnLabel(j) + ': ' + 
+				percentile.toPrecision(6) +
+				 '\%\'ile = ' + dt.getValue(row, j) + ' usec'
+		    }
+		})(i)
+	    });
+	}
+	var view = new google.visualization.DataView(data);
+	view.setColumns(columns);
+
+        chart.draw(view, options);
       }
     </script>
     <script type="text/javascript">
