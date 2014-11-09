@@ -138,28 +138,15 @@
 
       // Load the Visualization API and the piechart package.
       google.load('visualization', '1.0', {'packages':['corechart']});
+
+      // Global data series
       var dataSeries_g = [];
 
-      // Set a callback to run when the Google Visualization API is loaded.
-      //google.setOnLoadCallback(drawChart);
-
-      // Callback that creates and populates a data table,
-      // instantiates the pie chart, passes in the data and
-      // draws it.
       function drawChart() {
 
         if (dataSeries_g.length == 0) {
           return;
         }
-
-        // Create the data table.
-        // var data1Str = document.querySelector("div#data_1").innerHTML.trim();
-        // var data2Str = document.querySelector("div#data_2").innerHTML.trim();
-        // var data3Str = document.querySelector("div#data_3").innerHTML.trim();
-
-        // var series = appendDataSeries(data1Str, 'Measured', []);
-        // series = appendDataSeries(data2Str, 'Sampled', series);
-        // series = appendDataSeries(data3Str, 'Corrected', series);
 
         var data = google.visualization.arrayToDataTable(dataSeries_g);
 
