@@ -328,9 +328,6 @@
 
 <body>
 <h2>HdrHistogram Plotter</h2>
-Plots percentile logs. Expects the .hgrm format produced by
-HistogramLogProcessor, or the percentile output format for HdrHistogram.
-<p>
 <input type="file" id="files" name="files[]" multiple />
 
 <pre id="fileDisplayArea">Please select file(s) above.</pre>
@@ -346,6 +343,9 @@ Latency time units:
     <option value="Latency (nanoseconds)">nanoseconds</option>
 </select>
 <button type='button' onclick='doExport(event)'>Export Image</button>
+<p>
+*** Note: Input files are expected to be in the .hgrm format produced by
+HistogramLogProcessor, or the percentile output format for HdrHistogram.
 
 <!--<h4>Expected Service Level:</h4>-->
 <!--<input type="checkbox" name="ESL" value="ESL">Plot Expected Service Level<br>-->
