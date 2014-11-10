@@ -170,13 +170,6 @@
 
         // Loop through the FileList and render image files as thumbnails.
         for (var i = 0, f; f = files[i]; i++) {
-
-            // Only process image files.
-            if (!f.name.match('\.hgrm')) {
-                fileDisplayArea.innerText = "File not supported (must end in \".hgrm\")";
-                continue;
-            }
-
             var reader = new FileReader();
 
             reader.onload = (function(theFile) {
