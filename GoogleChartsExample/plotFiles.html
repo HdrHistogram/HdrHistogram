@@ -56,6 +56,8 @@
         drawChart();
     }
 
+    var maxPercentile = 1000000;
+
     function drawChart() {
 
         var ticks =
@@ -65,7 +67,9 @@
                     {v:1000,f:'99.9%'},
                     {v:10000,f:'99.99%'},
                     {v:100000,f:'99.999%'},
-                    {v:1000000,f:'99.9999%'}];
+                    {v:1000000,f:'99.9999%'},
+                    {v:10000000,f:'99.99999%'},
+                    {v:100000000,f:'99.999999%'}];
 
         var unitSelection = document.getElementById("timeUnitSelection");
         var unitSelIndex = unitSelection.selectedIndex;
@@ -74,7 +78,16 @@
         var options = {
             title: 'Latency by Percentile Distribution',
             height: 480,
-            hAxis: {title: 'Percentile', minValue: 0, logScale: true, ticks:ticks },
+//            hAxis: {title: 'Percentile', minValue: 0, logScale: true, ticks:ticks },
+            hAxis: {
+                title: "Percentile",
+                minValue: 1, logScale: true, ticks:ticks,
+                viewWindowMode:'explicit',
+                viewWindow:{
+                    max:maxPercentile,
+                    min:1
+                }
+            },
             vAxis: {title: 'Latency (' + unitText + ')', minValue: 0 },
             legend: {position: 'bottom'}
         };
@@ -322,6 +335,13 @@
     })();
 </script>
 
+<style>
+    .slider-width500
+    {
+        width: 500px;
+    }
+</style>
+
 </head>
 
 <body>
@@ -342,10 +362,33 @@ Latency time units:
     <option value="Latency (nanoseconds)">nanoseconds</option>
 </select>
 <button type='button' onclick='doExport(event)'>Export Image</button>
+
+&nbsp; &nbsp; &nbsp; &nbsp;
 <p>
+Percentile range:
+
+<input type="range" class="slider-width500"
+       min="1" max="8" value="7" step="1"
+       width="300px"
+       onchange="showValue(this.value)" />
+<span id="percentileRange">99.99999%</span>
+<script type="text/javascript">
+    function showValue(newValue) {
+        var x = Math.pow(10, newValue);
+        percentile = 100.0 - (100.0 / x);
+        document.getElementById("percentileRange").innerHTML=percentile + "%";
+        maxPercentile = x;
+        drawChart();
+    }
+</script>
+</p>
+<p>
+    <br>
 *** Note: Input files are expected to be in the .hgrm format produced by
 HistogramLogProcessor, or the percentile output format for HdrHistogram.
-
+See example file format
+    <a href="https://github.com/HdrHistogram/HdrHistogram/blob/master/GoogleChartsExample/example1.txt">here</a>
+</p>
 <!--<h4>Expected Service Level:</h4>-->
 <!--<input type="checkbox" name="ESL" value="ESL">Plot Expected Service Level<br>-->
 <!--Percentile:-->
