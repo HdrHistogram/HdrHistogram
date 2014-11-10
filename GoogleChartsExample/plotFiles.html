@@ -96,7 +96,7 @@
                     return function (dt, row) {
                         var percentile = 100.0 - (100.0/dt.getValue(row, 0));
                         return dt.getColumnLabel(j) + ': ' +
-                                percentile.toPrecision(6) +
+                                percentile.toPrecision(7) +
                                 '\%\'ile = ' + dt.getValue(row, j) + ' usec'
                     }
                 })(i)
@@ -322,12 +322,11 @@
     })();
 </script>
 
-
-
 </head>
 
 <body>
 <h2>HdrHistogram Plotter</h2>
+
 <input type="file" id="files" name="files[]" multiple />
 
 <pre id="fileDisplayArea">Please select file(s) above.</pre>
