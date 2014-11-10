@@ -1,6 +1,6 @@
 <!doctype html>
 <html>
-  <head>
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <title>HdrHistogram by giltene</title>
@@ -11,84 +11,127 @@
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-  </head>
-  <body>
-    <div class="wrapper">
-      <header>
+    <style>
+        .myButton {
+            -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+            -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+            box-shadow:inset 0px 1px 0px 0px #ffffff;
+            background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #f9f9f9), color-stop(1, #e9e9e9));
+            background:-moz-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+            background:-webkit-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+            background:-o-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+            background:-ms-linear-gradient(top, #f9f9f9 5%, #e9e9e9 100%);
+            background:linear-gradient(to bottom, #f9f9f9 5%, #e9e9e9 100%);
+            filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#f9f9f9', endColorstr='#e9e9e9',GradientType=0);
+            background-color:#f9f9f9;
+            -moz-border-radius:6px;
+            -webkit-border-radius:6px;
+            border-radius:6px;
+            border:1px solid #dcdcdc;
+            display:inline-block;
+            cursor:pointer;
+            color:#666666;
+            font-family:arial;
+            font-size:16px;
+            font-weight:bold;
+            padding:8px 54px;
+            text-decoration:none;
+            text-shadow:0px 1px 0px #ffffff;
+        }
+        .myButton:hover {
+            background:-webkit-gradient(linear, left top, left bottom, color-stop(0.05, #e9e9e9), color-stop(1, #f9f9f9));
+            background:-moz-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+            background:-webkit-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+            background:-o-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+            background:-ms-linear-gradient(top, #e9e9e9 5%, #f9f9f9 100%);
+            background:linear-gradient(to bottom, #e9e9e9 5%, #f9f9f9 100%);
+            filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#e9e9e9', endColorstr='#f9f9f9',GradientType=0);
+            background-color:#e9e9e9;
+        }
+        .myButton:active {
+            position:relative;
+            top:1px;
+        }
+    </style>
+
+</head>
+<body>
+<div class="wrapper">
+    <header>
         <h1>HdrHistogram</h1>
         <p>A High Dynamic Range (HDR) Histogram</p>
 
 
         <p class="view"><a href="https://github.com/HdrHistogram/HdrHistogram" target='_top'>
-              View the Project on GitHub <small>HdrHistogram/HdrHistogram<br>(Java, C, and C# versions)</small></a></p>
+            View the Project on GitHub <small>HdrHistogram/HdrHistogram<br>(Java, C, and C# versions)</small></a></p>
 
         <p class="view"><a href="http://hdrhistogram.github.com/HdrHistogram/JavaDoc">
             View the Project JavaDoc <small>hdrhistogram.github.com/HdrHistogram/JavaDoc</small></a></p>
 
         <ul>
-          <li><a href="https://github.com/HdrHistogram/HdrHistogram/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/HdrHistogram/HdrHistogram/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/HdrHistogram/HdrHistogram" target='_top'>View On <strong>GitHub</strong></a></li>
+            <li><a href="https://github.com/HdrHistogram/HdrHistogram/zipball/master">Download <strong>ZIP File</strong></a></li>
+            <li><a href="https://github.com/HdrHistogram/HdrHistogram/tarball/master">Download <strong>TAR Ball</strong></a></li>
+            <li><a href="https://github.com/HdrHistogram/HdrHistogram" target='_top'>View On <strong>GitHub</strong></a></li>
         </ul>
-          <p align="center">
-              <br>
-              <br>
-              <br>
-              <br>
-              An example plot of an HdrHistogram based full percentile spectrum plot:
-          </p>
-          <img src="PercentileHistogramExample.png">
+        <p align="center">
+            <br>
+            <a href="plotFiles.html" class="myButton"><strong>Plot histogram file(s)</strong></a>
+            <br>
+            <br>
+            An example plot of an HdrHistogram based full percentile spectrum plot:
+        </p>
+        <img src="PercentileHistogramExample.png">
 
-      </header>
+    </header>
 
 
-      <section>
+    <section>
         <h3>HdrHistogram: A High Dynamic Range Histogram.</h3>
 
-<p>
-    A Histogram that supports recording and analyzing sampled data value counts across a configurable integer
-    value range with configurable value precision within the range. Value precision is expressed as the number of
-    significant digits in the value recording, and provides control over value quantization behavior across
-    the value range and the subsequent value resolution at any given level.</p>
-<p>
-    For example, a <a href="http://hdrhistogram.github.com/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/Histogram.html">
-    Histogram </a> could be configured to track the counts of observed integer values between
-    0 and 3,600,000,000 while maintaining a value precision of 3 significant digits across that range.
-    Value quantization within the range will thus be no larger than 1/1,000th (or 0.1%) of any value.
-    This example Histogram could be used to track and analyze the counts of observed response times
-    ranging between 1 microsecond and 1 hour in magnitude, while maintaining a value resolution of
-    1 microsecond up to 1 millisecond, a resolution of 1 millisecond (or better) up to one second,
-    and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked value (1 hour),
-    it would still maintain a resolution of 3.6 seconds (or better).</p>
-<p>
-    HDR Histogram is designed for recoding histograms of value measurements in latency and performance
-    sensitive applications. Measurements show value recording times as low as 3-6 nanoseconds on modern
-    (circa 2014) Intel CPUs. The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory
-    footprint is constant, with no allocation operations involved in recording data values or in iterating through
-    them. The memory footprint is fixed regardless of the number of data value samples recorded, and depends solely
-    on the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
-    directly computes storage index locations such that no iteration or searching is ever involved in
-    recording data values.</p>
+        <p>
+            A Histogram that supports recording and analyzing sampled data value counts across a configurable integer
+            value range with configurable value precision within the range. Value precision is expressed as the number of
+            significant digits in the value recording, and provides control over value quantization behavior across
+            the value range and the subsequent value resolution at any given level.</p>
+        <p>
+            For example, a <a href="http://hdrhistogram.github.com/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/Histogram.html">
+            Histogram </a> could be configured to track the counts of observed integer values between
+            0 and 3,600,000,000 while maintaining a value precision of 3 significant digits across that range.
+            Value quantization within the range will thus be no larger than 1/1,000th (or 0.1%) of any value.
+            This example Histogram could be used to track and analyze the counts of observed response times
+            ranging between 1 microsecond and 1 hour in magnitude, while maintaining a value resolution of
+            1 microsecond up to 1 millisecond, a resolution of 1 millisecond (or better) up to one second,
+            and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked value (1 hour),
+            it would still maintain a resolution of 3.6 seconds (or better).</p>
+        <p>
+            HDR Histogram is designed for recoding histograms of value measurements in latency and performance
+            sensitive applications. Measurements show value recording times as low as 3-6 nanoseconds on modern
+            (circa 2014) Intel CPUs. The HDR Histogram maintains a fixed cost in both space and time. A Histogram's memory
+            footprint is constant, with no allocation operations involved in recording data values or in iterating through
+            them. The memory footprint is fixed regardless of the number of data value samples recorded, and depends solely
+            on the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
+            directly computes storage index locations such that no iteration or searching is ever involved in
+            recording data values.</p>
 
-<h3>Authors, Contributors, and License</h3>
+        <h3>Authors, Contributors, and License</h3>
 
-<p>
-    HdrHistogram was authored by Gil Tene (<a href="https://github.com/giltene" class="user-mention">@giltene</a>)
-    (original and Java version), with ports by Mike Barker
-    (<a href="https://github.com/mikeb01" class="user-mention">@mikeb01</a>) (C),
-    and Matt Warren (<a href="https://github.com/mattwarren" class="user-mention">@mattwarren</a>) (C#), and
-    placed in the public domain, as explained at
-    <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>
-</p>
+        <p>
+            HdrHistogram was authored by Gil Tene (<a href="https://github.com/giltene" class="user-mention">@giltene</a>)
+            (original and Java version), with ports by Mike Barker
+            (<a href="https://github.com/mikeb01" class="user-mention">@mikeb01</a>) (C),
+            and Matt Warren (<a href="https://github.com/mattwarren" class="user-mention">@mattwarren</a>) (C#), and
+            placed in the public domain, as explained at
+            <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>
+        </p>
 
-<h3>Support or Contact</h3>
-<p>Don't call me, I won't call you.</p>
+        <h3>Support or Contact</h3>
+        <p>Don't call me, I won't call you.</p>
 
-      </section>
+    </section>
 
-      </footer>
-    </div>
-    <script src="javascripts/scale.fix.js"></script>
+    </footer>
+</div>
+<script src="javascripts/scale.fix.js"></script>
 
-  </body>
+</body>
 </html>
