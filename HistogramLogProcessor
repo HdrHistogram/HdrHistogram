@@ -5,7 +5,7 @@
 # Written by Gil Tene, and released to the public domain, as explained at
 #  http://creativecommons.org/publicdomain/zero/1.0/
 #
-JHICCUP_Version=2.0.1
+# ********************************************************************
 #
 # HistogramLogProcessor will process an input log and can generate two
 # different log files from a single  histogram log file: a
