@@ -14,6 +14,7 @@ src/main/java/org/HdrHistogram/Version.java
 alltests
 format_example
 *.a
+*.iml
 .sconsign.dblite
 *.o
 *.os
