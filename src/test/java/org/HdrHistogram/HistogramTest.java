@@ -111,6 +111,18 @@ public class HistogramTest {
         histogram.recordValue(highestTrackableValue * 3);
     }
 
+    @Test
+    public void testConstructionWithLargeNumbers() throws Exception {
+        Histogram histogram = new Histogram(20000000, 100000000, 5);
+        histogram.recordValue(100000000);
+        histogram.recordValue(20000000);
+        histogram.recordValue(30000000);
+        Assert.assertTrue(histogram.valuesAreEquivalent(20000000, histogram.getValueAtPercentile(50.0)));
+        Assert.assertTrue(histogram.valuesAreEquivalent(30000000, histogram.getValueAtPercentile(83.33)));
+        Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(83.34)));
+        Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(99.0)));
+    }
+
     @org.junit.Test
     public void testRecordValueWithExpectedInterval() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
