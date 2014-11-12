@@ -181,7 +181,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         subBucketHalfCountMagnitude = ((subBucketCountMagnitude > 1) ? subBucketCountMagnitude : 1) - 1;
         subBucketCount = (int) Math.pow(2, (subBucketHalfCountMagnitude + 1));
         subBucketHalfCount = subBucketCount / 2;
-        subBucketMask = (subBucketCount - 1) << unitMagnitude;
+        subBucketMask = ((long)subBucketCount - 1) << unitMagnitude;
 
 
         // determine exponent range needed to support the trackable value with no overflow:
@@ -554,7 +554,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int bucketIndex = getBucketIndex(value);
         int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long distanceToNextValue =
-                (1 << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
+                (1L << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
         return distanceToNextValue;
     }
 
@@ -763,7 +763,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 }
             }
         }
-        throw new ArrayIndexOutOfBoundsException("percentile value not found in range"); // should not reach here.
+        return 0;
     }
 
     /**
@@ -790,7 +790,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
 
-        return (100.0 * totalToCurrentIJ) / getTotalCount();    }
+        return (100.0 * totalToCurrentIJ) / getTotalCount();
+    }
 
     /**
      * Get the count of recorded values within a range of value levels. (inclusive to within the histogram's resolution)
@@ -1442,10 +1443,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
 
     int getBucketsNeededToCoverValue(long value) {
-        long trackableValue = (subBucketCount - 1) << unitMagnitude;
+        long smallestUntrackableValue = ((long)subBucketCount - 1) << unitMagnitude;
         int bucketsNeeded = 1;
-        while (trackableValue < value) {
-            trackableValue <<= 1;
+        while (smallestUntrackableValue < value) {
+            smallestUntrackableValue <<= 1;
             bucketsNeeded++;
         }
         return bucketsNeeded;
