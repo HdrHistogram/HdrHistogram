@@ -63,7 +63,7 @@ public class HistogramDataTest {
                 histogram.lowestEquivalentValue(histogram.getHistogramData().getValueAtPercentile(99.0)) * 512,
                 scaledHistogram.lowestEquivalentValue(scaledHistogram.getHistogramData().getValueAtPercentile(99.0)));
         Assert.assertEquals("Max should be equivalent",
-                histogram.getHistogramData().getMaxValue() * 512,
+                scaledHistogram.highestEquivalentValue(histogram.getHistogramData().getMaxValue() * 512),
                 scaledHistogram.getHistogramData().getMaxValue());
         // Same for post-corrected:
         Assert.assertEquals("averages should be equivalent",
@@ -76,7 +76,7 @@ public class HistogramDataTest {
                 postCorrectedHistogram.lowestEquivalentValue(postCorrectedHistogram.getHistogramData().getValueAtPercentile(99.0)) * 512,
                 postCorrectedScaledHistogram.lowestEquivalentValue(postCorrectedScaledHistogram.getHistogramData().getValueAtPercentile(99.0)));
         Assert.assertEquals("Max should be equivalent",
-                postCorrectedHistogram.getHistogramData().getMaxValue() * 512,
+                postCorrectedHistogram.highestEquivalentValue(postCorrectedHistogram.getHistogramData().getMaxValue() * 512),
                 postCorrectedScaledHistogram.getHistogramData().getMaxValue());
 
     }

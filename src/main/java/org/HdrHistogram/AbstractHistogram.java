@@ -705,7 +705,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
             max = iterationValue.getValueIteratedTo();
         }
-        return lowestEquivalentValue(max);
+        return highestEquivalentValue(max);
     }
 
     /**
