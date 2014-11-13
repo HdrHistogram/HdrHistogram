@@ -126,6 +126,35 @@ static char* test_create()
     return 0;
 }
 
+static char* test_create_with_large_values()
+{
+    struct hdr_histogram* h = NULL;
+    int r = hdr_init(20000000, 100000000, 5, &h);
+    mu_assert("Didn't create", r == 0);
+
+    hdr_record_value(h, 100000000);
+    hdr_record_value(h, 20000000);
+    hdr_record_value(h, 30000000);
+
+    mu_assert(
+        "50.0% Percentile",
+        hdr_values_are_equivalent(h, 20000000, hdr_value_at_percentile(h, 50.0)));
+
+    mu_assert(
+        "83.33% Percentile",
+        hdr_values_are_equivalent(h, 30000000, hdr_value_at_percentile(h, 83.33)));
+
+    mu_assert(
+        "83.34% Percentile",
+        hdr_values_are_equivalent(h, 100000000, hdr_value_at_percentile(h, 83.34)));
+
+    mu_assert(
+        "99.0% Percentile",
+        hdr_values_are_equivalent(h, 100000000, hdr_value_at_percentile(h, 99.0)));
+
+    return 0;
+}
+
 static char* test_invalid_significant_figures()
 {
     struct hdr_histogram* h = NULL;
@@ -418,6 +447,7 @@ static char* test_scaling_equivalence()
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
+    mu_run_test(test_create_with_large_values);
     mu_run_test(test_invalid_significant_figures);
     mu_run_test(test_total_count);
     mu_run_test(test_get_min_value);
