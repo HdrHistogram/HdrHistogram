@@ -46,7 +46,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         this.currentValueAtIndex = 0;
         this.nextBucketIndex = 0;
         this.nextSubBucketIndex = 1;
-        this.nextValueAtIndex = 1;
+        this.nextValueAtIndex = 1 << histogram.unitMagnitude;
         this.prevValueIteratedTo = 0;
         this.totalCountToPrevIndex = 0;
         this.totalCountToCurrentIndex = 0;
