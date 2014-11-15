@@ -24,7 +24,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
      * Reset iterator for re-use in a fresh iteration over the same histogram data set.
      * @param valueUnitsPerBucket The size (in value units) of each bucket iteration.
      */
-    public void reset(final int valueUnitsPerBucket) {
+    public void reset(final long valueUnitsPerBucket) {
         reset(histogram, valueUnitsPerBucket);
     }
 
@@ -39,7 +39,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
      * @param histogram The histogram this iterator will operate on
      * @param valueUnitsPerBucket The size (in value units) of each bucket iteration.
      */
-    public LinearIterator(final AbstractHistogram histogram, final int valueUnitsPerBucket) {
+    public LinearIterator(final AbstractHistogram histogram, final long valueUnitsPerBucket) {
         reset(histogram, valueUnitsPerBucket);
     }
 

@@ -16,7 +16,7 @@ import java.util.Iterator;
  * includes values up to and including the next bucket boundary value.
  */
 public class LogarithmicIterator extends AbstractHistogramIterator implements Iterator<HistogramIterationValue> {
-    int valueUnitsInFirstBucket;
+    long valueUnitsInFirstBucket;
     double logBase;
     long nextValueReportingLevel;
     long nextValueReportingLevelLowestEquivalent;
@@ -26,11 +26,11 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
      * @param valueUnitsInFirstBucket the size (in value units) of the first value bucket step
      * @param logBase the multiplier by which the bucket size is expanded in each iteration step.
      */
-    public void reset(final int valueUnitsInFirstBucket, final double logBase) {
+    public void reset(final long valueUnitsInFirstBucket, final double logBase) {
         reset(histogram, valueUnitsInFirstBucket, logBase);
     }
 
-    private void reset(final AbstractHistogram histogram, final int valueUnitsInFirstBucket, final double logBase) {
+    private void reset(final AbstractHistogram histogram, final long valueUnitsInFirstBucket, final double logBase) {
         super.resetIterator(histogram);
         this.logBase = logBase;
         this.valueUnitsInFirstBucket = valueUnitsInFirstBucket;
