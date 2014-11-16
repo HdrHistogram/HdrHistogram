@@ -284,7 +284,10 @@ struct hdr_linear_iter
  * @param h The histogram to iterate over
  * @param value_unit_per_bucket The size of each linear step
  */
-void hdr_linear_iter_init(struct hdr_linear_iter* linear, struct hdr_histogram* h, int value_units_per_bucket);
+void hdr_linear_iter_init(
+    struct hdr_linear_iter* linear,
+    struct hdr_histogram* h,
+    int value_units_per_bucket);
 
 /**
  * Iterate to the next linear step.
