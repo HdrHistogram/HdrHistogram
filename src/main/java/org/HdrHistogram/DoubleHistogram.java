@@ -1129,11 +1129,21 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         integerValuesHistogram.fillBufferFromCountsArray(buffer, length);
     }
 
-    private static final int DHIST_encodingCookie = 0x0c72144c;
-    private static final int DHIST_compressedEncodingCookie = 0x0c72144d;
+    private static final int DHIST_encodingCookie = 0x0c72124c;
+    private static final int DHIST_V0encodingCookie = 0x0c72144c;
+    private static final int DHIST_compressedEncodingCookie = 0x0c72124d;
+    private static final int DHIST_V0compressedEncodingCookie = 0x0c72144d;
 
     static boolean isDoubleHistogramCookie(int cookie) {
-        return (cookie == DHIST_encodingCookie) || (cookie == DHIST_compressedEncodingCookie);
+        return isCompressedDoubleHistogramCookie(cookie) || isNonCompressedDoubleHistogramCookie(cookie);
+    }
+
+    static boolean isCompressedDoubleHistogramCookie(int cookie) {
+        return (cookie == DHIST_compressedEncodingCookie) || (cookie == DHIST_V0compressedEncodingCookie);
+    }
+
+    static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
+        return (cookie == DHIST_encodingCookie) || (cookie == DHIST_V0encodingCookie);
     }
 
     /**
@@ -1187,10 +1197,10 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         int numberOfSignificantValueDigits = buffer.getInt();
         long configuredHighestToLowestValueRatio = buffer.getLong();
         final AbstractHistogram valuesHistogram;
-        if (cookie == DHIST_encodingCookie) {
+        if (isNonCompressedDoubleHistogramCookie(cookie)) {
             valuesHistogram =
                     AbstractHistogram.decodeFromByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
-        } else if (cookie == DHIST_compressedEncodingCookie) {
+        } else if (isCompressedDoubleHistogramCookie(cookie)) {
             valuesHistogram =
                     AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
         } else {
@@ -1235,7 +1245,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             long minBarForHighestToLowestValueRatio) {
         try {
             int cookie = buffer.getInt();
-            if (cookie != DHIST_encodingCookie) {
+            if (!isNonCompressedDoubleHistogramCookie(cookie)) {
                 throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
             }
             DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
@@ -1276,7 +1286,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             Class<? extends AbstractHistogram> internalCountsHistogramClass,
             long minBarForHighestToLowestValueRatio) throws DataFormatException {
         int cookie = buffer.getInt();
-        if (cookie != DHIST_compressedEncodingCookie) {
+        if (!isCompressedDoubleHistogramCookie(cookie)) {
             throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
         DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
