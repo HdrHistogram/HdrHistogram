@@ -319,7 +319,11 @@ struct hdr_log_iter
  * @param value_units_first_bucket The size of the first bucket in the iteration
  * @param log_base The factor to multiply by at each step
  */
-void hdr_log_iter_init(struct hdr_log_iter* logarithmic, struct hdr_histogram* h, int value_units_first_bucket, double log_base);
+void hdr_log_iter_init(
+    struct hdr_log_iter* logarithmic,
+    struct hdr_histogram* h,
+    int value_units_first_bucket,
+    double log_base);
 
 /**
  * Iterate to the next logarithmic step
