@@ -687,7 +687,7 @@ bool hdr_recorded_iter_next(struct hdr_recorded_iter* recorded)
 void hdr_linear_iter_init(
     struct hdr_linear_iter* linear,
     struct hdr_histogram* h,
-    int value_units_per_bucket)
+    int64_t value_units_per_bucket)
 {
     hdr_iter_init(&linear->iter, h);
     linear->count_added_in_this_iteration_step = 0;

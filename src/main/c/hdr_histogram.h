@@ -271,7 +271,7 @@ bool hdr_recorded_iter_next(struct hdr_recorded_iter* recorded);
 struct hdr_linear_iter
 {
     struct hdr_iter iter;
-    int value_units_per_bucket;
+    int64_t value_units_per_bucket;
     int64_t count_added_in_this_iteration_step;
     int64_t next_value_reporting_level;
     int64_t next_value_reporting_level_lowest_equivalent;
@@ -287,7 +287,7 @@ struct hdr_linear_iter
 void hdr_linear_iter_init(
     struct hdr_linear_iter* linear,
     struct hdr_histogram* h,
-    int value_units_per_bucket);
+    int64_t value_units_per_bucket);
 
 /**
  * Iterate to the next linear step.
