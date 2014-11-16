@@ -738,7 +738,7 @@ bool hdr_linear_iter_next(struct hdr_linear_iter* linear)
 void hdr_log_iter_init(
     struct hdr_log_iter* logarithmic,
     struct hdr_histogram* h,
-    int value_units_first_bucket,
+    int64_t value_units_first_bucket,
     double log_base)
 {
     hdr_iter_init(&logarithmic->iter, h);
