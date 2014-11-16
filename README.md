@@ -2,7 +2,8 @@ HdrHistogram: A High Dynamic Range (HDR) Histogram
 
 This project currently includes Java, C, and C# implementations of
 HdrHistogram, all of which share common concepts and data
-representation capabilities.
+representation capabilities. Recent Go and Erlang ports can be found
+in other repositories.
 
 Note: The below is an excerpt from a Histogram JavaDoc. While it
 generally applies to C and C# as well, some details may vary by
@@ -59,18 +60,6 @@ is kept in high resolution allows for accurate post-recording analysis with
 low [and ultimately configurable] loss in accuracy when compared to
 performing the same analysis directly on the potentially infinite series of
 sourced data values samples.
-
-Internally, AbstractHistogram data is maintained using a concept somewhat
-similar to that of floating point number representation: Using an
-exponent a (non-normalized) mantissa to support a wide dynamic range at a
-high but varying (by exponent value) resolution. AbstractHistogram uses
-exponentially increasing bucket value ranges (the parallel of the exponent
-portion of a floating point number) with each bucket containing a fixed
-number (per bucket) set of linear sub-buckets (the parallel of a
-non-normalized mantissa portion of a floating point number). Both dynamic
-range and resolution are configurable, with highestTrackableValue
-controlling dynamic range, and numberOfSignificantValueDigits controlling
-resolution.
 
 An common use example of HdrHistogram would be to record response times
 in units of microseconds across a dynamic range stretching from 1 usec to
