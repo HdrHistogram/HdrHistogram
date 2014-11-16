@@ -17,12 +17,10 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     AbstractHistogram histogram;
     long savedHistogramTotalRawCount;
 
-    int currentBucketIndex;
-    int currentSubBucketIndex;
+
+    int currentIndex;
     long currentValueAtIndex;
 
-    int nextBucketIndex;
-    int nextSubBucketIndex;
     long nextValueAtIndex;
 
     long prevValueIteratedTo;
@@ -44,11 +42,8 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         this.savedHistogramTotalRawCount = histogram.getTotalCount();
         this.arrayTotalCount = histogram.getTotalCount();
         this.integerToDoubleValueConversionRatio = histogram.getIntegerToDoubleValueConversionRatio();
-        this.currentBucketIndex = 0;
-        this.currentSubBucketIndex = 0;
+        this.currentIndex = 0;
         this.currentValueAtIndex = 0;
-        this.nextBucketIndex = 0;
-        this.nextSubBucketIndex = 1;
         this.nextValueAtIndex = 1 << histogram.unitMagnitude;
         this.prevValueIteratedTo = 0;
         this.totalCountToPrevIndex = 0;
@@ -82,7 +77,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     public HistogramIterationValue next() {
         // Move through the sub buckets and buckets until we hit the next reporting level:
         while (!exhaustedSubBuckets()) {
-            countAtThisValue = histogram.getCountAt(currentBucketIndex, currentSubBucketIndex);
+            countAtThisValue = histogram.getCountAtIndex(currentIndex);
             if (freshSubBucket) { // Don't add unless we've incremented since last bucket...
                 totalCountToCurrentIndex += countAtThisValue;
                 totalValueToCurrentIndex += countAtThisValue * histogram.medianEquivalentValue(currentValueAtIndex);
@@ -133,21 +128,15 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     }
 
     private boolean exhaustedSubBuckets() {
-        return (currentBucketIndex >= histogram.bucketCount);
+        return (currentIndex >= histogram.countsArrayLength);
     }
 
     void incrementSubBucket() {
         freshSubBucket = true;
         // Take on the next index:
-        currentBucketIndex = nextBucketIndex;
-        currentSubBucketIndex = nextSubBucketIndex;
-        currentValueAtIndex = nextValueAtIndex;
-        // Figure out the next next index:
-        nextSubBucketIndex++;
-        if (nextSubBucketIndex >= histogram.subBucketCount) {
-            nextSubBucketIndex = histogram.subBucketHalfCount;
-            nextBucketIndex++;
-        }
-        nextValueAtIndex = histogram.valueFromIndex(nextBucketIndex, nextSubBucketIndex);
+        currentIndex++;
+        currentValueAtIndex = histogram.valueFromIndex(currentIndex);
+        // Figure out the value at the next index (used by some terators):
+        nextValueAtIndex = histogram.valueFromIndex(currentIndex + 1);
     }
 }

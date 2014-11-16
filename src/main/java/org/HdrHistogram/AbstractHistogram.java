@@ -10,13 +10,11 @@ package org.HdrHistogram;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.util.IllegalFormatException;
+import java.nio.*;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
@@ -29,7 +27,7 @@ import java.util.zip.Inflater;
  * JVM implementations, making this an effective method for control filed grouping layout.
  */
 
-abstract class AbstractHistogramBase {
+abstract class AbstractHistogramBase extends EncodableHistogram {
     static AtomicLong constructionIdentityCount = new AtomicLong(0);
 
     // "Cold" accessed fields. Not used in the recording code path:
@@ -51,9 +49,6 @@ abstract class AbstractHistogramBase {
 
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
-
-    @SuppressWarnings("deprecation")
-    HistogramData histogramData; // Deprecated, but we'll keep it around for compatibility.
 
     ByteBuffer intermediateUncompressedByteBuffer = null;
 
@@ -86,16 +81,24 @@ abstract class AbstractHistogramBase {
  *
  */
 
-public abstract class AbstractHistogram extends AbstractHistogramBase implements EncodableHistogram, Serializable{
+public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable{
 
     // "Hot" accessed fields (used in the the value recording code path) are bunched here, such
     // that they will have a good chance of ending up in the same cache line as the totalCounts and
     // counts array reference fields that subclass implementations will typically add.
+    int leadingZeroCountBase;
     int subBucketHalfCountMagnitude;
     int unitMagnitude;
     int subBucketHalfCount;
+    volatile int normalizingIndexOffset;
     long subBucketMask;
-    long internallyTrackedMaxValue;
+    volatile long maxValue = 0;
+    volatile long minNonZeroValue = Long.MAX_VALUE;
+
+    private static final AtomicLongFieldUpdater<AbstractHistogram> maxValueUpdater =
+            AtomicLongFieldUpdater.newUpdater(AbstractHistogram.class, "maxValue");
+    private static final AtomicLongFieldUpdater<AbstractHistogram> minNonZeroValueUpdater =
+            AtomicLongFieldUpdater.newUpdater(AbstractHistogram.class, "minNonZeroValue");
 
     // Sub-classes will typically add a totalCount field and a counts array field, which will likely be laid out
     // right around here due to the subclass layout rules in most practical JVM implementations.
@@ -108,13 +111,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
 
-    abstract long getCountAtIndex(int index);
+    abstract long getCountAtNormalizedIndex(int index);
 
-    abstract void incrementCountAtIndex(int index);
+    abstract void incrementCountAtNormalizedIndex(int index);
 
-    abstract void addToCountAtIndex(int index, long value);
+    abstract void addToCountAtNormalizedIndex(int index, long value);
 
-    abstract void setCountAtIndex(int index, long value);
+    abstract void setCountAtNormalizedIndex(int index, long value);
 
     abstract void setTotalCount(long totalCount);
 
@@ -132,8 +135,38 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     abstract public long getTotalCount();
 
-    void setMaxValue(final long maxValue) {
-        this.internallyTrackedMaxValue = maxValue;
+    /**
+     * Set internally tracked maxValue to new value if new value is greater than current one.
+     * May be overridden by subclasses for synchronization or atomicity purposes.
+     * @param value new maxValue to set
+     */
+    void updatedMaxValue(final long value) {
+        while (value > maxValue) {
+            maxValueUpdater.compareAndSet(this, maxValue, value);
+        }
+    }
+
+    final void resetMaxValue(final long maxValue) {
+        this.maxValue = maxValue;
+    }
+
+    final void resetNormalizingIndexOffset(final int normalizingIndexOffset) {
+        this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+    /**
+     * Set internally tracked minNonZeroValue to new value if new value is smaller than current one.
+     * May be overridden by subclasses for synchronization or atomicity purposes.
+     * @param value new minNonZeroValue to set
+     */
+    void updateMinNonZeroValue(final long value) {
+        while (value < minNonZeroValue) {
+            minNonZeroValueUpdater.compareAndSet(this, minNonZeroValue, value);
+        }
+    }
+
+    void resetMinNonZeroValue(final long minNonZeroValue) {
+        this.minNonZeroValue = minNonZeroValue;
     }
 
     //
@@ -155,7 +188,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
      *                               down to nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
+     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue). Must not be
+     *                              larger than (Long.MAX_VALUE/2).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
@@ -172,9 +206,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5)) {
             throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
         }
+        if (highestTrackableValue > (Long.MAX_VALUE / 2)) {
+            throw new IllegalArgumentException("highestTrackableValue must be <= (Long.MAX_VALUE / 2) (" +
+                    highestTrackableValue + ")");
+        }
         identity = constructionIdentityCount.getAndIncrement();
 
-        init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, 1.0, 0, 0);
+        init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, 1.0, 0);
     }
 
     /**
@@ -182,7 +220,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * duplicating the source's start/end timestamps (but NOT it's contents)
      * @param source The source histogram to duplicate
      */
-    AbstractHistogram(final AbstractHistogram source) {
+    public AbstractHistogram(final AbstractHistogram source) {
         this(source.getLowestDiscernibleValue(), source.getHighestTrackableValue(),
                 source.getNumberOfSignificantValueDigits());
         this.setStartTimeStamp(source.getStartTimeStamp());
@@ -190,13 +228,16 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     @SuppressWarnings("deprecation")
-    private void init(final long lowestDiscernibleValue, final long highestTrackableValue,
-                      final int numberOfSignificantValueDigits, final double integerToDoubleValueConversionRatio,
-                      final long totalCount, final long maxValue) {
+    private void init(final long lowestDiscernibleValue,
+                      final long highestTrackableValue,
+                      final int numberOfSignificantValueDigits,
+                      final double integerToDoubleValueConversionRatio,
+                      final int normalizingIndexOffset) {
         this.lowestDiscernibleValue = lowestDiscernibleValue;
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
+        this.normalizingIndexOffset = normalizingIndexOffset;
 
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
@@ -209,7 +250,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         subBucketHalfCountMagnitude = ((subBucketCountMagnitude > 1) ? subBucketCountMagnitude : 1) - 1;
         subBucketCount = (int) Math.pow(2, (subBucketHalfCountMagnitude + 1));
         subBucketHalfCount = subBucketCount / 2;
-        subBucketMask = (subBucketCount - 1) << unitMagnitude;
+        subBucketMask = ((long)subBucketCount - 1) << unitMagnitude;
 
 
         // determine exponent range needed to support the trackable value with no overflow:
@@ -218,11 +259,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         countsArrayLength = getLengthForNumberOfBuckets(bucketCount);
 
-        setTotalCount(totalCount);
-
-        setMaxValue(maxValue);
-
-        histogramData = new HistogramData(this);
+        // Establish leadingZeroCountBase, used in getBucketIndex() fast path:
+        leadingZeroCountBase = 64 - unitMagnitude - subBucketHalfCountMagnitude - 1;
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
@@ -265,7 +303,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * (down to the expectedIntervalBetweenValueSamples) value records.
      * <p>
      * Note: This is a at-recording correction method, as opposed to the post-recording correction method provided
-     * by {@link #copyCorrectedForCoordinatedOmission(long) getHistogramCorrectedForCoordinatedOmission}.
+     * by {@link #copyCorrectedForCoordinatedOmission(long)}.
      * The two methods are mutually exclusive, and only one of the two should be be used on a given data set to correct
      * for the same coordinated omission issue.
      * <p>
@@ -280,7 +318,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
-        recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
+        recordSingleValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
     }
 
     /**
@@ -300,22 +338,27 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
     }
 
+    private void updateMinAndMax(final long value) {
+        if (value > maxValue) {
+            updatedMaxValue(value);
+        }
+        if ((value < minNonZeroValue) && (value != 0)) {
+            updateMinNonZeroValue(value);
+        }
+    }
+
     private void recordCountAtValue(final long count, final long value)
             throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
         addToCountAtIndex(countsIndex, count);
-        if (value > internallyTrackedMaxValue) {
-            internallyTrackedMaxValue = value;
-        }
+        updateMinAndMax(value);
         addToTotalCount(count);
     }
 
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
         incrementCountAtIndex(countsIndex);
-        if (value > internallyTrackedMaxValue) {
-            internallyTrackedMaxValue = value;
-        }
+        updateMinAndMax(value);
         incrementTotalCount();
     }
 
@@ -324,12 +367,25 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                                                          final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
-        if (expectedIntervalBetweenValueSamples <=0)
+        if (expectedIntervalBetweenValueSamples <= 0)
             return;
         for (long missingValue = value - expectedIntervalBetweenValueSamples;
              missingValue >= expectedIntervalBetweenValueSamples;
              missingValue -= expectedIntervalBetweenValueSamples) {
             recordCountAtValue(count, missingValue);
+        }
+    }
+
+    private void recordSingleValueWithExpectedInterval(final long value,
+                                                       final long expectedIntervalBetweenValueSamples)
+            throws ArrayIndexOutOfBoundsException {
+        recordSingleValue(value);
+        if (expectedIntervalBetweenValueSamples <= 0)
+            return;
+        for (long missingValue = value - expectedIntervalBetweenValueSamples;
+             missingValue >= expectedIntervalBetweenValueSamples;
+             missingValue -= expectedIntervalBetweenValueSamples) {
+            recordSingleValue(missingValue);
         }
     }
 
@@ -346,7 +402,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public void reset() {
         clearCounts();
-        setMaxValue(0);
+        resetMaxValue(0);
+        resetMinNonZeroValue(Long.MAX_VALUE);
+        resetNormalizingIndexOffset(0);
     }
 
     //
@@ -433,28 +491,34 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * higher than highestTrackableValue.
      */
     public void add(final AbstractHistogram otherHistogram) throws ArrayIndexOutOfBoundsException {
-        if (this.highestTrackableValue < otherHistogram.highestTrackableValue) {
-            throw new ArrayIndexOutOfBoundsException("The other histogram covers a wider range than this one.");
+        long highestRecordableValue = highestEquivalentValue(valueFromIndex(countsArrayLength - 1));
+        if (highestRecordableValue < otherHistogram.getMaxValue()) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "The other histogram includes values that do not fit in this histogram's range.");
         }
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
-                (unitMagnitude == otherHistogram.unitMagnitude)) {
+                (unitMagnitude == otherHistogram.unitMagnitude) &&
+                (normalizingIndexOffset == otherHistogram.normalizingIndexOffset)) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
             long observedOtherTotalCount = 0;
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
                 long otherCount = otherHistogram.getCountAtIndex(i);
-                addToCountAtIndex(i, otherCount);
-                observedOtherTotalCount += otherCount;
+                if (otherCount > 0) {
+                    addToCountAtIndex(i, otherCount);
+                    observedOtherTotalCount += otherCount;
+                }
             }
             setTotalCount(getTotalCount() + observedOtherTotalCount);
-            setMaxValue(Math.max(this.internallyTrackedMaxValue, otherHistogram.internallyTrackedMaxValue));
+            updatedMaxValue(Math.max(getMaxValue(), otherHistogram.getMaxValue()));
+            updateMinNonZeroValue(Math.min(getMinNonZeroValue(), otherHistogram.getMinNonZeroValue()));
         } else {
             // Arrays are not a direct match, so we can't just stream through and add them.
             // Instead, go through the array and add each non-zero value found at it's proper value:
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
-                long count = otherHistogram.getCountAtIndex(i);
-                if (count > 0) {
-                    recordValueWithCount(otherHistogram.valueFromIndex(i), count);
+                long otherCount = otherHistogram.getCountAtIndex(i);
+                if (otherCount > 0) {
+                    recordValueWithCount(otherHistogram.valueFromIndex(i), otherCount);
                 }
             }
         }
@@ -469,37 +533,49 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public void subtract(final AbstractHistogram otherHistogram)
             throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
-        if (this.highestTrackableValue < otherHistogram.highestTrackableValue) {
-            throw new ArrayIndexOutOfBoundsException("The other histogram covers a wider range than this one.");
+        long highestRecordableValue = valueFromIndex(countsArrayLength - 1);
+        if (highestRecordableValue < otherHistogram.getMaxValue()) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "The other histogram includes values that do not fit in this histogram's range.");
         }
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
-                (unitMagnitude == otherHistogram.unitMagnitude)) {
+                (unitMagnitude == otherHistogram.unitMagnitude) &&
+                (normalizingIndexOffset == otherHistogram.normalizingIndexOffset)) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
+            long observedOtherTotalCount = 0;
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
                 long otherCount = otherHistogram.getCountAtIndex(i);
-                if (getCountAtIndex(i) < otherCount) {
-                    throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
-                            valueFromIndex(i) + " is larger than this one's (" + getCountAtIndex(i) + ")");
+                if (otherCount > 0) {
+                    if (getCountAtIndex(i) < otherCount) {
+                        throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
+                                valueFromIndex(i) + " is larger than this one's (" + getCountAtIndex(i) + ")");
+                    }
+                    addToCountAtIndex(i, -otherCount);
+                    observedOtherTotalCount += otherCount;
                 }
-                addToCountAtIndex(i, -otherCount);
             }
-            setTotalCount(getTotalCount() + otherHistogram.getTotalCount());
-            setMaxValue(Math.max(this.internallyTrackedMaxValue, otherHistogram.internallyTrackedMaxValue));
+            setTotalCount(getTotalCount() - observedOtherTotalCount);
+            updatedMaxValue(Math.max(getMaxValue(), otherHistogram.getMaxValue()));
+            updateMinNonZeroValue(Math.min(getMinNonZeroValue(), otherHistogram.getMinNonZeroValue()));
         } else {
             // Arrays are not a direct match, so we can't just stream through and add them.
             // Instead, go through the array and add each non-zero value found at it's proper value:
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
                 long otherCount = otherHistogram.getCountAtIndex(i);
-                long otherValue = otherHistogram.valueFromIndex(i);
-                if (getCountAtValue(otherValue) < otherCount) {
-                    throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
-                            otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
-                }
                 if (otherCount > 0) {
-                    recordValueWithCount(otherHistogram.valueFromIndex(i), -otherCount);
+                    long otherValue = otherHistogram.valueFromIndex(i);
+                    if (getCountAtValue(otherValue) < otherCount) {
+                        throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
+                                otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
+                    }
+                    recordValueWithCount(otherValue, -otherCount);
                 }
             }
+        }
+        // With subtraction, the max and minNonZero values could have changed:
+        if ((getCountAtValue(getMaxValue()) <= 0) || getCountAtValue(getMinNonZeroValue()) <= 0) {
+            establishInternalTackingValues();
         }
     }
 
@@ -539,219 +615,144 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
     //
-    // Shifting and scaling support:
+    // Shifting support:
     //
     //
     //
 
     /**
-     * Shift the recorded values in the histogram "to the left" by a given number of binary orders
-     * of magnitude, and scale the lowestDiscernibleValue and highestTrackableValue values accodingly.
-     * This operation is equivalent to performing a shift left on the magnitude of all values recorded
-     * so far in the histogram. The count attibuted to each value X will become attributed to value
-     * X << numberOfBinaryOrdersOfMagnitude).
+     * Shift recorded values to the left (the equivalent of a &lt;&lt; shift operation on all recorded values). The
+     * configured integer value range limits and value precision setting wull remain unchanged.
      *
-     * @param numberOfBinaryOrdersOfMagnitude
+     * An {@link ArrayIndexOutOfBoundsException} will be thrown if any recorded values may be lost
+     * as a result of the attempted operation, reflecting an "overflow" conditions. Expect such an overflow
+     * exception if the operation would cause the current maxValue to be scaled to a value that is outside
+     * of the covered value range.
+     *
+     * @param numberOfBinaryOrdersOfMagnitude The number of binary orders of magnitude to shift by
      */
-    void shiftLeftAndScaleLimits(final int numberOfBinaryOrdersOfMagnitude) {
-        // Change magnitude while keeping all data in the same place:
-        unitMagnitude += numberOfBinaryOrdersOfMagnitude;
-        lowestDiscernibleValue <<= numberOfBinaryOrdersOfMagnitude;
-        highestTrackableValue <<= numberOfBinaryOrdersOfMagnitude;
-        internallyTrackedMaxValue <<= numberOfBinaryOrdersOfMagnitude;
-    }
-
-    /**
-     * Shift the recorded values in the histogram "to the right" by a given number of binary orders
-     * of magnitude, and scale the lowestDiscernibleValue and highestTrackableValue values accodingly.
-     * This operation is equivalent to performing a shift right on the magnitude of all values recorded
-     * so far in the histogram. The count attibuted to each value X will become attributed to value
-     * X >> numberOfBinaryOrdersOfMagnitude).
-     *
-     * If the new value limits cannot be tracked (lowestDiscernibleValue would drop below 1) as a
-     * result of this shift operation, an ArrayIndexOutOfBoundsException exception will be thrown and
-     * the shift will not occur.
-     *
-     * @param numberOfBinaryOrdersOfMagnitude
-     * @throws ArrayIndexOutOfBoundsException if new limits cannot be tracked
-     * (lowestDiscernibleValue would drop below 1)
-     */
-    public void shiftRightAndScaleLimits(final int numberOfBinaryOrdersOfMagnitude)
-            throws ArrayIndexOutOfBoundsException {
-        if (unitMagnitude <= numberOfBinaryOrdersOfMagnitude) {
-            throw new ArrayIndexOutOfBoundsException(
-                    "Operation would undeflow, cannot scale lowestDiscernibleValue below 1");
+    public void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude) {
+        if (numberOfBinaryOrdersOfMagnitude < 0) {
+            throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
         }
-        // Change magnitude while keeping all data in the same place:
-        unitMagnitude -= numberOfBinaryOrdersOfMagnitude;
-        lowestDiscernibleValue >>= numberOfBinaryOrdersOfMagnitude;
-        highestTrackableValue >>= numberOfBinaryOrdersOfMagnitude;
-        internallyTrackedMaxValue >>= numberOfBinaryOrdersOfMagnitude;
-    }
 
-    /**
-     * Shift the recorded values in the histogram "to the left" by a given number of binary orders
-     * of magnitude, keeping lowestDiscernibleValue and highestTrackableValue values at their same level.
-     * This operation is equivalent to performing a shift left on the magnitude of all values recorded so
-     * far in the histogram. The count attibuted to each value X will become attributed to value
-     * X << numberOfBinaryOrdersOfMagnitude).
-     *
-     * If any non-zero counts exist on the top-most range of the histogram that will be discarded as
-     * result of this shift, an ArrayIndexOutOfBoundsException exception will be thrown and the shift
-     * will not occur.
-     *
-     * @param numberOfBinaryOrdersOfMagnitude number of "bits" to shift values to the left by
-     * @throws ArrayIndexOutOfBoundsException if non-zero counts would be discarded by this operation.
-     */
-    public void shiftLeft(final int numberOfBinaryOrdersOfMagnitude) throws ArrayIndexOutOfBoundsException {
-        final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
-
-        if (getTotalCount() == 0) {
+        if (numberOfBinaryOrdersOfMagnitude == 0) {
+            return;
+        }
+        if (getTotalCount() == getCountAtIndex(0)) {
+            // (no need to shift any values if all recorded values are at the 0 value level:)
             return;
         }
 
-        // Detect overflow:
-        boolean overflowDetected = false;
-        if (shiftAmount > countsArrayLength) {
-            overflowDetected = true;
-        } else {
-            // Scan discarded range for non-zeros:
-            // [going backwards to get the prefetchers working on the next loop...]
-            for (int i = countsArrayLength - 1; i >= countsArrayLength - shiftAmount; i--) {
-                if (getCountAtIndex(i) != 0) {
-                    overflowDetected = true;
-                }
-            }
-        }
-        if (overflowDetected) {
+        final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
+        int maxValueIndex = countsArrayIndex(getMaxValue());
+        // indicate overflow if maxValue is in the range being wrapped:
+        if (maxValueIndex >= (countsArrayLength - shiftAmount)) {
             throw new ArrayIndexOutOfBoundsException(
                     "Operation would overflow, would discard recorded value counts");
         }
 
-        // Shift from buckets [1...] by moving contents of upper halves (they don't have lower halves):
-        // [careful, order matters...]
-        for (int i = countsArrayLength - shiftAmount - 1; i >= subBucketCount; i--) {
-            setCountAtIndex(i + shiftAmount, getCountAtIndex(i));
-        }
+        // Perform the shift:
 
-        // Shift from bucket 0:
-        for (int magnitudes = numberOfBinaryOrdersOfMagnitude - 1; magnitudes >= 0; magnitudes--) {
-            // Shift upper half by copying into upper buckets:
-            int nextBucketIndexOffset = magnitudes * subBucketHalfCount;
-            for (int i = subBucketCount - 1; i >= subBucketHalfCount; i--) {
-                setCountAtIndex(i + subBucketHalfCount + nextBucketIndexOffset, getCountAtIndex(i));
-            }
+        // First deal with the lowest half-bucket, if it contains any non-0 values:
 
-            // Shift lower half, by expanding and filling gaps with zeros:
-            for (int fromIndex = subBucketHalfCount - 1; fromIndex >= 0; fromIndex--) {
-                int toIndex = fromIndex << 1;
-                setCountAtIndex(toIndex + 1, 0);
+        int minValueIndex = countsArrayIndex(getMinNonZeroValue());
+        if (minValueIndex < subBucketHalfCount) {
+            // The lowest half-bucket (not including the 0 value) is special: unlike all other half
+            // buckets, the lowest half bucket values cannot be scaled by simply changing the
+            // normalizing offset. Instead, they must be individually re-recorded at the new
+            // scale, and cleared from the current one.
+            //
+            // We know that all half buckets "below" the current lowest one are full of 0s, because
+            // we would have overflowed otherwise. So we need to shift the values in the current
+            // lowest half bucket into that range (including the current lowest half bucket itself).
+            // Iterating down from the topmost "from slot" and copying values to the newly scaled
+            // "to slot" (and then zeroing the "from slot"), will work in a single pass, becasue
+            // the "from slot" is always a higher index than its or any following "to slot":
+            //
+            // (Note that we specifically avoid slot 0, as it is directly handled in the outer case)
+
+            for (int fromIndex = subBucketHalfCount - 1; fromIndex > 0; fromIndex--) {
+                int toIndex = (fromIndex << numberOfBinaryOrdersOfMagnitude) - shiftAmount;
                 setCountAtIndex(toIndex, getCountAtIndex(fromIndex));
+                setCountAtIndex(fromIndex, 0);
             }
+
+            // Note that the above loop only creates O(N) work for histograms that have values in
+            // the lowest half-bucket (excluding the 0 value). Histograms that never have values
+            // there (e.g. all integer value histograms used as internal storage in DoubleHistograms)
+            // will never loop, and their shifts will remain O(1).
         }
 
-        internallyTrackedMaxValue <<= numberOfBinaryOrdersOfMagnitude;
+        // Save and clear the 0 value count:
+        long zeroValueCount = getCountAtIndex(0);
+        setCountAtIndex(0, 0);
+
+        // move normalizingIndexOffset and adjust min, max:
+        normalizingIndexOffset += shiftAmount;
+        maxValue <<= numberOfBinaryOrdersOfMagnitude;
+        if (minNonZeroValue < Long.MAX_VALUE) {
+            minNonZeroValue <<= numberOfBinaryOrdersOfMagnitude;
+        }
+
+        // Restore the 0 value count:
+        setCountAtIndex(0, zeroValueCount);
     }
 
     /**
-     * Shift the recorded values in the histogram "to the right" by a given number of binary orders
-     * of magnitude, keeping lowestDiscernibleValue and highestTrackableValue values at their same level.
-     * This operation is equivalent to performing a shift right on the magnitude of all values recorded
-     * so far in the histogram. The count attibuted to each value X will become attributed to value
-     * X >> numberOfBinaryOrdersOfMagnitude).
+     * Shift recorded values to the right (the equivalent of a &gt;&gt; shift operation on all recorded values). The
+     * configured integer value range limits and value precision setting wull remain unchanged.
+     * <p>
+     * Shift right operations that do not underflow are reversible with a shift left operation with no loss of
+     * information. An {@link ArrayIndexOutOfBoundsException} reflecting an "underflow" conditions will be thrown
+     * if any recorded values may lose representation accuracy as a result of the attempted shift operation.
+     * <p>
+     * For a shift of a single order of magnitude, expect such an underflow exception if any recorded non-zero
+     * values up to [numberOfSignificantValueDigits (rounded up to nearest power of 2) multiplied by
+     * (2 ^ numberOfBinaryOrdersOfMagnitude) currently exist in the histogram.
      *
-     * @param numberOfBinaryOrdersOfMagnitude number of "bits" to shift values to the right by
+     * @param numberOfBinaryOrdersOfMagnitude The number of binary orders of magnitude to shift by
      */
-    public void shiftRight(final int numberOfBinaryOrdersOfMagnitude) {
-        shiftRight(numberOfBinaryOrdersOfMagnitude, false);
-    }
+    public void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude) {
+        if (numberOfBinaryOrdersOfMagnitude < 0) {
+            throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
+        }
 
-    /**
-     * Shift the recorded values in the histogram "to the right" by a given number of binary orders
-     * of magnitude, keeping lowestDiscernibleValue and highestTrackableValue values at their same level.
-     * This operation is equivalent to performing a shift right on the magnitude of all values recorded
-     * so far in the histogram. The count attibuted to each value X will become attributed to value
-     * X >> numberOfBinaryOrdersOfMagnitude).
-     *
-     * If, as result of this shift, any non-zero counts exist on the lower-most range of the histogram
-     * that will shifted into ranges that (e.g. if shifted back to the left) may not retain the accuracy
-     * required by the histogram's settings, an ArrayIndexOutOfBoundsException exception will be thrown
-     * and the shift will not occur.
-     *
-     * @param numberOfBinaryOrdersOfMagnitude number of "bits" to shift values to the right by
-     */
-    public void shiftRightWithUndeflowProtection(final int numberOfBinaryOrdersOfMagnitude) {
-        shiftRight(numberOfBinaryOrdersOfMagnitude, true);
-    }
-
-
-    private void shiftRight(final int numberOfBinaryOrdersOfMagnitude, final boolean protectFromUndeflow) {
-        final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
-
-        if (getTotalCount() == 0) {
+        if (numberOfBinaryOrdersOfMagnitude == 0) {
+            return;
+        }
+        if (getTotalCount() == getCountAtIndex(0)) {
+            // (no need to shift any values if all recorded values are at the 0 value level:)
             return;
         }
 
-        if (protectFromUndeflow) {
-            // Detect underflow:
-            boolean underflowDetected = false;
-            if (shiftAmount > countsArrayLength) {
-                underflowDetected = true;
-            } else {
-                // There will be no shifts allowed into the lower half of bucket 0:
-                for (int i = subBucketHalfCount; i < subBucketHalfCount + shiftAmount; i++) {
-                    if (getCountAtIndex(i) != 0) {
-                        underflowDetected = true;
-                    }
-                }
-            }
-            if (underflowDetected) {
-                throw new ArrayIndexOutOfBoundsException(
-                        "Operation would undeflow, losing accuracy on already recorded value counts");
-            }
-        } else {
-            // Shift into bucket 0 by compacting & copying into it:
-            for (int magnitudes = 0; magnitudes < numberOfBinaryOrdersOfMagnitude; magnitudes++) {
-                // Shift into lower half of bucket 0 by compacting adjacent sub-bucket pairs into one sub-bucket:
-                for (int i = 0; i < subBucketHalfCount; i++) {
-                    int toIndex = i;
-                    int fromIndex = toIndex << 1;
-                    setCountAtIndex(toIndex, getCountAtIndex(fromIndex) + getCountAtIndex(fromIndex + 1));
-                }
+        final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
 
-                // Shift into upper half of bucket 0 by copying from next bucket:
-                int nextBucketIndexOffset = magnitudes * subBucketHalfCount;
-                if (subBucketCount + nextBucketIndexOffset < countsArrayLength) {
-                    // The source order of magnitude is inside the counts array
-                    for (int i = subBucketHalfCount; i < subBucketCount; i++) {
-                        setCountAtIndex(i, getCountAtIndex(i + subBucketHalfCount + nextBucketIndexOffset));
-                    }
-                } else {
-                    // The source order of magnitude is outside of the counts array, use 0s:
-                    for (int i = subBucketHalfCount; i < subBucketCount; i++) {
-                        setCountAtIndex(i, 0);
-                    }
-                }
-            }
+        // indicate underflow if minValue is in the range being shifted from:
+        int minValueIndex = countsArrayIndex(getMinNonZeroValue());
+        // Any shifting into the bottom-most half bucket would represents a loss of accuracy,
+        // and a non-reversible operation. Therefore and non-0 value that falls in an
+        // index below (shiftAmount + subBucketHalfCount) would represent an underflow:
+        if (minValueIndex < shiftAmount + subBucketHalfCount) {
+            throw new ArrayIndexOutOfBoundsException(
+                    "Operation would underflow and lose precision of already recorded value counts");
         }
 
-        if (shiftAmount > countsArrayLength - subBucketCount) {
-            // Deal with shifts larger than the count array: just fill with 0s and get out:
-            for (int i = subBucketHalfCount; i < countsArrayLength; i++) {
-                setCountAtIndex(i, 0);
-            }
-        } else {
-            // Shift into buckets [1...] by copying contents their upper halves (they don't have lower halves):
-            for (int i = subBucketCount; i < countsArrayLength - shiftAmount; i++) {
-                setCountAtIndex(i, getCountAtIndex(i + shiftAmount));
-            }
+        // perform shift:
 
-            // Fill newly expanded upper range with zeros:
-            for (int i = countsArrayLength - shiftAmount; i < countsArrayLength; i++) {
-                setCountAtIndex(i, 0);
-            }
+        // Save and clear the 0 value count:
+        long zeroValueCount = getCountAtIndex(0);
+        setCountAtIndex(0, 0);
+
+        // move normalizingIndexOffset and adjust min, max:
+        normalizingIndexOffset -= shiftAmount;
+        maxValue >>= numberOfBinaryOrdersOfMagnitude;
+        if (minNonZeroValue < Long.MAX_VALUE) {
+            minNonZeroValue >>= numberOfBinaryOrdersOfMagnitude;
         }
-        internallyTrackedMaxValue >>= numberOfBinaryOrdersOfMagnitude;
+
+        // Restore the 0 value count:
+        setCountAtIndex(0, zeroValueCount);
     }
 
     //
@@ -794,20 +795,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
         return true;
-    }
-
-    /**
-     * Deprecated: All {@link HistogramData} has been replaced with direct method calls
-     * in {@link AbstractHistogram}
-     *
-     * Provide access to the histogram's data set.
-     * @return a {@link HistogramData} that can be used to query stats and iterate through the default (corrected)
-     * data set.
-     */
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    public HistogramData getHistogramData() {
-        return histogramData;
     }
 
     //
@@ -854,7 +841,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int bucketIndex = getBucketIndex(value);
         final int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long distanceToNextValue =
-                (1 << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
+                (1L << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
         return distanceToNextValue;
     }
 
@@ -985,13 +972,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the Min value recorded in the histogram
      */
     public long getMinValue() {
-        recordedValuesIterator.reset();
-        long min = 0;
-        if (recordedValuesIterator.hasNext()) {
-            HistogramIterationValue iterationValue = recordedValuesIterator.next();
-            min = iterationValue.getValueIteratedTo();
+        if (getCountAtIndex(0) > 0) {
+            return 0;
         }
-        return lowestEquivalentValue(min);
+        return getMinNonZeroValue();
     }
 
     /**
@@ -1000,7 +984,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the Max value recorded in the histogram
      */
     public long getMaxValue() {
-        return (internallyTrackedMaxValue == 0) ? 0 : highestEquivalentValue(internallyTrackedMaxValue);
+        return (maxValue == 0) ? 0 : highestEquivalentValue(maxValue);
+    }
+
+    long getMinNonZeroValue() {
+        return (minNonZeroValue == Long.MAX_VALUE) ?
+                Long.MAX_VALUE : lowestEquivalentValue(minNonZeroValue);
     }
 
     /**
@@ -1385,57 +1374,46 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             lastLinePercentileFormatString = "%12." + numberOfSignificantValueDigits + "f %2.12f %10d\n";
         }
 
-        try {
-            while (iterator.hasNext()) {
-                HistogramIterationValue iterationValue = iterator.next();
-                if (iterationValue.getPercentileLevelIteratedTo() != 100.0D) {
-                    printStream.format(Locale.US, percentileFormatString,
-                            iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio,
-                            iterationValue.getPercentileLevelIteratedTo()/100.0D,
-                            iterationValue.getTotalCountToThisValue(),
-                            1/(1.0D - (iterationValue.getPercentileLevelIteratedTo()/100.0D)) );
-                } else {
-                    printStream.format(Locale.US, lastLinePercentileFormatString,
-                            iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio,
-                            iterationValue.getPercentileLevelIteratedTo()/100.0D,
-                            iterationValue.getTotalCountToThisValue());
-                }
-            }
-
-            if (!useCsvFormat) {
-                // Calculate and output mean and std. deviation.
-                // Note: mean/std. deviation numbers are very often completely irrelevant when
-                // data is extremely non-normal in distribution (e.g. in cases of strong multi-modal
-                // response time distribution associated with GC pauses). However, reporting these numbers
-                // can be very useful for contrasting with the detailed percentile distribution
-                // reported by outputPercentileDistribution(). It is not at all surprising to find
-                // percentile distributions where results fall many tens or even hundreds of standard
-                // deviations away from the mean - such results simply indicate that the data sampled
-                // exhibits a very non-normal distribution, highlighting situations for which the std.
-                // deviation metric is a useless indicator.
-                //
-
-                double mean =  getMean() / outputValueUnitScalingRatio;
-                double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
-                printStream.format(Locale.US,
-                        "#[Mean    = %12." + numberOfSignificantValueDigits + "f, StdDeviation   = %12." +
-                                numberOfSignificantValueDigits +"f]\n",
-                        mean, std_deviation);
-                printStream.format(Locale.US,
-                        "#[Max     = %12." + numberOfSignificantValueDigits + "f, Total count    = %12d]\n",
-                        getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
-                printStream.format(Locale.US, "#[Buckets = %12d, SubBuckets     = %12d]\n",
-                        bucketCount, subBucketCount);
-            }
-
-        } catch (ArrayIndexOutOfBoundsException e) {
-            // Overflow conditions on histograms can lead to ArrayIndexOutOfBoundsException on iterations:
-            if (hasOverflowed()) {
-                printStream.format(Locale.US, "# Histogram counts indicate OVERFLOW values");
+        while (iterator.hasNext()) {
+            HistogramIterationValue iterationValue = iterator.next();
+            if (iterationValue.getPercentileLevelIteratedTo() != 100.0D) {
+                printStream.format(Locale.US, percentileFormatString,
+                        iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio,
+                        iterationValue.getPercentileLevelIteratedTo()/100.0D,
+                        iterationValue.getTotalCountToThisValue(),
+                        1/(1.0D - (iterationValue.getPercentileLevelIteratedTo()/100.0D)) );
             } else {
-                // Re-throw if reason is not a known overflow:
-                throw e;
+                printStream.format(Locale.US, lastLinePercentileFormatString,
+                        iterationValue.getValueIteratedTo() / outputValueUnitScalingRatio,
+                        iterationValue.getPercentileLevelIteratedTo()/100.0D,
+                        iterationValue.getTotalCountToThisValue());
             }
+        }
+
+        if (!useCsvFormat) {
+            // Calculate and output mean and std. deviation.
+            // Note: mean/std. deviation numbers are very often completely irrelevant when
+            // data is extremely non-normal in distribution (e.g. in cases of strong multi-modal
+            // response time distribution associated with GC pauses). However, reporting these numbers
+            // can be very useful for contrasting with the detailed percentile distribution
+            // reported by outputPercentileDistribution(). It is not at all surprising to find
+            // percentile distributions where results fall many tens or even hundreds of standard
+            // deviations away from the mean - such results simply indicate that the data sampled
+            // exhibits a very non-normal distribution, highlighting situations for which the std.
+            // deviation metric is a useless indicator.
+            //
+
+            double mean =  getMean() / outputValueUnitScalingRatio;
+            double std_deviation = getStdDeviation() / outputValueUnitScalingRatio;
+            printStream.format(Locale.US,
+                    "#[Mean    = %12." + numberOfSignificantValueDigits + "f, StdDeviation   = %12." +
+                            numberOfSignificantValueDigits +"f]\n",
+                    mean, std_deviation);
+            printStream.format(Locale.US,
+                    "#[Max     = %12." + numberOfSignificantValueDigits + "f, Total count    = %12d]\n",
+                    getMaxValue() / outputValueUnitScalingRatio, getTotalCount());
+            printStream.format(Locale.US, "#[Buckets = %12d, SubBuckets     = %12d]\n",
+                    bucketCount, subBucketCount);
         }
     }
 
@@ -1455,12 +1433,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         o.writeLong(lowestDiscernibleValue);
         o.writeLong(highestTrackableValue);
         o.writeInt(numberOfSignificantValueDigits);
+        o.writeInt(normalizingIndexOffset);
         o.writeDouble(integerToDoubleValueConversionRatio);
-        o.writeLong(getTotalCount()); // Needed because overflow situations may lead this to differ from counts totals
+        o.writeLong(getTotalCount());
         // Max Value is added to the serialized form because establishing max via scanning is "harder" during
         // deserialization, as the counts array is not available at the subclass desrializing level, and we don't
         // really want to have each subclass establish max on it's own...
-        o.writeLong(getMaxValue());
+        o.writeLong(maxValue);
+        o.writeLong(minNonZeroValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -1468,11 +1448,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long lowestDiscernibleValue = o.readLong();
         final long highestTrackableValue = o.readLong();
         final int numberOfSignificantValueDigits = o.readInt();
+        final int normalizingIndexOffset = o.readInt();
         final double integerToDoubleValueConversionRatio = o.readDouble();
-        final long totalCount = o.readLong();
-        final long maxValue = o.readLong();
+        final long indicatedTotalCount = o.readLong();
+        final long indicatedMaxValue = o.readLong();
+        final long indicatedMinNonZeroValue = o.readLong();
         init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits,
-                integerToDoubleValueConversionRatio, totalCount, maxValue);
+                integerToDoubleValueConversionRatio, normalizingIndexOffset);
+        // Set internalTrackingValues (can't establish them from array yet, because it's not yet read...)
+        setTotalCount(indicatedTotalCount);
+        maxValue = indicatedMaxValue;
+        minNonZeroValue = indicatedMinNonZeroValue;
     }
 
     //
@@ -1491,16 +1477,30 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return getNeededByteBufferCapacity(countsArrayLength);
     }
 
+    private static int ENCODING_HEADER_SIZE = 40;
+    private static int V0_ENCODING_HEADER_SIZE = 32;
+
     int getNeededByteBufferCapacity(final int relevantLength) {
-        return (relevantLength * wordSizeInBytes) + 32;
+        return getNeededPayloadByteBufferCapacity(relevantLength) + ENCODING_HEADER_SIZE;
+    }
+
+    int getNeededPayloadByteBufferCapacity(final int relevantLength) {
+        return (relevantLength * wordSizeInBytes);
     }
 
     abstract void fillCountsArrayFromBuffer(ByteBuffer buffer, int length);
 
     abstract void fillBufferFromCountsArray(ByteBuffer buffer, int length);
 
-    private static final int encodingCookieBase = 0x1c849308;
-    private static final int compressedEncodingCookieBase = 0x1c849309;
+    private static final int V0EncodingCookieBase = 0x1c849308;
+    private static final int V0EcompressedEncodingCookieBase = 0x1c849309;
+
+    private static final int encodingCookieBase = 0x1c849301;
+    private static final int compressedEncodingCookieBase = 0x1c849302;
+
+    private int getV0EncodingCookie() {
+        return V0EncodingCookieBase + (wordSizeInBytes << 4);
+    }
 
     private int getEncodingCookie() {
         return encodingCookieBase + (wordSizeInBytes << 4);
@@ -1525,16 +1525,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     synchronized public int encodeIntoByteBuffer(final ByteBuffer buffer) {
         final long maxValue = getMaxValue();
-        final int relevantLength = getLengthForNumberOfBuckets(getBucketsNeededToCoverValue(maxValue));
+        final int relevantLength = countsArrayIndex(maxValue) + 1;
         if (buffer.capacity() < getNeededByteBufferCapacity(relevantLength)) {
             throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" +
                     getNeededByteBufferCapacity(relevantLength) + " bytes");
         }
         buffer.putInt(getEncodingCookie());
+        buffer.putInt(relevantLength * wordSizeInBytes);
+        buffer.putInt(normalizingIndexOffset);
         buffer.putInt(numberOfSignificantValueDigits);
         buffer.putLong(lowestDiscernibleValue);
         buffer.putLong(highestTrackableValue);
-        buffer.putLong(getTotalCount()); // Needed because overflow situations may make this differ from counts totals
+        buffer.putDouble(getIntegerToDoubleValueConversionRatio());
 
         fillBufferFromCountsArray(buffer, relevantLength);
 
@@ -1547,24 +1549,34 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param compressionLevel Compression level (for java.util.zip.Deflater).
      * @return The number of bytes written to the buffer
      */
-    synchronized public int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer,
-                                                           final int compressionLevel) {
+    synchronized public int encodeIntoCompressedByteBuffer(
+            final ByteBuffer targetBuffer,
+            final int compressionLevel) {
         if (intermediateUncompressedByteBuffer == null) {
             intermediateUncompressedByteBuffer = ByteBuffer.allocate(getNeededByteBufferCapacity(countsArrayLength));
         }
         intermediateUncompressedByteBuffer.clear();
         final int uncompressedLength = encodeIntoByteBuffer(intermediateUncompressedByteBuffer);
 
+        int initialTargetPosition = targetBuffer.position();
         targetBuffer.putInt(getCompressedEncodingCookie());
         targetBuffer.putInt(0); // Placeholder for compressed contents length
+
         Deflater compressor = new Deflater(compressionLevel);
         compressor.setInput(intermediateUncompressedByteBuffer.array(), 0, uncompressedLength);
         compressor.finish();
+
         byte[] targetArray = targetBuffer.array();
-        int compressedDataLength = compressor.deflate(targetArray, 8, targetArray.length - 8);
+        int compressedTargetOffset = initialTargetPosition + 8;
+        int compressedDataLength =
+                compressor.deflate(
+                        targetArray,
+                        compressedTargetOffset,
+                        targetArray.length - compressedTargetOffset
+                );
         compressor.end();
 
-        targetBuffer.putInt(4, compressedDataLength); // Record the compressed length
+        targetBuffer.putInt(initialTargetPosition + 4, compressedDataLength); // Record the compressed length
         return compressedDataLength + 8;
     }
 
@@ -1579,76 +1591,71 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private static final Class[] constructorArgsTypes = {Long.TYPE, Long.TYPE, Integer.TYPE};
 
-    void parseBufferHeader(final ByteBuffer buffer, final long minBarForHighestTrackableValue) {
-        final int cookie = buffer.getInt();
-        if (getCookieBase(cookie) != getCookieBase(getEncodingCookie())) {
-            throw new IllegalArgumentException("The buffer does not contain a Histogram");
+    static AbstractHistogram decodeFromByteBuffer(
+            final ByteBuffer buffer,
+            final Class histogramClass,
+            final long minBarForHighestTrackableValue) {
+        try {
+            return decodeFromByteBuffer(buffer, histogramClass, minBarForHighestTrackableValue, null, null);
+        } catch (DataFormatException ex) {
+            throw new RuntimeException(ex);
         }
-
-        if (cookie != getEncodingCookie()) {
-            throw new IllegalArgumentException(
-                    "The buffer's encoded value byte size (" +
-                            getWordSizeInBytesFromCookie(cookie) +
-                            ") does not match the Histogram's (" +
-                            wordSizeInBytes + ")");
-        }
-
-        final int numberOfSignificantValueDigits = buffer.getInt();
-        final long lowestDiscernibleValue = buffer.getLong();
-        long highestTrackableValue = buffer.getLong();
-        final long totalCount = buffer.getLong();
-
-        highestTrackableValue = Math.max(highestTrackableValue, minBarForHighestTrackableValue);
-
-        if (getNumberOfSignificantValueDigits() != numberOfSignificantValueDigits) {
-            throw new IllegalArgumentException("The encoded histogram's numberOfSignificantValueDigits (" +
-                    numberOfSignificantValueDigits + ") != the target histogram's (" +
-                    getNumberOfSignificantValueDigits() + ")");
-        }
-        if (getLowestDiscernibleValue() != lowestDiscernibleValue) {
-            throw new IllegalArgumentException("The encoded histogram's lowestDiscernibleValue (" +
-                    lowestDiscernibleValue + ") != the target histogram's (" +
-                    getLowestDiscernibleValue() + ")");
-        }
-        if (getHighestTrackableValue() <= highestTrackableValue) {
-            throw new IllegalArgumentException("The encoded histogram's highestTrackableValue (" +
-                    lowestDiscernibleValue + ") does not fit in the target histogram's (" +
-                    getHighestTrackableValue() + ")");
-        }
-
-        setTotalCount(totalCount); // Restore totalCount
     }
 
-    static AbstractHistogram constructHistogramFromBufferHeader(final ByteBuffer buffer,
-                                                                final Class histogramClass,
-                                                                long minBarForHighestTrackableValue) {
+    static AbstractHistogram decodeFromByteBuffer(
+            final ByteBuffer buffer,
+            final Class histogramClass,
+            final long minBarForHighestTrackableValue,
+            final Inflater decompressor,
+            final ByteBuffer intermediateUncompressedByteBuffer) throws DataFormatException {
+
         final int cookie = buffer.getInt();
-        if (getCookieBase(cookie) != encodingCookieBase) {
+        final int payloadLength;
+        final int normalizingIndexOffset;
+        final int numberOfSignificantValueDigits;
+        final long lowestTrackableUnitValue;
+        long highestTrackableValue;
+        final Double integerToDoubleValueConversionRatio;
+
+        if (getCookieBase(cookie) == encodingCookieBase) {
+            payloadLength = buffer.getInt();
+            normalizingIndexOffset = buffer.getInt();
+            numberOfSignificantValueDigits = buffer.getInt();
+            lowestTrackableUnitValue = buffer.getLong();
+            highestTrackableValue = buffer.getLong();
+            integerToDoubleValueConversionRatio = buffer.getDouble();
+        } else if (getCookieBase(cookie) == V0EncodingCookieBase) {
+            numberOfSignificantValueDigits = buffer.getInt();
+            lowestTrackableUnitValue = buffer.getLong();
+            highestTrackableValue = buffer.getLong();
+            long discardTotalCount = buffer.getLong();
+            //
+            payloadLength = Integer.MAX_VALUE;
+            integerToDoubleValueConversionRatio = 1.0;
+            normalizingIndexOffset = 0;
+        } else {
             throw new IllegalArgumentException("The buffer does not contain a Histogram");
         }
-
-        final int numberOfSignificantValueDigits = buffer.getInt();
-        final long lowestTrackableUnitValue = buffer.getLong();
-        long highestTrackableValue = buffer.getLong();
-        final long totalCount = buffer.getLong();
-
         highestTrackableValue = Math.max(highestTrackableValue, minBarForHighestTrackableValue);
 
+        AbstractHistogram histogram;
+
+        // Construct histogram:
         try {
             @SuppressWarnings("unchecked")
             Constructor<AbstractHistogram> constructor = histogramClass.getConstructor(constructorArgsTypes);
-            AbstractHistogram histogram =
-                    constructor.newInstance(lowestTrackableUnitValue, highestTrackableValue,
-                            numberOfSignificantValueDigits);
-            histogram.setTotalCount(totalCount); // Restore totalCount
-            if (cookie != histogram.getEncodingCookie()) {
+            histogram = constructor.newInstance(lowestTrackableUnitValue, highestTrackableValue,
+                    numberOfSignificantValueDigits);
+            histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
+            histogram.resetNormalizingIndexOffset(normalizingIndexOffset);
+            if ((cookie != histogram.getEncodingCookie()) &&
+                    (cookie != histogram.getV0EncodingCookie())) {
                 throw new IllegalArgumentException(
                         "The buffer's encoded value byte size (" +
                                 getWordSizeInBytesFromCookie(cookie) +
                                 ") does not match the Histogram's (" +
                                 histogram.wordSizeInBytes + ")");
             }
-            return histogram;
         } catch (IllegalAccessException ex) {
             throw new IllegalArgumentException(ex);
         } catch (NoSuchMethodException ex) {
@@ -1658,120 +1665,102 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         } catch (InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
         }
-    }
 
-    static AbstractHistogram decodeFromByteBuffer(final ByteBuffer buffer,
-                                                  final Class histogramClass,
-                                                  final long minBarForHighestTrackableValue) {
-        AbstractHistogram histogram = constructHistogramFromBufferHeader(buffer, histogramClass,
-                minBarForHighestTrackableValue);
+        ByteBuffer payLoadSourceBuffer;
 
-        final int expectedCapacity = histogram.getNeededByteBufferCapacity(histogram.countsArrayLength);
-        if (expectedCapacity > buffer.capacity()) {
-            throw new IllegalArgumentException("The buffer does not contain the full Histogram");
+        final int expectedCapacity =
+                Math.min(
+                        histogram.getNeededPayloadByteBufferCapacity(histogram.countsArrayLength),
+                        payloadLength
+                );
+
+        if (decompressor == null) {
+            // No compressed source buffer. Payload is in buffer, after header.
+            if (expectedCapacity > buffer.remaining()) {
+                throw new IllegalArgumentException("The buffer does not contain the full Histogram payload");
+            }
+            payLoadSourceBuffer = buffer;
+        } else {
+            // Compressed source buffer. Payload needs to be decoded from there.
+            payLoadSourceBuffer = intermediateUncompressedByteBuffer;
+            if (payLoadSourceBuffer == null) {
+                payLoadSourceBuffer = ByteBuffer.allocate(expectedCapacity);
+            } else {
+                payLoadSourceBuffer.reset();
+                if (payLoadSourceBuffer.remaining() < expectedCapacity) {
+                    throw new IllegalArgumentException("Supplied intermediate not large enough (capacity = " +
+                            payLoadSourceBuffer.capacity() + ", expected = " + expectedCapacity);
+                }
+                payLoadSourceBuffer.limit(expectedCapacity);
+            }
+            int decompressedByteCount = decompressor.inflate(payLoadSourceBuffer.array());
+            if ((payloadLength < Integer.MAX_VALUE) && (decompressedByteCount < payloadLength)) {
+                throw new IllegalArgumentException("The buffer does not contain the indicated payload amount");
+            }
         }
 
-        histogram.fillCountsArrayFromBuffer(buffer, histogram.countsArrayLength);
+        histogram.fillCountsArrayFromSourceBuffer(
+                payLoadSourceBuffer,
+                expectedCapacity / getWordSizeInBytesFromCookie(cookie),
+                getWordSizeInBytesFromCookie(cookie));
 
-        histogram.establishMaxValue();
+        histogram.establishInternalTackingValues();
 
         return histogram;
+    }
+
+    private void fillCountsArrayFromSourceBuffer(ByteBuffer sourceBuffer, int lengthInWords, int wordSizeInBytes) {
+        switch (wordSizeInBytes) {
+            case 2: {
+                ShortBuffer source = sourceBuffer.asShortBuffer();
+                for (int i = 0; i < lengthInWords; i++) {
+                    setCountAtNormalizedIndex(i, source.get());
+                }
+                break;
+            }
+            case 4: {
+                IntBuffer source = sourceBuffer.asIntBuffer();
+                for (int i = 0; i < lengthInWords; i++) {
+                    setCountAtNormalizedIndex(i, source.get());
+                }
+                break;
+            }
+            case 8: {
+                LongBuffer source = sourceBuffer.asLongBuffer();
+                for (int i = 0; i < lengthInWords; i++) {
+                    setCountAtNormalizedIndex(i, source.get());
+                }
+                break;
+            }
+            default:
+                throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
+        }
     }
 
     static AbstractHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                             final Class histogramClass,
                                                             final long minBarForHighestTrackableValue)
             throws DataFormatException {
+        int initialTargetPosition = buffer.position();
         final int cookie = buffer.getInt();
-        return decodeFromCompressedByteBuffer(cookie, buffer, histogramClass, minBarForHighestTrackableValue);
-    }
-
-    static AbstractHistogram decodeFromCompressedByteBuffer(final int cookie,
-                                                            final ByteBuffer buffer,
-                                                            final Class histogramClass,
-                                                            final long minBarForHighestTrackableValue)
-            throws DataFormatException {
-        if (getCookieBase(cookie) != compressedEncodingCookieBase) {
+        final int headerSize;
+        if (getCookieBase(cookie) == compressedEncodingCookieBase) {
+            headerSize = ENCODING_HEADER_SIZE;
+        } else if (getCookieBase(cookie) == V0EcompressedEncodingCookieBase) {
+            headerSize = V0_ENCODING_HEADER_SIZE;
+        } else {
             throw new IllegalArgumentException("The buffer does not contain a compressed Histogram");
         }
+
         final int lengthOfCompressedContents = buffer.getInt();
         final Inflater decompressor = new Inflater();
-        decompressor.setInput(buffer.array(), 8, lengthOfCompressedContents);
+        decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
 
-        final ByteBuffer headerBuffer = ByteBuffer.allocate(32);
+        final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize);
         decompressor.inflate(headerBuffer.array());
-        AbstractHistogram histogram = constructHistogramFromBufferHeader(headerBuffer, histogramClass,
-                minBarForHighestTrackableValue);
-        ByteBuffer countsBuffer = ByteBuffer.allocate(
-                histogram.getNeededByteBufferCapacity(histogram.countsArrayLength) - 32);
-        decompressor.inflate(countsBuffer.array());
-
-        histogram.fillCountsArrayFromBuffer(countsBuffer, histogram.countsArrayLength);
-
-        histogram.establishMaxValue();
-
+        AbstractHistogram histogram = decodeFromByteBuffer(
+                headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor, null);
         return histogram;
-    }
-
-    //
-    //
-    //
-    // Support for overflow detection and re-establishing a proper totalCount:
-    //
-    //
-    //
-
-    /**
-     * Determine if this histogram had any of it's value counts overflow.
-     * Since counts are kept in fixed integer form with potentially limited range (e.g. int and short), a
-     * specific value range count could potentially overflow, leading to an inaccurate and misleading histogram
-     * representation. This method accurately determines whether or not an overflow condition has happened in an
-     * IntHistogram or ShortHistogram.
-     *
-     * @return True if this histogram has had a count value overflow.
-     */
-    public boolean hasOverflowed() {
-        // On overflow, the totalCount accumulated counter will (always) not match the total of counts
-        long totalCounted = 0;
-        for (int i = 0; i < countsArrayLength; i++) {
-            totalCounted += getCountAtIndex(i);
-        }
-        return (totalCounted != getTotalCount());
-    }
-
-    /**
-     * Reestablish the internal notion of totalCount by recalculating it from recorded values.
-     *
-     * Implementations of AbstractHistogram may maintain a separately tracked notion of totalCount,
-     * which is useful for concurrent modification tracking, overflow detection, and speed of execution
-     * in iteration. This separately tracked totalCount can get into a state that is inconsistent with
-     * the currently recorded value counts under various concurrent modification and overflow conditions.
-     *
-     * Applying this method will override internal indications of potential overflows and concurrent
-     * modification, and will reestablish a self-consistent representation of the histogram data
-     * based purely on the current internal representation of recorded counts.
-     * <p>
-     * In cases of concurrent modifications such as during copying, or due to racy multi-threaded
-     * updates on non-atomic or non-synchronized variants, which can result in potential loss
-     * of counts and an inconsistent (indicating potential overflow) internal state, calling this
-     * method on a histogram will reestablish a consistent internal state based on the potentially
-     * lossy counts representations.
-     * <p>
-     * Note that this method is not synchronized against concurrent modification in any way,
-     * and will only reliably reestablish consistent internal state when no concurrent modification
-     * of the histogram is performed while it executes.
-     * <p>
-     * Note that in the cases of actual overflow conditions (which can result in negative counts)
-     * this self consistent view may be very wrong, and not just slightly lossy.
-     *
-     */
-    public void reestablishTotalCount() {
-        // On overflow, the totalCount accumulated counter will (always) not match the total of counts
-        long totalCounted = 0;
-        for (int i = 0; i < countsArrayLength; i++) {
-            totalCounted += getCountAtIndex(i);
-        }
-        setTotalCount(totalCounted);
     }
 
     //
@@ -1782,21 +1771,33 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
 
-    void establishMaxValue() {
-        setMaxValue(0);
+    void establishInternalTackingValues() {
+        resetMaxValue(0);
+        resetMinNonZeroValue(Long.MAX_VALUE);
         int maxIndex = -1;
+        int minNonZeroIndex = -1;
+        long observedTotalCount = 0;
         for (int index = 0; index < countsArrayLength; index++) {
-            if (getCountAtIndex(index) > 0) {
+            long countAtIndex;
+            if ((countAtIndex = getCountAtIndex(index)) > 0) {
+                observedTotalCount += countAtIndex;
                 maxIndex = index;
+                if ((minNonZeroIndex == -1) && (index != 0)) {
+                    minNonZeroIndex = index;
+                }
             }
         }
         if (maxIndex >= 0) {
-            setMaxValue(highestEquivalentValue(valueFromIndex(maxIndex)));
+            updatedMaxValue(highestEquivalentValue(valueFromIndex(maxIndex)));
         }
+        if (minNonZeroIndex >= 0) {
+            updateMinNonZeroValue(valueFromIndex(minNonZeroIndex));
+        }
+        setTotalCount(observedTotalCount);
     }
 
     int getBucketsNeededToCoverValue(final long value) {
-        long smallestUntrackableValue = subBucketCount << unitMagnitude;
+        long smallestUntrackableValue = ((long)subBucketCount) << unitMagnitude;
         int bucketsNeeded = 1;
         while (smallestUntrackableValue < value) {
             smallestUntrackableValue <<= 1;
@@ -1822,23 +1823,64 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         // Calculate the index for the first entry in the bucket:
         // (The following is the equivalent of ((bucketIndex + 1) * subBucketHalfCount) ):
         final int bucketBaseIndex = (bucketIndex + 1) << subBucketHalfCountMagnitude;
-        // Calculate the offset in the bucket:
+        // Calculate the offset in the bucket (can be negative for first bucket):
         final int offsetInBucket = subBucketIndex - subBucketHalfCount;
         // The following is the equivalent of ((subBucketIndex  - subBucketHalfCount) + bucketBaseIndex;
         return bucketBaseIndex + offsetInBucket;
+    }
+
+    int getBucketIndex(final long value) {
+        return leadingZeroCountBase - Long.numberOfLeadingZeros(value | subBucketMask);
+    }
+
+    int getSubBucketIndex(final long value, final int bucketIndex) {
+        return  (int)(value >> (bucketIndex + unitMagnitude));
     }
 
     long getCountAt(final int bucketIndex, final int subBucketIndex) {
         return getCountAtIndex(countsArrayIndex(bucketIndex, subBucketIndex));
     }
 
-    int getBucketIndex(final long value) {
-        final int pow2ceiling = 64 - Long.numberOfLeadingZeros(value | subBucketMask); // smallest containing power of 2
-        return  pow2ceiling - unitMagnitude - subBucketHalfCountMagnitude - 1;
+    void checkBounds(int index) {
+        if ((index > countsArrayLength) || (index < 0)) {
+            throw new ArrayIndexOutOfBoundsException("index out of covered value range");
+        }
     }
 
-    int getSubBucketIndex(final long value, final int bucketIndex) {
-        return  (int)(value >> (bucketIndex + unitMagnitude));
+    int normalizeIndex(int index) {
+        if (normalizingIndexOffset == 0) {
+            // Fastpath out of normalization. Keeps integer value histograms fast while allowing
+            // others (like DoubleHistogram) to use normalization at a cost...
+            return index;
+        }
+        checkBounds(index);
+        int normilizedIndex = index - normalizingIndexOffset;
+        // The following is the same as an unsigned remainder operation, as long as no double wrapping happens
+        // (which shouldn't happen, as normalizatuon is never supposed to wrap, since it would have overflowed
+        // or underflowed before it did). This (the + and - tests) seems to be faster than a % op with a
+        // correcting if < 0...:
+        if (normilizedIndex < 0) {
+            normilizedIndex += countsArrayLength;
+        } else if (normilizedIndex >= countsArrayLength) {
+            normilizedIndex -= countsArrayLength;
+        }
+        return normilizedIndex;
+    }
+
+    long getCountAtIndex(int index) {
+        return getCountAtNormalizedIndex(normalizeIndex(index));
+    }
+
+    void incrementCountAtIndex(int index) {
+        incrementCountAtNormalizedIndex(normalizeIndex(index));
+    }
+
+    void addToCountAtIndex(int index, long value) {
+        addToCountAtNormalizedIndex(normalizeIndex(index), value);
+    }
+
+    void setCountAtIndex(int index, long value) {
+        setCountAtNormalizedIndex(normalizeIndex(index), value);
     }
 
     final long valueFromIndex(final int bucketIndex, final int subBucketIndex) {

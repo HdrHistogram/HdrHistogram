@@ -140,7 +140,12 @@ public class ShortCountsHistogram extends AbstractHistogram {
         wordSizeInBytes = 2;
     }
 
-    private ShortCountsHistogram(final AbstractHistogram source) {
+    /**
+     * Construct a histogram with the same range settings as a given source histogram,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    public ShortCountsHistogram(final AbstractHistogram source) {
         super(source);
         counts = new short[countsArrayLength];
         wordSizeInBytes = 2;
@@ -160,7 +165,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
 
     /**
      * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
+     * @param buffer The buffer to decode from
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
      * @throws DataFormatException on error parsing/decompressing the buffer

@@ -70,7 +70,7 @@
  * .
  * .
  * // Report histogram percentiles, expressed in msec units:
- * histogram.{@link org.HdrHistogram.AbstractHistogram#getHistogramData() getHistogramData}().{@link org.HdrHistogram.HistogramData#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0);
+ * histogram.{@link org.HdrHistogram.AbstractHistogram#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0);
  * </code>
  * </pre>
  * Specifying 3 decimal points of precision in this example guarantees that value quantization within the value range
@@ -119,38 +119,35 @@
  * <h3>Iteration</h3>
  * Histograms supports multiple convenient forms of iterating through the histogram data set, including linear,
  * logarithmic, and percentile iteration mechanisms, as well as means for iterating through each recorded value or
- * each possible value level. The iteration mechanisms are accessible through the {@link org.HdrHistogram.HistogramData}
- * available through  {@link org.HdrHistogram.AbstractHistogram#getHistogramData()}.
- * Iteration mechanisms all provide {@link org.HdrHistogram.HistogramIterationValue} data points along the
- * histogram's iterated data set, and are available for the default (corrected) histogram data set
- * via the following {@link org.HdrHistogram.HistogramData} methods:
+ * each possible value level. The iteration mechanisms all provide {@link org.HdrHistogram.HistogramIterationValue}
+ * data points along the histogram's iterated data set, and are available via the following methods:
  * <ul>
- *     <li>{@link org.HdrHistogram.HistogramData#percentiles percentiles} :
+ *     <li>{@link org.HdrHistogram.AbstractHistogram#percentiles percentiles} :
  *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through the
  *     histogram using a {@link org.HdrHistogram.PercentileIterator} </li>
- *     <li>{@link org.HdrHistogram.HistogramData#linearBucketValues linearBucketValues} :
+ *     <li>{@link org.HdrHistogram.AbstractHistogram#linearBucketValues linearBucketValues} :
  *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.LinearIterator} </li>
- *     <li>{@link org.HdrHistogram.HistogramData#logarithmicBucketValues logarithmicBucketValues} :
+ *     <li>{@link org.HdrHistogram.AbstractHistogram#logarithmicBucketValues logarithmicBucketValues} :
  *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >}
  *     through the histogram using a {@link org.HdrHistogram.LogarithmicIterator} </li>
- *     <li>{@link org.HdrHistogram.HistogramData#recordedValues recordedValues} :
+ *     <li>{@link org.HdrHistogram.AbstractHistogram#recordedValues recordedValues} :
  *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.RecordedValuesIterator} </li>
- *     <li>{@link org.HdrHistogram.HistogramData#allValues allValues} :
+ *     <li>{@link org.HdrHistogram.AbstractHistogram#allValues allValues} :
  *     An {@link java.lang.Iterable}{@literal <}{@link org.HdrHistogram.HistogramIterationValue}{@literal >} through
  *     the histogram using a {@link org.HdrHistogram.AllValuesIterator} </li>
  * </ul>
  * <p>
  * Iteration is typically done with a for-each loop statement. E.g.:
  * <br><pre><code>
- * for (HistogramIterationValue v : histogram.getHistogramData().percentiles(<i>percentileTicksPerHalfDistance</i>)) {
+ * for (HistogramIterationValue v : histogram.percentiles(<i>percentileTicksPerHalfDistance</i>)) {
  *     ...
  * }
  * </code></pre>
  * or
  * <br><pre><code>
- * for (HistogramIterationValue v : histogram.getHistogramData().linearBucketValues(<i>valueUnitsPerBucket</i>)) {
+ * for (HistogramIterationValue v : histogram.linearBucketValues(<i>valueUnitsPerBucket</i>)) {
  *     ...
  * }
  * </code>
@@ -164,7 +161,7 @@
  * <br>
  * <pre>
  * <code>
- * PercentileIterator iter = histogram.getHistogramData().percentiles().iterator(<i>percentileTicksPerHalfDistance</i>);
+ * PercentileIterator iter = histogram.percentiles().iterator(<i>percentileTicksPerHalfDistance</i>);
  * ...
  * iter.reset(<i>percentileTicksPerHalfDistance</i>);
  * for (iter.hasNext() {
@@ -182,7 +179,7 @@
  * and for finding the next non-equivalent value for a given value (useful when looping through values, in order
  * to avoid double-counting count).
  * </p>
- * <h3>Raw vs. corrected recording variants</h3>
+ * <h3>Raw vs. corrected recording</h3>
  * <p>
  * Regular, raw value data recording into an HdrHistogram is achieved with the
  * {@link org.HdrHistogram.AbstractHistogram#recordValue(long) recordValue()} method.

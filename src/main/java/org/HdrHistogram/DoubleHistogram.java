@@ -18,22 +18,22 @@ import java.util.zip.Inflater;
 /**
  * <h3>A High Dynamic Range (HDR) Histogram of recorded counts at floating point (double) values </h3>
  * <p>
- * Histogram supports the recording and analyzing sampled data value counts across a configurable dynamic range
- * of floating point (double) values, with configurable value precision within the range. Dynamic range is
- * expressed as a ratio between the hightes and lowest non-zero values trackable within the histogram at any
- * given time. Value precision is expressed as the number of significant digits in the value recording, and
- * provides control over value quantization behavior across the value range and the subsequent value resolution
- * at any given level.
+ * DoubleHistogram supports the recording and analyzing sampled data value counts across a configurable
+ * dynamic range of floating point (double) values, with configurable value precision within the range.
+ * Dynamic range is expressed as a ratio between the hightes and lowest non-zero values trackable within
+ * the histogram at any given time. Value precision is expressed as the number of significant
+ * [decimal] digits in the value recording, and provides control over value quantization behavior across
+ * the value range and the subsequent value resolution at any given level.
  * <p>
  * Unlike integer value based histograms, the specific value range tracked by this DoubleHistogram is not
- * specified upfront. Only the dynamic range of values that the histogram can cover is tracked.
+ * specified upfront. Only the dynamic range of values that the histogram can cover is specified.
  * E.g. When a DoubleHistogram is created to track a dynamic range of 3600000000000 (enoygh to track
- * values from a nanosecond to an hour), values could be recorded into into it any consistent unit of time
+ * values from a nanosecond to an hour), values could be recorded into into it in any consistent unit of time
  * as long as the ratio between the highest and lowest non-zero values stays within the specified dynamic
  * range, so recording in units of nanoseconds (1.0 thru 3600000000000.0), milliseconds
  * (0.000001 thru 3600000.0) seconds (0.000000001 thru 3600.0), hours (1/3.6E12 thru 1.0) will all work
  * just as well.
- * <>p</>
+ * <p>
  * Attempts to record non-zero values that range outside of the dynamic range may results in
  * ArrayIndexOutOfBoundsException exceptions, either due to overflow or underflow conditions. These exceptions
  * will only be thrown if recording the value would have resulted in discarding or losing the required
@@ -53,13 +53,13 @@ import java.util.zip.Inflater;
  * See package description for {@link org.HdrHistogram} for details.
  */
 
-public class DoubleHistogram implements EncodableHistogram, Serializable {
+public class DoubleHistogram extends EncodableHistogram implements Serializable {
     static final double highestAllowedValueEver; // A value that will keep us from multiplying into infinity.
 
     long configuredHighestToLowestValueRatio;
 
     double currentLowestValueInAutoRange;
-    double currentHighestValueInAutoRange;
+    double currentHighestValueLimitInAutoRange;
 
     AbstractHistogram integerValuesHistogram;
 
@@ -67,23 +67,56 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
     double integerToDoubleValueConversionRatio;
 
     /**
+     * Construct a new DoubleHistogram with the specified dynamic range (provided in
+     * {@code highestToLowestValueRatio}) and using a precision stated as a number of significant
+     * decimal digits.
      *
-     * @param highestToLowestValueRatio
-     * @param numberOfSignificantValueDigits
+     * @param highestToLowestValueRatio specifies the dynamic range to use
+     * @param numberOfSignificantValueDigits specifies the precision to use in terms of significant
+     * decimal digits
      */
-    DoubleHistogram(final long highestToLowestValueRatio, final int numberOfSignificantValueDigits) {
+    public DoubleHistogram(final long highestToLowestValueRatio, final int numberOfSignificantValueDigits) {
         this(highestToLowestValueRatio, numberOfSignificantValueDigits, Histogram.class);
     }
 
     /**
+     * Construct a new DoubleHistogram with the specified dynamic range (provided in
+     * {@code highestToLowestValueRatio}) and using a precision stated as a number of significant
+     * decimal digits.
      *
-     * @param highestToLowestValueRatio
-     * @param numberOfSignificantValueDigits
-     * @param internalCountsHistogramClass
+     * The {@link org.HdrHistogram.DoubleHistogram} will use the specified AbstractHistogram subclass
+     * for tracking internal counts (e.g. {@link org.HdrHistogram.Histogram}, {@link org.HdrHistogram.AtomicHistogram},
+     * {@link org.HdrHistogram.SynchronizedHistogram}, {@link org.HdrHistogram.IntCountsHistogram},
+     * {@link org.HdrHistogram.ShortCountsHistogram}).
+     *
+     * @param highestToLowestValueRatio specifies the dynamic range to use
+     * @param numberOfSignificantValueDigits specifies the precision to use in terms of significant
+     * decimal digits
+     * @param internalCountsHistogramClass The class to use for internal counts tracking
      */
-    DoubleHistogram(final long highestToLowestValueRatio,
-                    final int numberOfSignificantValueDigits,
-                    final Class<? extends AbstractHistogram> internalCountsHistogramClass) {
+    public DoubleHistogram(final long highestToLowestValueRatio,
+                           final int numberOfSignificantValueDigits,
+                           final Class<? extends AbstractHistogram> internalCountsHistogramClass) {
+        this(highestToLowestValueRatio, numberOfSignificantValueDigits, internalCountsHistogramClass, null);
+    }
+
+    private DoubleHistogram(final long highestToLowestValueRatio,
+                            final int numberOfSignificantValueDigits,
+                            final Class<? extends AbstractHistogram> internalCountsHistogramClass,
+                            AbstractHistogram internalCountsHistogram) {
+        this(
+                highestToLowestValueRatio,
+                numberOfSignificantValueDigits,
+                internalCountsHistogramClass,
+                internalCountsHistogram,
+                false
+        );
+    }
+
+    private DoubleHistogram(final long highestToLowestValueRatio,
+                           final int numberOfSignificantValueDigits,
+                           final Class<? extends AbstractHistogram> internalCountsHistogramClass,
+                           AbstractHistogram internalCountsHistogram, boolean mimicInternalModel) {
         try {
             if (highestToLowestValueRatio < 2) {
                 throw new IllegalArgumentException("highestToLowestValueRatio must be > 2");
@@ -96,23 +129,52 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
 
             long integerValueRange = deriveIntegerValueRange(highestToLowestValueRatio, numberOfSignificantValueDigits);
 
-            // Create the internal counts histogram:
-            Constructor<? extends AbstractHistogram> histogramConstructor =
-                    (Constructor<? extends AbstractHistogram>)
-                            internalCountsHistogramClass.getConstructor(long.class, long.class, int.class);
-            AbstractHistogram histogram =
-                    histogramConstructor.newInstance(1L, integerValueRange - 1, numberOfSignificantValueDigits);
+            final AbstractHistogram valuesHistogram;
+            double initialLowestValueInAutoRange;
 
-            // We want the auto-ranging to tend towards using a value range that will result in using the
-            // lower tracked value ranges and leave the higher end empty unless the range is actually used.
-            // This is most easily done by making early recordings force-shift the lower value limit to
-            // accomodate them (forcing a force-shift for the higher values would achieve the opposite).
-            // We will therefore start with a very high value range, and let the recordings autoAdjust
-            // downwards from there:
-            double initialLowestValueInAutoRange = Math.pow(2.0, 800);
+            if (internalCountsHistogram == null) {
+                // Create the internal counts histogram:
+                Constructor<? extends AbstractHistogram> histogramConstructor =
+                                internalCountsHistogramClass.getConstructor(long.class, long.class, int.class);
+
+                valuesHistogram =
+                        histogramConstructor.newInstance(
+                                1L,
+                                (integerValueRange - 1),
+                                numberOfSignificantValueDigits
+                        );
+
+                // We want the auto-ranging to tend towards using a value range that will result in using the
+                // lower tracked value ranges and leave the higher end empty unless the range is actually used.
+                // This is most easily done by making early recordings force-shift the lower value limit to
+                // accomodate them (forcing a force-shift for the higher values would achieve the opposite).
+                // We will therefore start with a very high value range, and let the recordings autoAdjust
+                // downwards from there:
+                initialLowestValueInAutoRange = Math.pow(2.0, 800);
+            } else if (mimicInternalModel) {
+                Constructor<? extends AbstractHistogram> histogramConstructor =
+                                internalCountsHistogramClass.getConstructor(internalCountsHistogramClass);
+
+                valuesHistogram = histogramConstructor.newInstance(internalCountsHistogram);
+
+                initialLowestValueInAutoRange = Math.pow(2.0, 800);
+            } else {
+                // Verify that the histogram we got matches:
+                if ((internalCountsHistogram.getLowestDiscernibleValue() != 1) ||
+                        (internalCountsHistogram.getHighestTrackableValue() != integerValueRange - 1) ||
+                        internalCountsHistogram.getNumberOfSignificantValueDigits() != numberOfSignificantValueDigits) {
+                    throw new IllegalStateException("integer values histogram does not match stated parameters.");
+                }
+                valuesHistogram = internalCountsHistogram;
+                // Derive initialLowestValueInAutoRange from valuesHistogram's integerToDoubleValueConversionRatio:
+                initialLowestValueInAutoRange =
+                        internalCountsHistogram.getIntegerToDoubleValueConversionRatio() *
+                                internalCountsHistogram.subBucketHalfCount;
+            }
 
             // Set our double tracking range and internal histogram:
-            init(highestToLowestValueRatio, initialLowestValueInAutoRange, histogram);
+            init(highestToLowestValueRatio, initialLowestValueInAutoRange, valuesHistogram);
+
         } catch (NoSuchMethodException ex) {
             throw new IllegalArgumentException(ex);
         } catch (IllegalAccessException ex) {
@@ -122,6 +184,19 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         } catch (InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
         }
+    }
+
+    /**
+     * Construct a {@link org.HdrHistogram.DoubleHistogram} with the same range settings as a given source,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    public DoubleHistogram(final DoubleHistogram source) {
+        this(source.configuredHighestToLowestValueRatio,
+                source.getNumberOfSignificantValueDigits(),
+                source.integerValuesHistogram.getClass(),
+                source.integerValuesHistogram,
+                true);
     }
 
     private void init(final long configuredHighestToLowestValueRatio, final double lowestTrackableUnitValue,
@@ -135,7 +210,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
 
     private void setTrackableValueRange(final double lowestValueInAutoRange, final double highestValueInAutoRange) {
         this.currentLowestValueInAutoRange = lowestValueInAutoRange;
-        this.currentHighestValueInAutoRange = highestValueInAutoRange;
+        this.currentHighestValueLimitInAutoRange = highestValueInAutoRange;
         this.integerToDoubleValueConversionRatio = lowestValueInAutoRange / getLowestTackingIntegerValue();
         this.doubleToIntegerValueConversionRatio= 1.0 / integerToDoubleValueConversionRatio;
         integerValuesHistogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
@@ -153,7 +228,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * Record a value in the histogram
      *
      * @param value The value to be recorded
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
      */
     public void recordValue(final double value) throws ArrayIndexOutOfBoundsException {
         recordSingleValue(value);
@@ -164,7 +239,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      *
      * @param value The value to be recorded
      * @param count The number of occurrences of this value to record
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
      */
     public void recordValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
@@ -178,7 +253,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * (down to the expectedIntervalBetweenValueSamples) value records.
      * <p>
      * Note: This is a at-recording correction method, as opposed to the post-recording correction method provided
-     * by {@link #copyCorrectedForCoordinatedOmission(double) getHistogramCorrectedForCoordinatedOmission}.
+     * by {@link #copyCorrectedForCoordinatedOmission(double)}.
      * The use cases for these two methods are mutually exclusive, and only one of the two should be be used on
      * a given data set to correct for the same coordinated omission issue.
      * <p>
@@ -189,15 +264,15 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
      */
     public void recordValueWithExpectedInterval(final double value, final double expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
     }
 
-    protected void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value > currentHighestValueInAutoRange)) {
+    private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
+        if ((value < currentLowestValueInAutoRange) || (value > currentHighestValueLimitInAutoRange)) {
             // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
             // with it on the slow path...
             autoAdjustRangeForValue(value);
@@ -207,8 +282,8 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         integerValuesHistogram.recordValueWithCount(integerValue, count);
     }
 
-    protected void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value > currentHighestValueInAutoRange)) {
+    private void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
+        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
             // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
             // with it on the slow path...
             autoAdjustRangeForValue(value);
@@ -218,11 +293,11 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         integerValuesHistogram.recordValue(integerValue);
     }
 
-    protected void recordValueWithCountAndExpectedInterval(final double value, final long count,
+    private void recordValueWithCountAndExpectedInterval(final double value, final long count,
                                                            final double expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
-        if (expectedIntervalBetweenValueSamples <=0)
+        if (expectedIntervalBetweenValueSamples <= 0)
             return;
         for (double missingValue = value - expectedIntervalBetweenValueSamples;
              missingValue >= expectedIntervalBetweenValueSamples;
@@ -251,23 +326,28 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
             }
             do {
                 int shiftAmount =
-                        findContainingBinaryOrderOfMagnitude(Math.ceil(currentLowestValueInAutoRange / value) - 1.0);
+                        findCappedContainingBinaryOrderOfMagnitude(Math.ceil(currentLowestValueInAutoRange / value) - 1.0);
                 shiftCoveredRangeToTheRight(shiftAmount);
             } while (value < currentLowestValueInAutoRange);
-        } else if (value > currentHighestValueInAutoRange) {
+        } else if (value >= currentHighestValueLimitInAutoRange) {
             if (value > highestAllowedValueEver) {
                 throw new ArrayIndexOutOfBoundsException(
                         "Values above " + highestAllowedValueEver + " cannot be recorded");
             }
             do {
+                // If value is an exact whole multiple of currentHighestValueLimitInAutoRange, it "belongs" with
+                // the next level up, as it crosses the limit. With floating point values, the simplest way to
+                // make this shift on exact multiple values happen (but not for any just-smaller-than-exact-multiple
+                // values) is to use a value that is 1 ulp bigger in computing the ratio for the shift amount:
                 int shiftAmount =
-                        findContainingBinaryOrderOfMagnitude(Math.ceil(value / currentHighestValueInAutoRange) - 1.0);
+                        findCappedContainingBinaryOrderOfMagnitude(
+                                Math.ceil((value + Math.ulp(value)) / currentHighestValueLimitInAutoRange) - 1.0);
                 shiftCoveredRangeToTheLeft(shiftAmount);
-            } while (value > currentHighestValueInAutoRange);
+            } while (value >= currentHighestValueLimitInAutoRange);
         }
     }
 
-    public void shiftCoveredRangeToTheRight(final int numberOfBinaryOrdersOfMagnitude) {
+    private void shiftCoveredRangeToTheRight(final int numberOfBinaryOrdersOfMagnitude) {
         // We are going to adjust the tracked range by effectively shifting it to the right
         // (in the integer shift sense).
         //
@@ -279,17 +359,20 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
 
         // Shift integer histogram left, increasing the recorded integer values for current recordings
         // by a factor of (1 << numberOfBinaryOrdersOfMagnitude):
-        if (getTotalCount() > 0) {
-            integerValuesHistogram.shiftLeft(numberOfBinaryOrdersOfMagnitude);
+
+        // (no need to shift any values if all recorded values are at the 0 value level:)
+        if (getTotalCount() > integerValuesHistogram.getCountAtIndex(0)) {
+                // Apply the shift:
+                integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
         }
 
         // Shift was succesful. Adjust range:
         double shiftMultiplier = 1.0 / (1L << numberOfBinaryOrdersOfMagnitude);
         setTrackableValueRange(currentLowestValueInAutoRange * shiftMultiplier,
-                currentHighestValueInAutoRange * shiftMultiplier);
+                currentHighestValueLimitInAutoRange * shiftMultiplier);
     }
 
-    public void shiftCoveredRangeToTheLeft(final int numberOfBinaryOrdersOfMagnitude) {
+    private void shiftCoveredRangeToTheLeft(final int numberOfBinaryOrdersOfMagnitude) {
         // We are going to adjust the tracked range by effectively shifting it to the right
         // (in the integer shift sense).
         //
@@ -301,14 +384,17 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
 
         // Shift integer histogram right, decreasing the recorded integer values for current recordings
         // by a factor of (1 << numberOfBinaryOrdersOfMagnitude):
-        if (getTotalCount() > 0) {
-            integerValuesHistogram.shiftRightWithUndeflowProtection(numberOfBinaryOrdersOfMagnitude);
+
+        // (no need to shift any values if all recorded values are at the 0 value level:)
+        if (getTotalCount() > integerValuesHistogram.getCountAtIndex(0)) {
+            // Apply the shift:
+            integerValuesHistogram.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
         }
 
         // Shift was succesful. Adjust range:
         double shiftMultiplier = 1.0 * (1L << numberOfBinaryOrdersOfMagnitude);
         setTrackableValueRange(currentLowestValueInAutoRange * shiftMultiplier,
-                currentHighestValueInAutoRange * shiftMultiplier);
+                currentHighestValueLimitInAutoRange * shiftMultiplier);
     }
 
     //
@@ -342,7 +428,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
     public DoubleHistogram copy() {
         final DoubleHistogram targetHistogram =
                 new DoubleHistogram(configuredHighestToLowestValueRatio, getNumberOfSignificantValueDigits());
-        targetHistogram.setTrackableValueRange(currentLowestValueInAutoRange, currentHighestValueInAutoRange);
+        targetHistogram.setTrackableValueRange(currentLowestValueInAutoRange, currentHighestValueLimitInAutoRange);
         integerValuesHistogram.copyInto(targetHistogram.integerValuesHistogram);
         return targetHistogram;
     }
@@ -372,7 +458,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
     public DoubleHistogram copyCorrectedForCoordinatedOmission(final double expectedIntervalBetweenValueSamples) {
         final DoubleHistogram targetHistogram =
                 new DoubleHistogram(configuredHighestToLowestValueRatio, getNumberOfSignificantValueDigits());
-        targetHistogram.setTrackableValueRange(currentLowestValueInAutoRange, currentHighestValueInAutoRange);
+        targetHistogram.setTrackableValueRange(currentLowestValueInAutoRange, currentHighestValueLimitInAutoRange);
         targetHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
         return targetHistogram;
     }
@@ -418,8 +504,8 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * Add the contents of another histogram to this one.
      *
      * @param fromHistogram The other histogram.
-     * @throws ArrayIndexOutOfBoundsException (may throw) if values in fromHistogram's are higher
-     * than highestTrackableValue.
+     * @throws ArrayIndexOutOfBoundsException (may throw) if values in fromHistogram's cannot be
+     * covered by this histogram's range
      */
     public void add(final DoubleHistogram fromHistogram) throws ArrayIndexOutOfBoundsException {
         int arrayLength = fromHistogram.integerValuesHistogram.countsArrayLength;
@@ -469,6 +555,30 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         }
     }
 
+    /**
+     * Subtract the contents of another histogram from this one.
+     *
+     * @param otherHistogram The other histogram.
+     * @throws ArrayIndexOutOfBoundsException (may throw) if values in fromHistogram's cannot be
+     * covered by this histogram's range
+     */
+    public void subtract(final DoubleHistogram otherHistogram) {
+        int arrayLength = otherHistogram.integerValuesHistogram.countsArrayLength;
+        AbstractHistogram otherIntegerHistogram = otherHistogram.integerValuesHistogram;
+        for (int i = 0; i < arrayLength; i++) {
+            long otherCount = otherIntegerHistogram.getCountAtIndex(i);
+            if (otherCount > 0) {
+                double otherValue = otherIntegerHistogram.valueFromIndex(i) *
+                        otherHistogram.integerToDoubleValueConversionRatio;
+                if (getCountAtValue(otherValue) < otherCount) {
+                    throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
+                            otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
+                }
+                recordValueWithCount(otherValue, -otherCount);
+            }
+        }
+    }
+
     //
     //
     //
@@ -492,7 +602,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         }
         DoubleHistogram that = (DoubleHistogram) other;
         if ((currentLowestValueInAutoRange != that.currentLowestValueInAutoRange) ||
-                (currentHighestValueInAutoRange != that.currentHighestValueInAutoRange) ||
+                (currentHighestValueLimitInAutoRange != that.currentHighestValueLimitInAutoRange) ||
                 (getNumberOfSignificantValueDigits() != that.getNumberOfSignificantValueDigits())) {
             return false;
         }
@@ -541,14 +651,14 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * @return current highest trackable value in the automatically determined range
      */
     double getCurrentHighestTrackableValue() {
-        return currentHighestValueInAutoRange;
+        return currentHighestValueLimitInAutoRange;
     }
 
     /**
      * Get the current conversion ratio from interval integer value representation to double units.
      * (keep in mind that this can change because it is auto ranging). This ratio can be useful
-     * for converting integer values found in iteration, although
-     * the preffered form for accessing iteration values would be to use the
+     * for converting integer values found in iteration, although the preffered form for accessing
+     * iteration values would be to use the
      * {@link org.HdrHistogram.HistogramIterationValue#getDoubleValueIteratedTo() getDoubleValueIteratedTo()}
      * and
      * {@link org.HdrHistogram.HistogramIterationValue#getDoubleValueIteratedFrom() getDoubleValueIteratedFrom()}
@@ -556,7 +666,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      *
      * @return the current conversion ratio from interval integer value representation to double units.
      */
-    double getIntegerToDoubleValueConversionRatio() {
+    public double getIntegerToDoubleValueConversionRatio() {
         return integerToDoubleValueConversionRatio;
     }
 
@@ -571,7 +681,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
     /**
      * get the Dynamic range of the histogram: the configured ratio between the highest trackable value and the
      * lowest trackable non zero value at any given time.
-     * @return the dynamic range of the histogram, which is the ratio between the highest trackable value
+     * @return the dynamic range of the histogram, expressed as the ratio between the highest trackable value
      * and the lowest trackable non zero value at any given time.
      */
     public long getHighestToLowestValueRatio() {
@@ -657,7 +767,7 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      *
      * @param value1 first value to compare
      * @param value2 second value to compare
-     * @return True if values are equivalent with the histogram's resolution.
+     * @return True if values are equivalent to within the histogram's resolution.
      */
     public boolean valuesAreEquivalent(final double value1, final double value2) {
         return (lowestEquivalentValue(value1) == lowestEquivalentValue(value2));
@@ -1019,23 +1129,11 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         integerValuesHistogram.fillBufferFromCountsArray(buffer, length);
     }
 
-    private static final int encodingCookieBase = 0x1c84930A;
-    private static final int compressedEncodingCookieBase = 0x1c84930B;
+    private static final int DHIST_encodingCookie = 0x0c72144c;
+    private static final int DHIST_compressedEncodingCookie = 0x0c72144d;
 
-    private int getEncodingCookie() {
-        return encodingCookieBase + (integerValuesHistogram.wordSizeInBytes << 4);
-    }
-
-    private int getCompressedEncodingCookie() {
-        return compressedEncodingCookieBase + (integerValuesHistogram.wordSizeInBytes << 4);
-    }
-
-    private static int getCookieBase(final int cookie) {
-        return (cookie & ~0xf0);
-    }
-
-    private static int getWordSizeInBytesFromCookie(final int cookie) {
-        return (cookie & 0xf0) >> 4;
+    static boolean isDoubleHistogramCookie(int cookie) {
+        return (cookie == DHIST_encodingCookie) || (cookie == DHIST_compressedEncodingCookie);
     }
 
     /**
@@ -1051,15 +1149,10 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
             throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" +
                     getNeededByteBufferCapacity(relevantLength) + " bytes");
         }
-        buffer.putInt(getEncodingCookie());
+        buffer.putInt(DHIST_encodingCookie);
         buffer.putInt(getNumberOfSignificantValueDigits());
         buffer.putLong(configuredHighestToLowestValueRatio);
-        buffer.putDouble(integerValuesHistogram.integerToDoubleValueConversionRatio);
-        buffer.putLong(getTotalCount()); // Needed because overflow situations may make this differ from counts totals
-
-        fillBufferFromCountsArray(buffer, relevantLength);
-
-        return getNeededByteBufferCapacity(relevantLength);
+        return integerValuesHistogram.encodeIntoByteBuffer(buffer) + 16;
     }
 
     /**
@@ -1068,26 +1161,13 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
      * @param compressionLevel Compression level (for java.util.zip.Deflater).
      * @return The number of bytes written to the buffer
      */
-    synchronized public int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer,
-                                                           final int compressionLevel) {
-        if (integerValuesHistogram.intermediateUncompressedByteBuffer == null) {
-            integerValuesHistogram.intermediateUncompressedByteBuffer =
-                    ByteBuffer.allocate(getNeededByteBufferCapacity(integerValuesHistogram.countsArrayLength));
-        }
-        integerValuesHistogram.intermediateUncompressedByteBuffer.clear();
-        int uncompressedLength = encodeIntoByteBuffer(integerValuesHistogram.intermediateUncompressedByteBuffer);
-
-        targetBuffer.putInt(getCompressedEncodingCookie());
-        targetBuffer.putInt(0); // Placeholder for compressed contents length
-        Deflater compressor = new Deflater(compressionLevel);
-        compressor.setInput(integerValuesHistogram.intermediateUncompressedByteBuffer.array(), 0, uncompressedLength);
-        compressor.finish();
-        byte[] targetArray = targetBuffer.array();
-        int compressedDataLength = compressor.deflate(targetArray, 8, targetArray.length - 8);
-        compressor.end();
-
-        targetBuffer.putInt(4, compressedDataLength); // Record the compressed length
-        return compressedDataLength + 8;
+    synchronized public int encodeIntoCompressedByteBuffer(
+            final ByteBuffer targetBuffer,
+            final int compressionLevel) {
+        targetBuffer.putInt(DHIST_compressedEncodingCookie);
+        targetBuffer.putInt(getNumberOfSignificantValueDigits());
+        targetBuffer.putLong(configuredHighestToLowestValueRatio);
+        return integerValuesHistogram.encodeIntoCompressedByteBuffer(targetBuffer, compressionLevel) + 16;
     }
 
     /**
@@ -1099,162 +1179,109 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
         return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
     }
 
-    static DoubleHistogram constructHistogramFromBufferHeader(final ByteBuffer buffer,
-                                                              final Class<? extends AbstractHistogram> histogramClass,
-                                                              final long minBarForHighestToLowestValueRatio) {
-        int cookie = buffer.getInt();
-        if (getCookieBase(cookie) != encodingCookieBase) {
-            throw new IllegalArgumentException("The buffer does not contain a Histogram");
-        }
-
+    static DoubleHistogram constructHistogramFromBuffer(
+            int cookie,
+            final ByteBuffer buffer,
+            final Class<? extends AbstractHistogram> histogramClass,
+            final long minBarForHighestToLowestValueRatio) throws DataFormatException {
         int numberOfSignificantValueDigits = buffer.getInt();
-        long highestToLowestValueRatio = buffer.getLong();
-        double integerToDoubleValueConversionRatio = buffer.getDouble();
-        long totalCount = buffer.getLong();
-
-        highestToLowestValueRatio = Math.max(highestToLowestValueRatio, minBarForHighestToLowestValueRatio);
-
-        DoubleHistogram histogram = new DoubleHistogram(highestToLowestValueRatio,
-                numberOfSignificantValueDigits, histogramClass);
-        histogram.integerValuesHistogram.setTotalCount(totalCount); // Restore totalCount
-
-        if (cookie != histogram.getEncodingCookie()) {
-            throw new IllegalArgumentException(
-                    "The buffer's encoded value byte size (" +
-                            getWordSizeInBytesFromCookie(cookie) +
-                            ") does not match the Histogram's (" +
-                            histogram.integerValuesHistogram.wordSizeInBytes + ")");
+        long configuredHighestToLowestValueRatio = buffer.getLong();
+        final AbstractHistogram valuesHistogram;
+        if (cookie == DHIST_encodingCookie) {
+            valuesHistogram =
+                    AbstractHistogram.decodeFromByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
+        } else if (cookie == DHIST_compressedEncodingCookie) {
+            valuesHistogram =
+                    AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
+        } else {
+            throw new IllegalStateException("The buffer does not contain a DoubleHistogram");
         }
-
-        double lowestValueInRange = histogram.getLowestTackingIntegerValue() * integerToDoubleValueConversionRatio;
-        double highestValueInRange = lowestValueInRange * highestToLowestValueRatio;
-        histogram.setTrackableValueRange(lowestValueInRange, highestValueInRange);
-
-        return histogram;
-    }
-
-    static DoubleHistogram decodeFromByteBuffer(final ByteBuffer buffer,
-                                                final Class<? extends AbstractHistogram> histogramClass,
-                                                long minBarForHighestToLowestValueRatio) {
-        DoubleHistogram histogram = constructHistogramFromBufferHeader(buffer, histogramClass,
-                minBarForHighestToLowestValueRatio);
-
-        int expectedCapacity = histogram.getNeededByteBufferCapacity(histogram.integerValuesHistogram.countsArrayLength);
-        if (expectedCapacity > buffer.capacity()) {
-            throw new IllegalArgumentException("The buffer does not contain the full Histogram");
-        }
-
-        histogram.fillCountsArrayFromBuffer(buffer, histogram.integerValuesHistogram.countsArrayLength);
-
-        histogram.integerValuesHistogram.establishMaxValue();
-
+        DoubleHistogram histogram =
+                new DoubleHistogram(
+                        configuredHighestToLowestValueRatio,
+                        numberOfSignificantValueDigits,
+                        histogramClass,
+                        valuesHistogram
+                );
         return histogram;
     }
 
     /**
-     * Construct a new DoubleHistogram by decoding it from a compressed form in a ByteBuffer. The cookie
-     * field assocaited with the compressed DoubleHistogram is assumed ot have already been reads from the buffer.
-     * @param cookie The cookie associated with this histogram
-     * @param buffer The buffer to encode into
-     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * Construct a new DoubleHistogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
      * @return The newly constructed DoubleHistogram
-     * @throws DataFormatException on error parsing/decompressing the buffer
      */
-    public static DoubleHistogram decodeFromCompressedByteBuffer(final int cookie,
-                                                                 final ByteBuffer buffer,
-                                                                 final long minBarForHighestTrackableValue)
-            throws DataFormatException {
-        return decodeFromCompressedByteBuffer(cookie, buffer, Histogram.class, minBarForHighestTrackableValue);
+    public static DoubleHistogram decodeFromByteBuffer(
+            final ByteBuffer buffer,
+            final long minBarForHighestToLowestValueRatio) {
+        return decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestToLowestValueRatio);
+    }
+
+    /**
+     * Construct a new DoubleHistogram by decoding it from a ByteBuffer, using a
+     * specified AbstractHistogram subclass for tracking internal counts (e.g. {@link org.HdrHistogram.Histogram},
+     * {@link org.HdrHistogram.AtomicHistogram}, {@link org.HdrHistogram.SynchronizedHistogram},
+     * {@link org.HdrHistogram.IntCountsHistogram}, {@link org.HdrHistogram.ShortCountsHistogram}).
+     *
+     * @param buffer The buffer to decode from
+     * @param internalCountsHistogramClass The class to use for internal counts tracking
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
+     * @return The newly constructed DoubleHistogram
+     */
+    public static DoubleHistogram decodeFromByteBuffer(
+            final ByteBuffer buffer,
+            final Class<? extends AbstractHistogram> internalCountsHistogramClass,
+            long minBarForHighestToLowestValueRatio) {
+        try {
+            int cookie = buffer.getInt();
+            if (cookie != DHIST_encodingCookie) {
+                throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
+            }
+            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+                    minBarForHighestToLowestValueRatio);
+            return histogram;
+        } catch (DataFormatException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     /**
      * Construct a new DoubleHistogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
-     * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
      * @return The newly constructed DoubleHistogram
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
-    public static DoubleHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                 final long minBarForHighestTrackableValue)
-            throws DataFormatException {
+    public static DoubleHistogram decodeFromCompressedByteBuffer(
+            final ByteBuffer buffer,
+            final long minBarForHighestToLowestValueRatio) throws DataFormatException {
+        return decodeFromCompressedByteBuffer(buffer, Histogram.class, minBarForHighestToLowestValueRatio);
+    }
+
+    /**
+     * Construct a new DoubleHistogram by decoding it from a compressed form in a ByteBuffer, using a
+     * specified AbstractHistogram subclass for tracking internal counts (e.g. {@link org.HdrHistogram.Histogram},
+     * {@link org.HdrHistogram.AtomicHistogram}, {@link org.HdrHistogram.SynchronizedHistogram},
+     * {@link org.HdrHistogram.IntCountsHistogram}, {@link org.HdrHistogram.ShortCountsHistogram}).
+     *
+     * @param buffer The buffer to decode from
+     * @param internalCountsHistogramClass The class to use for internal counts tracking
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
+     * @return The newly constructed DoubleHistogram
+     * @throws DataFormatException on error parsing/decompressing the buffer
+     */
+    public static DoubleHistogram decodeFromCompressedByteBuffer(
+            final ByteBuffer buffer,
+            Class<? extends AbstractHistogram> internalCountsHistogramClass,
+            long minBarForHighestToLowestValueRatio) throws DataFormatException {
         int cookie = buffer.getInt();
-        return decodeFromCompressedByteBuffer(cookie, buffer, Histogram.class, minBarForHighestTrackableValue);
-    }
-
-    static DoubleHistogram decodeFromCompressedByteBuffer(final int cookie,
-                                                          final ByteBuffer buffer,
-                                                          Class histogramClass,
-                                                          long minBarForHighestTrackableValue)
-            throws DataFormatException {
-        if (getCookieBase(cookie) != compressedEncodingCookieBase) {
-            throw new IllegalArgumentException("The buffer does not contain a compressed Histogram");
+        if (cookie != DHIST_compressedEncodingCookie) {
+            throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
-        int lengthOfCompressedContents = buffer.getInt();
-        Inflater decompressor = new Inflater();
-        decompressor.setInput(buffer.array(), 8, lengthOfCompressedContents);
-
-        ByteBuffer headerBuffer = ByteBuffer.allocate(32);
-        decompressor.inflate(headerBuffer.array());
-        DoubleHistogram histogram = constructHistogramFromBufferHeader(headerBuffer, histogramClass,
-                minBarForHighestTrackableValue);
-        ByteBuffer countsBuffer = ByteBuffer.allocate(
-                histogram.getNeededByteBufferCapacity(histogram.integerValuesHistogram.countsArrayLength) - 32);
-        decompressor.inflate(countsBuffer.array());
-
-        histogram.fillCountsArrayFromBuffer(countsBuffer, histogram.integerValuesHistogram.countsArrayLength);
-
+        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+                minBarForHighestToLowestValueRatio);
         return histogram;
-    }
-
-    //
-    //
-    //
-    // Support for overflow detection and re-establishing a proper totalCount:
-    //
-    //
-    //
-
-    /**
-     * Determine if this histogram had any of it's value counts overflow.
-     * Since counts are kept in fixed integer form with potentially limited range (e.g. int and short), a
-     * specific value range count could potentially overflow, leading to an inaccurate and misleading histogram
-     * representation. This method accurately determines whether or not an overflow condition has happened in an
-     * IntHistogram or ShortHistogram.
-     *
-     * @return True if this histogram has had a count value overflow.
-     */
-    public boolean hasOverflowed() {
-        return integerValuesHistogram.hasOverflowed();
-    }
-
-    /**
-     * Reestablish the internal notion of totalCount by recalculating it from recorded values.
-     *
-     * Implementations of AbstractHistogram may maintain a separately tracked notion of totalCount,
-     * which is useful for concurrent modification tracking, overflow detection, and speed of execution
-     * in iteration. This separately tracked totalCount can get into a state that is inconsistent with
-     * the currently recorded value counts under various concurrent modification and overflow conditions.
-     *
-     * Applying this method will override internal indications of potential overflows and concurrent
-     * modification, and will reestablish a self-consistent representation of the histogram data
-     * based purely on the current internal representation of recorded counts.
-     * <p>
-     * In cases of concurrent modifications such as during copying, or due to racy multi-threaded
-     * updates on non-atomic or non-synchronized variants, which can result in potential loss
-     * of counts and an inconsistent (indicating potential overflow) internal state, calling this
-     * method on a histogram will reestablish a consistent internal state based on the potentially
-     * lossy counts representations.
-     * <p>
-     * Note that this method is not synchronized against concurrent modification in any way,
-     * and will only reliably reestablish consistent internal state when no concurrent modification
-     * of the histogram is performed while it executes.
-     * <p>
-     * Note that in the cases of actual overflow conditions (which can result in negative counts)
-     * this self consistent view may be very wrong, and not just slightly lossy.
-     *
-     */
-    public void reestablishTotalCount() {
-        integerValuesHistogram.reestablishTotalCount();
     }
 
     //
@@ -1296,12 +1323,19 @@ public class DoubleHistogram implements EncodableHistogram, Serializable {
     }
 
     private int findContainingBinaryOrderOfMagnitude(final double doubleNumber) {
-        if (doubleNumber > Math.pow(2.0, 50)) {
-            return 50;
-        }
         long longNumber = (long) Math.ceil(doubleNumber);
         int pow2ceiling = 64 - Long.numberOfLeadingZeros(longNumber); // smallest power of 2 containing value
         return pow2ceiling;
+    }
+
+    private int findCappedContainingBinaryOrderOfMagnitude(final double doubleNumber) {
+        if (doubleNumber > configuredHighestToLowestValueRatio) {
+            return (int) (Math.log(configuredHighestToLowestValueRatio)/Math.log(2));
+        }
+        if (doubleNumber > Math.pow(2.0, 50)) {
+            return 50;
+        }
+        return findContainingBinaryOrderOfMagnitude(doubleNumber);
     }
 
     static {

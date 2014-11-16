@@ -36,22 +36,22 @@ public class AtomicHistogram extends AbstractHistogram {
     final AtomicLongArray counts;
 
     @Override
-    long getCountAtIndex(final int index) {
+    long getCountAtNormalizedIndex(final int index) {
         return counts.get(index);
     }
 
     @Override
-    void incrementCountAtIndex(final int index) {
+    void incrementCountAtNormalizedIndex(final int index) {
         counts.incrementAndGet(index);
     }
 
     @Override
-    void addToCountAtIndex(final int index, final long value) {
+    void addToCountAtNormalizedIndex(final int index, final long value) {
         counts.addAndGet(index, value);
     }
 
     @Override
-    void setCountAtIndex(int index, long value) {
+    void setCountAtNormalizedIndex(int index, long value) {
         counts.lazySet(index, value);
     }
 
@@ -122,7 +122,7 @@ public class AtomicHistogram extends AbstractHistogram {
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
      * proper value for lowestDiscernibleValue would be 1000.
      *
-     * @param lowestTrackableValue The lowest value that can be tracked (distinguished from 0) by the histogram.
+     * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
      *                             power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
@@ -131,13 +131,18 @@ public class AtomicHistogram extends AbstractHistogram {
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public AtomicHistogram(final long lowestTrackableValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        super(lowestTrackableValue, highestTrackableValue, numberOfSignificantValueDigits);
+    public AtomicHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
     }
 
-    private AtomicHistogram(final AbstractHistogram source) {
+    /**
+     * Construct a histogram with the same range settings as a given source histogram,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    public AtomicHistogram(final AbstractHistogram source) {
         super(source);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
@@ -157,7 +162,7 @@ public class AtomicHistogram extends AbstractHistogram {
 
     /**
      * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
+     * @param buffer The buffer to decode from
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
      * @throws DataFormatException on error parsing/decompressing the buffer

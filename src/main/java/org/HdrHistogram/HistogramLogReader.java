@@ -56,12 +56,12 @@ import java.util.zip.DataFormatException;
 public class HistogramLogReader {
 
     private final Scanner scanner;
-    private Double startTimeSec = 0.0;
+    private double startTimeSec = 0.0;
 
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
      * @param inputFileName The name of the file to read from
-     * @throws FileNotFoundException when unable to find inputFileName
+     * @throws java.io.FileNotFoundException when unable to find inputFileName
      */
     public HistogramLogReader(final String inputFileName) throws FileNotFoundException {
         scanner = new Scanner(new File(inputFileName));
@@ -80,7 +80,7 @@ public class HistogramLogReader {
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file.
      * @param inputFile The File to read from
-     * @throws FileNotFoundException when unable to find inputFile
+     * @throws java.io.FileNotFoundException when unable to find inputFile
      */
     public HistogramLogReader(final File inputFile) throws FileNotFoundException {
         scanner = new Scanner(inputFile);
@@ -101,7 +101,7 @@ public class HistogramLogReader {
      * interval's timestamp from the epoch.
      * @return latest Start Time found in the file (or 0.0 if non found)
      */
-    public Double getStartTimeSec() {
+    public double getStartTimeSec() {
         return startTimeSec;
     }
 
@@ -131,7 +131,7 @@ public class HistogramLogReader {
      *                   range, in seconds.
      * @return a histogram, or a null if no appropriate interval found
      */
-    public Histogram nextIntervalHistogram(final Double startTimeSec,
+    public EncodableHistogram nextIntervalHistogram(final Double startTimeSec,
                                   final Double endTimeSec) {
         return nextIntervalHistogram(startTimeSec, endTimeSec, false);
     }
@@ -165,7 +165,7 @@ public class HistogramLogReader {
      *                           time range, in seconds.
      * @return A histogram, or a null if no appropriate interval found
      */
-    public Histogram nextAbsoluteIntervalHistogram(final Double absoluteStartTimeSec,
+    public EncodableHistogram nextAbsoluteIntervalHistogram(final Double absoluteStartTimeSec,
                                                      final Double absoluteEndTimeSec) {
         return nextIntervalHistogram(absoluteStartTimeSec, absoluteEndTimeSec, true);
     }
@@ -178,11 +178,11 @@ public class HistogramLogReader {
      * from the file, this method will return a null.
      * @return a DecodedInterval, or a null if no appropriate interval found
      */
-    public Histogram nextIntervalHistogram() {
+    public EncodableHistogram nextIntervalHistogram() {
         return nextIntervalHistogram(0.0, Long.MAX_VALUE * 1.0, true);
     }
 
-    private Histogram nextIntervalHistogram(final Double rangeStartTimeSec,
+    private EncodableHistogram nextIntervalHistogram(final Double rangeStartTimeSec,
                                             final Double rangeEndTimeSec, boolean absolute) {
         while (scanner.hasNextLine()) {
             try {
@@ -207,11 +207,11 @@ public class HistogramLogReader {
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
                 final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp start is expect to be in seconds
-                final double absoluteStartTimeStampSec = startTimeSec + offsetStartTimeStampSec;
+                final double absoluteStartTimeStampSec = getStartTimeSec() + offsetStartTimeStampSec;
 
                 final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
                 final double offsetEndTimeStampSec = offsetStartTimeStampSec + intervalLengthSec;
-                final double absoluteEndTimeStampSec = startTimeSec + offsetEndTimeStampSec;
+                final double absoluteEndTimeStampSec = getStartTimeSec() + offsetEndTimeStampSec;
 
                 final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
 
@@ -229,7 +229,7 @@ public class HistogramLogReader {
                 final ByteBuffer buffer = ByteBuffer.wrap(
                         DatatypeConverter.parseBase64Binary(compressedPayloadString));
 
-                Histogram histogram = Histogram.decodeFromCompressedByteBuffer(buffer, 0);
+                EncodableHistogram histogram = EncodableHistogram.decodeFromCompressedByteBuffer(buffer, 0);
 
                 histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
                 histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));

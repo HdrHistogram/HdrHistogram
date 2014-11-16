@@ -13,7 +13,40 @@ import java.io.PrintStream;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * {@link org.HdrHistogram.HistogramLogProcessor} will process an input log and
+ * [can] generate two separate log files from a single histogram log file: a
+ * sequential interval log file and a histogram percentile distribution log file.
+ * <p>
+ * The sequential interval log file logs a single stats summary line for
+ * each reporting interval.
+ * <p>
+ * The histogram percentile distribution log file includes a detailed percentiles
+ * and fine grained distribution of the entire log file range processed.
+ * <p>
+ * HistogramLogProcessor will process an input log file when provided with
+ * the {@code -i <filename>} option. When no -i option is provided, standard input
+ * will be processed.
+ * <p>
+ * When provided with an output file name {@code <logfile>} with the -o option
+ * (e.g. "-o mylog"), HistogramLogProcessor will produce both output files
+ * under the names {@code <logfile>} and {@code <logfile>.hgrm} (e.g. mylog and mylog.hgrm).
+ * <p>
+ * When not provided with an output file name, HistogramLogProcessor will
+ * produce [only] the histogram percentile distribution log output to
+ * standard output.
+ * <p>
+ * HistogramLogProcessor accepts optional -start and -end time range
+ * parameters. When provided, the output will only reflect the portion
+ * of the input log with timestamps that fall within the provided start
+ * and end time range parameters.
+ * <p>
+ * HistogramLogProcessor also accepts and optional -csv parameter, which
+ * will cause the output formatting (of both output file forms) to use
+ * a CSV file format.
+ */
 public class HistogramLogProcessor extends Thread {
+
     public static final String versionString = "Histogram Log Processor version " + Version.version;
 
     private final HistogramLogProcessorConfiguration config;
@@ -88,21 +121,11 @@ public class HistogramLogProcessor extends Thread {
                                 "                             (will replace occurrences of %pid and %date with appropriate information)\n" +
                                 " [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)\n" +
                                 " [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)\n" +
-                                " [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units" +
-                                "                             in output. [default = 1000000.0 (1 msec in nsec)]"
+                                " [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units\n" +
+                                "                             in output. [default = 1000000.0 (1 msec in nsec)]\n"
                 );
                 System.exit(1);
             }
-        }
-    }
-
-    private HistogramLogProcessor(final String[] args) throws FileNotFoundException {
-        this.setName("HistogramLogProcessor");
-        config = new HistogramLogProcessorConfiguration(args);
-        if (config.inputFileName != null) {
-            logReader = new HistogramLogReader(config.inputFileName);
-        } else {
-            logReader = new HistogramLogReader(System.in);
         }
     }
 
@@ -121,6 +144,9 @@ public class HistogramLogProcessor extends Thread {
                 startTime, (new Date((long) (startTime * 1000))).toString());
     }
 
+    /**
+     * Run the log processor with the currently provided arguments.
+     */
     @Override
     public void run() {
         PrintStream timeIntervalLog = null;
@@ -152,18 +178,34 @@ public class HistogramLogProcessor extends Thread {
         }
 
 
-        Histogram intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+        EncodableHistogram intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
 
-        Histogram accumulatedHistogram = null;
+        Histogram accumulatedRegularHistogram = null;
+        DoubleHistogram accumulatedDoubleHistogram = null;
+
         if (intervalHistogram != null) {
-            // Shape the accumulated histogram like the histograms in the log file:
-            accumulatedHistogram = intervalHistogram.copy();
-            // But clear contents:
-            accumulatedHistogram.reset();
+            // Shape the accumulated histogram like the histograms in the log file (but clear their contents):
+            if (intervalHistogram instanceof DoubleHistogram) {
+                accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
+                accumulatedDoubleHistogram.reset();
+            } else {
+                accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
+                accumulatedRegularHistogram.reset();
+            }
         }
 
         while (intervalHistogram != null) {
-            accumulatedHistogram.add(intervalHistogram);
+            if (intervalHistogram instanceof DoubleHistogram) {
+                if (accumulatedDoubleHistogram == null) {
+                    throw new IllegalStateException("Encountered a DoubleHistogram line in a log of Histograms.");
+                }
+                accumulatedDoubleHistogram.add((DoubleHistogram) intervalHistogram);
+            } else {
+                if (accumulatedRegularHistogram == null) {
+                    throw new IllegalStateException("Encountered a Histogram line in a log of DoubleHistograms.");
+                }
+                accumulatedRegularHistogram.add((Histogram) intervalHistogram);
+            }
 
             if ((firstStartTime == 0.0) && (logReader.getStartTimeSec() != 0.0)) {
                 firstStartTime = logReader.getStartTimeSec();
@@ -186,38 +228,95 @@ public class HistogramLogProcessor extends Thread {
                     }
                 }
 
-                timeIntervalLog.format(Locale.US, logFormat,
-                        ((intervalHistogram.getEndTimeStamp()/1000.0) - logReader.getStartTimeSec()),
-                        // values recorded during the last reporting interval
-                        intervalHistogram.getTotalCount(),
-                        intervalHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                        intervalHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                        intervalHistogram.getMaxValue() / config.outputValueUnitRatio,
-                        // values recorded from the beginning until now
-                        accumulatedHistogram.getTotalCount(),
-                        accumulatedHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                        accumulatedHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                        accumulatedHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
-                        accumulatedHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
-                        accumulatedHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
-                        accumulatedHistogram.getMaxValue() / config.outputValueUnitRatio
-                );
+                if (intervalHistogram instanceof DoubleHistogram) {
+                    timeIntervalLog.format(Locale.US, logFormat,
+                            ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                            // values recorded during the last reporting interval
+                            ((DoubleHistogram) intervalHistogram).getTotalCount(),
+                            ((DoubleHistogram) intervalHistogram).getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                            ((DoubleHistogram) intervalHistogram).getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                            ((DoubleHistogram) intervalHistogram).getMaxValue() / config.outputValueUnitRatio,
+                            // values recorded from the beginning until now
+                            accumulatedDoubleHistogram.getTotalCount(),
+                            accumulatedDoubleHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                            accumulatedDoubleHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                            accumulatedDoubleHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
+                            accumulatedDoubleHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
+                            accumulatedDoubleHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
+                            accumulatedDoubleHistogram.getMaxValue() / config.outputValueUnitRatio
+                    );
+                } else {
+                    timeIntervalLog.format(Locale.US, logFormat,
+                            ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                            // values recorded during the last reporting interval
+                            ((Histogram) intervalHistogram).getTotalCount(),
+                            ((Histogram) intervalHistogram).getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                            ((Histogram) intervalHistogram).getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                            ((Histogram) intervalHistogram).getMaxValue() / config.outputValueUnitRatio,
+                            // values recorded from the beginning until now
+                            accumulatedRegularHistogram.getTotalCount(),
+                            accumulatedRegularHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                            accumulatedRegularHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                            accumulatedRegularHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
+                            accumulatedRegularHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
+                            accumulatedRegularHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
+                            accumulatedRegularHistogram.getMaxValue() / config.outputValueUnitRatio
+                    );
+                }
             }
 
             // Read and accumulate the next line:
             intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
         }
 
-        if (accumulatedHistogram == null) {
-            // If there were no histograms in the log file, we still need an empty histogram for the
-            // one line output (shape/range doesn't matter because it is empty):
-            accumulatedHistogram = new Histogram(1000000L, 2);
+        if (accumulatedDoubleHistogram != null) {
+            accumulatedDoubleHistogram.outputPercentileDistribution(histogramPercentileLog,
+                    config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
+        } else {
+            if (accumulatedRegularHistogram == null) {
+                // If there were no histograms in the log file, we still need an empty histogram for the
+                // one line output (shape/range doesn't matter because it is empty):
+                accumulatedRegularHistogram = new Histogram(1000000L, 2);
+            }
+            accumulatedRegularHistogram.outputPercentileDistribution(histogramPercentileLog,
+                    config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
         }
-        accumulatedHistogram.outputPercentileDistribution(histogramPercentileLog,
-                config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
+
 
     }
 
+    /**
+     * Construct a {@link org.HdrHistogram.HistogramLogProcessor} with the given arguments
+     * (provided in command line style).
+     * <pre>
+     * [-h]                        help
+     * [-csv]                      Use CSV format for output log files
+     * [-i logFileName]            File name of Histogram Log to process (default is standard input)
+     * [-o outputFileName]         File name to output to (default is standard output)
+     *                             (will replace occurrences of %pid and %date with appropriate information)
+     * [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)
+     * [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)
+     * [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units
+     *                             in output. [default = 1000000.0 (1 msec in nsec)]"
+     * </pre>
+     * @param args command line arguments
+     * @throws FileNotFoundException if specified input file is not found
+     */
+    public HistogramLogProcessor(final String[] args) throws FileNotFoundException {
+        this.setName("HistogramLogProcessor");
+        config = new HistogramLogProcessorConfiguration(args);
+        if (config.inputFileName != null) {
+            logReader = new HistogramLogReader(config.inputFileName);
+        } else {
+            logReader = new HistogramLogReader(System.in);
+        }
+    }
+
+    /**
+     * main() method.
+     *
+     * @param args command line arguments
+     */
     public static void main(final String[] args)  {
         try {
             final HistogramLogProcessor processor = new HistogramLogProcessor(args);

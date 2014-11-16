@@ -18,26 +18,25 @@ import java.nio.ByteBuffer;
  */
 public class HistogramEncodingTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
-    static final int numberOfSignificantValueDigits = 3;
-    // static final long testValueLevel = 12340;
-    static final long testValueLevel = 4;
 
     @Test
     public void testHistogramEncoding() throws Exception {
-
 
         ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 3);
         IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
         Histogram histogram = new Histogram(highestTrackableValue, 3);
         AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, 3);
         SynchronizedHistogram synchronizedHistogram = new SynchronizedHistogram(highestTrackableValue, 3);
+        DoubleHistogram doubleHistogram = new DoubleHistogram(highestTrackableValue * 1000, 3);
 
         for (int i = 0; i < 10000; i++) {
-            shortCountsHistogram.recordValueWithExpectedInterval(1000 /* 1 msec */, 10000 /* 10 msec expected interval */);
-            intCountsHistogram.recordValueWithExpectedInterval(2000 /* 1 msec */, 10000 /* 10 msec expected interval */);
-            histogram.recordValueWithExpectedInterval(3000 /* 1 msec */, 10000 /* 10 msec expected interval */);
-            atomicHistogram.recordValueWithExpectedInterval(4000 /* 1 msec */, 10000 /* 10 msec expected interval */);
-            synchronizedHistogram.recordValueWithExpectedInterval(5000 /* 1 msec */, 10000 /* 10 msec expected interval */);
+            shortCountsHistogram.recordValueWithExpectedInterval(1000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            intCountsHistogram.recordValueWithExpectedInterval(2000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            atomicHistogram.recordValueWithExpectedInterval(4000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            synchronizedHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
         }
 
         System.out.println("\nTesting encoding of a ShortHistogram:");
@@ -108,11 +107,28 @@ public class HistogramEncodingTest {
         SynchronizedHistogram synchronizedHistogram2 = SynchronizedHistogram.decodeFromByteBuffer(targetBuffer, 0);
         Assert.assertEquals(synchronizedHistogram, synchronizedHistogram2);
 
+        synchronizedHistogram.setIntegerToDoubleValueConversionRatio(5.0);
+
         targetCompressedBuffer = ByteBuffer.allocate(synchronizedHistogram.getNeededByteBufferCapacity());
         synchronizedHistogram.encodeIntoCompressedByteBuffer(targetCompressedBuffer);
         targetCompressedBuffer.rewind();
 
         SynchronizedHistogram synchronizedHistogram3 = SynchronizedHistogram.decodeFromCompressedByteBuffer(targetCompressedBuffer, 0);
         Assert.assertEquals(synchronizedHistogram, synchronizedHistogram3);
+
+        System.out.println("\nTesting encoding of a DoubleHistogram:");
+        targetBuffer = ByteBuffer.allocate(doubleHistogram.getNeededByteBufferCapacity());
+        doubleHistogram.encodeIntoByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+
+        DoubleHistogram doubleHistogram2 = DoubleHistogram.decodeFromByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(doubleHistogram, doubleHistogram2);
+
+        targetCompressedBuffer = ByteBuffer.allocate(doubleHistogram.getNeededByteBufferCapacity());
+        doubleHistogram.encodeIntoCompressedByteBuffer(targetCompressedBuffer);
+        targetCompressedBuffer.rewind();
+
+        DoubleHistogram doubleHistogram3 = DoubleHistogram.decodeFromCompressedByteBuffer(targetCompressedBuffer, 0);
+        Assert.assertEquals(doubleHistogram, doubleHistogram3);
     }
 }

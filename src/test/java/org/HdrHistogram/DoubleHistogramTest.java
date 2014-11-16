@@ -83,7 +83,8 @@ public class DoubleHistogramTest {
     public void testDataRange() {
         // A trackableValueRangeSize histigram
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
-
+        histogram.recordValue(0.0);  // Include a zero value to make sure things are handled right.
+        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
 
         double topValue = 1.0;
         try {
@@ -94,8 +95,11 @@ public class DoubleHistogramTest {
         } catch (ArrayIndexOutOfBoundsException ex) {
         }
         Assert.assertEquals((double) (1L << 33), topValue, 0.00001);
+        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
 
         histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        histogram.recordValue(0.0); // Include a zero value to make sure things are handled right.
+
         double bottomValue = (double) (1L << 33);
         try {
             while (true) {
@@ -108,6 +112,7 @@ public class DoubleHistogramTest {
 
         long expectedRange = 1L << (findContainingBinaryOrderOfMagnitude(trackableValueRangeSize) + 1);
         Assert.assertEquals(expectedRange, (topValue/ bottomValue), 0.00001);
+        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
     }
 
     @Test
@@ -128,21 +133,25 @@ public class DoubleHistogramTest {
     @Test
     public void testRecordValueWithExpectedInterval() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        histogram.recordValue(0);
         histogram.recordValueWithExpectedInterval(testValueLevel, testValueLevel/4);
         DoubleHistogram rawHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        rawHistogram.recordValue(0);
         rawHistogram.recordValue(testValueLevel);
-        // The data will include corrected samples:
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(4L, histogram.getTotalCount());
-        // But the raw data will not:
+        // The raw data will not include corrected samples:
+        Assert.assertEquals(1L, rawHistogram.getCountAtValue(0));
         Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 1 )/4));
         Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 2 )/4));
         Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 3 )/4));
         Assert.assertEquals(1L, rawHistogram.getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(1L, rawHistogram.getTotalCount());
+        Assert.assertEquals(2L, rawHistogram.getTotalCount());
+        // The data will include corrected samples:
+        Assert.assertEquals(1L, histogram.getCountAtValue(0));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 1 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 2 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 3 )/4));
+        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 4 )/4));
+        Assert.assertEquals(5L, histogram.getTotalCount());
     }
 
     @Test

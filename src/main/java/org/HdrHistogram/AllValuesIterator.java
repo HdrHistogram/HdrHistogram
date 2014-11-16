@@ -16,8 +16,7 @@ import java.util.Iterator;
  */
 
 public class AllValuesIterator extends AbstractHistogramIterator implements Iterator<HistogramIterationValue> {
-    int visitedSubBucketIndex;
-    int visitedBucketIndex;
+    int visitedIndex;
 
     /**
      * Reset iterator for re-use in a fresh iteration over the same histogram data set.
@@ -28,8 +27,7 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
 
     private void reset(final AbstractHistogram histogram) {
         super.resetIterator(histogram);
-        visitedSubBucketIndex = -1;
-        visitedBucketIndex = -1;
+        visitedIndex = -1;
     }
 
     /**
@@ -41,12 +39,11 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
 
     @Override
     void incrementIterationLevel() {
-        visitedSubBucketIndex = currentSubBucketIndex;
-        visitedBucketIndex = currentBucketIndex;
+        visitedIndex = currentIndex;
     }
 
     @Override
     boolean reachedIterationLevel() {
-        return (visitedSubBucketIndex != currentSubBucketIndex) || (visitedBucketIndex != currentBucketIndex);
+        return (visitedIndex != currentIndex);
     }
 }

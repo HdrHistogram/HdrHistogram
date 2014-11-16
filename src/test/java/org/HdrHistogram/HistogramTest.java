@@ -114,19 +114,24 @@ public class HistogramTest {
         histogram.recordValue(highestTrackableValue * 3);
     }
 
+
     @Test
     public void testConstructionWithLargeNumbers() throws Exception {
         Histogram histogram = new Histogram(20000000, 100000000, 5);
         histogram.recordValue(100000000);
         histogram.recordValue(20000000);
         histogram.recordValue(30000000);
+        System.out.println("***!!!*** highest equiv(20000000) = " + histogram.highestEquivalentValue(20000000) +
+                ", lowest = " + histogram.lowestEquivalentValue(20000000));
+        System.out.println("***!!!*** max = " + histogram.getMaxValue() +
+                ", lowest equiv = " + histogram.lowestEquivalentValue(histogram.getMaxValue()));
         Assert.assertTrue(histogram.valuesAreEquivalent(20000000, histogram.getValueAtPercentile(50.0)));
         Assert.assertTrue(histogram.valuesAreEquivalent(30000000, histogram.getValueAtPercentile(83.33)));
         Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(83.34)));
         Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(99.0)));
     }
 
-    @org.junit.Test
+    @Test
     public void testRecordValueWithExpectedInterval() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValueWithExpectedInterval(testValueLevel, testValueLevel/4);
@@ -174,18 +179,89 @@ public class HistogramTest {
         Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
         biggerOther.recordValue(testValueLevel);
         biggerOther.recordValue(testValueLevel * 1000);
+        biggerOther.recordValue(highestTrackableValue * 2);
 
         // Adding the smaller histogram to the bigger one should work:
         biggerOther.add(histogram);
         Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
         Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
-        Assert.assertEquals(6L, biggerOther.getTotalCount());
+        Assert.assertEquals(1L, biggerOther.getCountAtValue(highestTrackableValue * 2)); // overflow smaller hist...
+        Assert.assertEquals(7L, biggerOther.getTotalCount());
 
         // But trying to add a larger histogram into a smaller one should throw an AIOOB:
         boolean thrown = false;
         try {
             // This should throw:
             histogram.add(biggerOther);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+
+        verifyMaxValue(histogram);
+        verifyMaxValue(other);
+        verifyMaxValue(biggerOther);
+    }
+
+    @Test
+    public void testSubtract() throws Exception {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        Histogram other = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
+        other.recordValue(testValueLevel);
+        other.recordValue(testValueLevel * 1000);
+        histogram.add(other);
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, histogram.getTotalCount());
+        histogram.add(other);
+        Assert.assertEquals(3L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(3L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(6L, histogram.getTotalCount());
+        histogram.subtract(other);
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, histogram.getTotalCount());
+        // Subtracting down to zero counts should work:
+        histogram.subtract(histogram);
+        Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(0L, histogram.getTotalCount());
+        // But subtracting down to negative counts should not:
+        boolean thrown = false;
+        try {
+            // This should throw:
+            histogram.subtract(other);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+        }
+        Assert.assertTrue(thrown);
+
+
+        Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
+        biggerOther.recordValue(testValueLevel);
+        biggerOther.recordValue(testValueLevel * 1000);
+        biggerOther.recordValue(highestTrackableValue * 2);
+        biggerOther.add(biggerOther);
+        biggerOther.add(biggerOther);
+        Assert.assertEquals(4L, biggerOther.getCountAtValue(testValueLevel));
+        Assert.assertEquals(4L, biggerOther.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, biggerOther.getCountAtValue(highestTrackableValue * 2)); // overflow smaller hist...
+        Assert.assertEquals(12L, biggerOther.getTotalCount());
+
+        // Subtracting the smaller histogram from the bigger one should work:
+        biggerOther.subtract(other);
+        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
+        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(4L, biggerOther.getCountAtValue(highestTrackableValue * 2)); // overflow smaller hist...
+        Assert.assertEquals(10L, biggerOther.getTotalCount());
+
+        // But trying to subtract a larger histogram into a smaller one should throw an AIOOB:
+        thrown = false;
+        try {
+            // This should throw:
+            histogram.subtract(biggerOther);
         } catch (ArrayIndexOutOfBoundsException e) {
             thrown = true;
         }
@@ -387,38 +463,17 @@ public class HistogramTest {
         testAbstractSerialization(histogram);
         intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 2);
         testAbstractSerialization(intCountsHistogram);
-        shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 2);
+        shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 4); // With 2 decimal points, shorts overflow here
         testAbstractSerialization(shortCountsHistogram);
     }
 
-    @Test
+    @Test(expected = IllegalStateException.class)
     public void testOverflow() throws Exception {
         ShortCountsHistogram histogram = new ShortCountsHistogram(highestTrackableValue, 2);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
-        Assert.assertFalse(histogram.hasOverflowed());
         // This should overflow a ShortHistogram:
         histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 500);
-        Assert.assertTrue(histogram.hasOverflowed());
-        System.out.println("Histogram percentile output should show overflow:");
-        histogram.outputPercentileDistribution(System.out, 5, 100.0);
-        System.out.println("\nHistogram percentile output should be in CSV format and show overflow:");
-        histogram.outputPercentileDistribution(System.out, 5, 100.0, true);
-        verifyMaxValue(histogram);
-    }
-
-    @Test
-    public void testReestablishTotalCount() throws Exception {
-        ShortCountsHistogram histogram = new ShortCountsHistogram(highestTrackableValue, 2);
-        histogram.recordValue(testValueLevel);
-        histogram.recordValue(testValueLevel * 10);
-        Assert.assertFalse(histogram.hasOverflowed());
-        // This should overflow a ShortHistogram:
-        histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 500);
-        Assert.assertTrue(histogram.hasOverflowed());
-        histogram.reestablishTotalCount();
-        Assert.assertFalse(histogram.hasOverflowed());
-        verifyMaxValue(histogram);
     }
     
     @Test
@@ -672,9 +727,6 @@ public class HistogramTest {
     }
 
     public void verifyMaxValue(AbstractHistogram histogram) {
-        if (histogram.hasOverflowed()) {
-            histogram.reestablishMaxValue();
-        }
         long computedMaxValue = 0;
         for (int i = 0; i < histogram.countsArrayLength; i++) {
             if (histogram.getCountAtIndex(i) > 0) {

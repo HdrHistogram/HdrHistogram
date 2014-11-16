@@ -38,7 +38,7 @@ import java.util.zip.Deflater;
  *
  */
 public class HistogramLogWriter {
-    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.01";
+    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.1";
 
     private final PrintStream log;
 

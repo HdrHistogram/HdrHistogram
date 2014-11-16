@@ -41,22 +41,22 @@ public class Histogram extends AbstractHistogram {
     final long[] counts;
 
     @Override
-    long getCountAtIndex(final int index) {
+    long getCountAtNormalizedIndex(final int index) {
         return counts[index];
     }
 
     @Override
-    void incrementCountAtIndex(final int index) {
+    void incrementCountAtNormalizedIndex(final int index) {
         counts[index]++;
     }
 
     @Override
-    void addToCountAtIndex(final int index, final long value) {
+    void addToCountAtNormalizedIndex(final int index, final long value) {
         counts[index] += value;
     }
 
     @Override
-    void setCountAtIndex(int index, long value) {
+    void setCountAtNormalizedIndex(int index, long value) {
         counts[index] = value;
     }
 
@@ -142,7 +142,12 @@ public class Histogram extends AbstractHistogram {
         wordSizeInBytes = 8;
     }
 
-    private Histogram(final AbstractHistogram source) {
+    /**
+     * Construct a histogram with the same range settings as a given source histogram,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    public Histogram(final AbstractHistogram source) {
         super(source);
         counts = new long[countsArrayLength];
         wordSizeInBytes = 8;
@@ -161,7 +166,7 @@ public class Histogram extends AbstractHistogram {
 
     /**
      * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
+     * @param buffer The buffer to decode from
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
      * @throws DataFormatException on error parsing/decompressing the buffer

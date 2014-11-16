@@ -28,23 +28,23 @@ public class SynchronizedHistogram extends AbstractHistogram {
     final long[] counts;
 
     @Override
-    long getCountAtIndex(final int index) {
+    long getCountAtNormalizedIndex(final int index) {
         return counts[index];
     }
 
     @Override
-    synchronized void incrementCountAtIndex(final int index) {
+    synchronized void incrementCountAtNormalizedIndex(final int index) {
             counts[index]++;
     }
 
     @Override
-    synchronized void addToCountAtIndex(final int index, final long value) {
+    synchronized void addToCountAtNormalizedIndex(final int index, final long value) {
             counts[index] += value;
     }
 
     // setCountAtIndex is not synchronized, as it is only used within otherwise syncronized methods
     @Override
-    void setCountAtIndex(int index, long value) {
+    void setCountAtNormalizedIndex(int index, long value) {
             counts[index] = value;
     }
 
@@ -73,29 +73,13 @@ public class SynchronizedHistogram extends AbstractHistogram {
     }
 
     @Override
-    public synchronized void shiftLeftAndScaleLimits(int numberOfBinaryOrdersOfMagnitude) {
-            super.shiftLeftAndScaleLimits(numberOfBinaryOrdersOfMagnitude);
+    public synchronized void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude) {
+        super.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
     }
 
     @Override
-    public synchronized void shiftRightAndScaleLimits(int numberOfBinaryOrdersOfMagnitude)
-            throws ArrayIndexOutOfBoundsException {
-            super.shiftRightAndScaleLimits(numberOfBinaryOrdersOfMagnitude);
-    }
-
-    @Override
-    public synchronized void shiftLeft(int numberOfBinaryOrdersOfMagnitude) throws ArrayIndexOutOfBoundsException {
-            super.shiftLeft(numberOfBinaryOrdersOfMagnitude);
-    }
-
-    @Override
-    public synchronized void shiftRight(int numberOfBinaryOrdersOfMagnitude) {
-            super.shiftRight(numberOfBinaryOrdersOfMagnitude);
-    }
-
-    @Override
-    public synchronized void shiftRightWithUndeflowProtection(int numberOfBinaryOrdersOfMagnitude) {
-        super.shiftRightWithUndeflowProtection(numberOfBinaryOrdersOfMagnitude);
+    public synchronized void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude) {
+        super.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
     }
 
     @Override
@@ -138,8 +122,17 @@ public class SynchronizedHistogram extends AbstractHistogram {
     }
 
     @Override
-    synchronized void setMaxValue(long maxValue) {
-        super.setMaxValue(maxValue);
+    synchronized void updatedMaxValue(long maxValue) {
+        if (maxValue > getMaxValue()) {
+            super.updatedMaxValue(maxValue);
+        }
+    }
+
+    @Override
+    synchronized void updateMinNonZeroValue(long minNonZeroValue) {
+        if (minNonZeroValue < getMinNonZeroValue()) {
+            super.updateMinNonZeroValue(minNonZeroValue);
+        }
     }
 
     @Override
@@ -183,7 +176,12 @@ public class SynchronizedHistogram extends AbstractHistogram {
         wordSizeInBytes = 8;
     }
 
-    private SynchronizedHistogram(final AbstractHistogram source) {
+    /**
+     * Construct a histogram with the same range settings as a given source histogram,
+     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * @param source The source histogram to duplicate
+     */
+    public SynchronizedHistogram(final AbstractHistogram source) {
         super(source);
         counts = new long[countsArrayLength];
         wordSizeInBytes = 8;
@@ -203,7 +201,7 @@ public class SynchronizedHistogram extends AbstractHistogram {
 
     /**
      * Construct a new histogram by decoding it from a compressed form in a ByteBuffer.
-     * @param buffer The buffer to encode into
+     * @param buffer The buffer to decode from
      * @param minBarForHighestTrackableValue Force highestTrackableValue to be set at least this high
      * @return The newly constructed histogram
      * @throws DataFormatException on error parsing/decompressing the buffer
