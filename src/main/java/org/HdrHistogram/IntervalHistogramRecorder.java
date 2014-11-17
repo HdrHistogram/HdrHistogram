@@ -121,7 +121,7 @@ public class IntervalHistogramRecorder {
      */
     public synchronized Histogram getIntervalHistogram() {
         Histogram intervalHistogram = new Histogram(inactiveHistogram);
-        getIntervalHistogramInto(new Histogram(inactiveHistogram));
+        getIntervalHistogramInto(intervalHistogram);
         return intervalHistogram;
     }
 
