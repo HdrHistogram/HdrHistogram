@@ -20,6 +20,20 @@ public class HistogramEncodingTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
 
     @Test
+    public void testHistogramEncoding_ByteBufferHasCorrectPositionSetAfterEncoding() throws Exception {
+        Histogram histogram = new Histogram(highestTrackableValue, 3);
+        int size = histogram.getNeededByteBufferCapacity();
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+
+        int bytesWritten = histogram.encodeIntoCompressedByteBuffer(buffer);
+        Assert.assertEquals(bytesWritten, buffer.position());
+        buffer.rewind();
+
+        bytesWritten = histogram.encodeIntoByteBuffer(buffer);
+        Assert.assertEquals(bytesWritten, buffer.position());
+    }
+
+    @Test
     public void testHistogramEncoding() throws Exception {
 
         ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 3);

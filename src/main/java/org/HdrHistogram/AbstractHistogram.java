@@ -1530,6 +1530,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" +
                     getNeededByteBufferCapacity(relevantLength) + " bytes");
         }
+        int initialPosition = buffer.position();
         buffer.putInt(getEncodingCookie());
         buffer.putInt(relevantLength * wordSizeInBytes);
         buffer.putInt(normalizingIndexOffset);
@@ -1540,7 +1541,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         fillBufferFromCountsArray(buffer, relevantLength);
 
-        return getNeededByteBufferCapacity(relevantLength);
+        int bytesWritten = getNeededByteBufferCapacity(relevantLength);
+        buffer.position(initialPosition + bytesWritten);
+        return bytesWritten;
     }
 
     /**
@@ -1577,7 +1580,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         compressor.end();
 
         targetBuffer.putInt(initialTargetPosition + 4, compressedDataLength); // Record the compressed length
-        return compressedDataLength + 8;
+        int bytesWritten = compressedDataLength + 8;
+        targetBuffer.position(initialTargetPosition + bytesWritten);
+        return bytesWritten;
     }
 
     /**
