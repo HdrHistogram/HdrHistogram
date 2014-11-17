@@ -68,7 +68,7 @@ public class WriterReaderPhaser {
      * synchronization to function properly.
      *
      * @return an (opaque) value associated with the critical section entry, which MUST be provided
-     * to the matching {@link WriterReaderPhaser#writerCriticalSectionEnter} call.
+     * to the matching {@link WriterReaderPhaser#writerCriticalSectionExit} call.
      */
     public long writerCriticalSectionEnter() {
         return startEpochUpdater.getAndIncrement(this);
