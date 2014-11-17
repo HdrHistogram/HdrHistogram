@@ -153,7 +153,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 initialLowestValueInAutoRange = Math.pow(2.0, 800);
             } else if (mimicInternalModel) {
                 Constructor<? extends AbstractHistogram> histogramConstructor =
-                                internalCountsHistogramClass.getConstructor(internalCountsHistogramClass);
+                                internalCountsHistogramClass.getConstructor(AbstractHistogram.class);
 
                 valuesHistogram = histogramConstructor.newInstance(internalCountsHistogram);
 

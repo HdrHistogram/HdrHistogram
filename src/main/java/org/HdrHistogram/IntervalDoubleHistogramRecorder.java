@@ -125,7 +125,7 @@ public class IntervalDoubleHistogramRecorder {
      */
     public synchronized DoubleHistogram getIntervalHistogram() {
         DoubleHistogram intervalHistogram = new DoubleHistogram(inactiveHistogram);
-        getIntervalHistogramInto(new DoubleHistogram(inactiveHistogram));
+        getIntervalHistogramInto(intervalHistogram);
         return intervalHistogram;
     }
 
