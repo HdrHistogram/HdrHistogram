@@ -1071,7 +1071,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                                              final boolean useCsvFormat) {
         integerValuesHistogram.outputPercentileDistribution(printStream,
                 percentileTicksPerHalfDistance,
-                outputValueUnitScalingRatio * integerToDoubleValueConversionRatio,
+                outputValueUnitScalingRatio / integerToDoubleValueConversionRatio,
                 useCsvFormat);
     }
 
