@@ -31,3 +31,4 @@ src/vs2013/HdrHistogram.NET.v12.suo
 HdrHistogram.jar
 vs2013/packages/
 *.suo
+.DS_Store
