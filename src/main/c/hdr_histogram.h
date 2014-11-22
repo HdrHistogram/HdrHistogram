@@ -51,8 +51,9 @@ struct hdr_histogram
  * the results from the histogram will be accurate up to the first three digits.  Must
  * be a value between 1 and 5 (inclusive).
  * @param result Output parameter to capture allocated histogram.
- * @return 0 on success, EINVAL if the significant_figure value is outside of the
- * allowed range or ENOMEM if malloc failed.
+ * @return 0 on success, EINVAL if lowest_trackable_value is < 1 or the
+ * significant_figure value is outside of the allowed range, ENOMEM if malloc
+ * failed.
  */
 int hdr_init(
         int64_t lowest_trackable_value,
