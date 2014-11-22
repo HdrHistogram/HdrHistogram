@@ -130,7 +130,8 @@ int hdr_init(
         int significant_figures,
         struct hdr_histogram** result)
 {
-    if (significant_figures < 1 || 5 < significant_figures)
+    if (lowest_trackable_value < 1 ||
+        significant_figures < 1 || 5 < significant_figures)
     {
         return EINVAL;
     }

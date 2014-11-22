@@ -170,6 +170,16 @@ static char* test_invalid_significant_figures()
     return 0;
 }
 
+static char* test_invalid_init()
+{
+    struct hdr_histogram* h = NULL;
+
+    int r = hdr_init(0, 64*1024, 2, &h);
+    mu_assert("Result was not EINVAL", r == EINVAL);
+
+    return 0;
+}
+
 static char* test_total_count()
 {
     load_histograms();
@@ -447,6 +457,7 @@ static char* test_scaling_equivalence()
 static struct mu_result all_tests()
 {
     mu_run_test(test_create);
+    mu_run_test(test_invalid_init);
     mu_run_test(test_create_with_large_values);
     mu_run_test(test_invalid_significant_figures);
     mu_run_test(test_total_count);
