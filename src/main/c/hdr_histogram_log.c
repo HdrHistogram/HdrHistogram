@@ -339,104 +339,54 @@ int hdr_encode_compressed(
     uint8_t** compressed_histogram,
     int* compressed_len)
 {
-    const int counts_per_chunk = 512;
-    int64_t chunk[counts_per_chunk];
-
-    uint8_t* buf = NULL;
-    int len = 4096;
-
+    _encoding_flyweight* encoded = NULL;
+    _compression_flyweight* compressed = NULL;
     int result = 0;
-    int r;
 
-    z_stream strm;
-    strm_init(&strm);
+    size_t encoded_size =
+        sizeof(_encoding_flyweight) + (sizeof(int64_t) * h->counts_len);
 
-    if ((buf = (uint8_t*) malloc(len * sizeof(uint8_t))) == NULL)
+    if ((encoded = (_encoding_flyweight*) malloc(encoded_size)) == NULL)
     {
         FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
 
-    if (deflateInit(&strm, 4) != Z_OK)
+    // Estimate the size of the compressed histogram.
+    uLongf destLen = compressBound(encoded_size);
+    size_t compressed_size = sizeof(_compression_flyweight) + destLen;
+
+    if ((compressed = (_compression_flyweight*) malloc(compressed_size)) == NULL)
     {
-        result = HDR_DEFLATE_INIT_FAIL;
-        goto cleanup;
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
 
-    _compression_flyweight* comp_fw = (_compression_flyweight*) buf;
-    _encoding_flyweight encode_fw;
+    encoded->cookie                  = htobe32(ENCODING_COOKIE);
+    encoded->significant_figures     = htobe32(h->significant_figures);
+    encoded->lowest_trackable_value  = htobe64(h->lowest_trackable_value);
+    encoded->highest_trackable_value = htobe64(h->highest_trackable_value);
+    encoded->total_count             = htobe64(h->total_count);
 
-    encode_fw.cookie                  = htobe32(ENCODING_COOKIE);
-    encode_fw.significant_figures     = htobe32(h->significant_figures);
-    encode_fw.lowest_trackable_value  = htobe64(h->lowest_trackable_value);
-    encode_fw.highest_trackable_value = htobe64(h->highest_trackable_value);
-    encode_fw.total_count             = htobe64(h->total_count);
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        encoded->counts[i] = htobe64(h->counts[i]);
+    }
 
-    int counts_index = 0;
-
-    strm.next_in = (Bytef*) &encode_fw;
-    strm.avail_in = sizeof(_encoding_flyweight);
-
-    strm.next_out = (Bytef*) &comp_fw->data;
-    strm.avail_out = len - sizeof(_compression_flyweight);
-
-    if (deflate(&strm, Z_NO_FLUSH) != Z_OK)
+    if (Z_OK != compress(compressed->data, &destLen, (Bytef*) encoded, encoded_size))
     {
         FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
     }
 
-    do
-    {
-        while (strm.avail_out == 0)
-        {
-            // Reallocate to doubled buffer.
-            int new_len = len * 2;
-            uint8_t* new_buf = (uint8_t*) realloc(buf, new_len * sizeof(uint8_t));
-            if (NULL == new_buf)
-            {
-                FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
-            }
+    compressed->cookie = htobe32(COMPRESSION_COOKIE);
+    compressed->length = htobe32((int32_t)destLen);
 
-            buf = new_buf;
-            strm.next_out = &buf[len];
-            strm.avail_out = len;
-            len = new_len;
-
-            // Flush the zlib stream.  Breaks without this.
-            if (deflate(&strm, Z_SYNC_FLUSH) != Z_OK)
-            {
-                FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
-            }
-        }
-
-        int i = 0;
-        while (i < counts_per_chunk && counts_index < h->counts_len)
-        {
-            chunk[i++] = htobe64(h->counts[counts_index++]);
-        }
-
-        strm.next_in = (Bytef*) chunk;
-        strm.avail_in = i * sizeof(int64_t);
-
-        int flush = i == 0 ? Z_FINISH : Z_NO_FLUSH;
-        r = deflate(&strm, flush);
-        if (r != Z_OK && r != Z_STREAM_END)
-        {
-            FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
-        }
-    }
-    while (r != Z_STREAM_END);
-
-    comp_fw = (_compression_flyweight*) buf;
-    comp_fw->cookie = htobe32(COMPRESSION_COOKIE);
-    comp_fw->length = htobe32(strm.total_out);
-    *compressed_histogram = buf;
-    *compressed_len = sizeof(_compression_flyweight) + strm.total_out;
+    *compressed_histogram = (uint8_t*) compressed;
+    *compressed_len = destLen;
 
 cleanup:
-    (void)deflateEnd(&strm);
-    if (result != 0)
+    free(encoded);
+    if (result == HDR_DEFLATE_FAIL)
     {
-        free(buf);
+        free(compressed);
     }
 
     return result;
@@ -453,15 +403,12 @@ cleanup:
 int hdr_decode_compressed(
     uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
 {
-    const int counts_per_chunk = 512;
-    int64_t counts_array[counts_per_chunk];
     struct hdr_histogram* h = NULL;
     int result = 0;
+    int64_t* counts_array = NULL;
 
     z_stream strm;
     strm_init(&strm);
-
-    int64_t counts_tally = 0;
 
     if (length < sizeof(_compression_flyweight))
     {
@@ -513,32 +460,28 @@ int hdr_decode_compressed(
 
     h->total_count = be64toh(encoding_flyweight.total_count);
 
-    int counts_index = 0;
-    int available_counts = 0;
-    int r = 0;
-    do
+    if ((counts_array = calloc(h->counts_len, sizeof(int64_t))) == NULL)
     {
-        strm.next_out = (uint8_t*) counts_array;
-        strm.avail_out = counts_per_chunk * sizeof(int64_t);
-
-        r = inflate(&strm, Z_SYNC_FLUSH);
-
-        if (Z_STREAM_END != r && Z_OK != r)
-        {
-            FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
-        }
-
-        available_counts = counts_per_chunk - (strm.avail_out / sizeof(int64_t));
-        for (int i = 0; i < available_counts && counts_index < h->counts_len; i++)
-        {
-            h->counts[counts_index++] = be64toh(counts_array[i]);
-            counts_tally += h->counts[counts_index - 1];
-        }
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
-    while (r == Z_OK);
+
+    strm.next_out = (uint8_t*) counts_array;
+    strm.avail_out = sizeof(int64_t) * h->counts_len;
+
+    int r = inflate(&strm, Z_SYNC_FLUSH);
+    if (r != Z_STREAM_END && r != Z_OK)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
+    }
+
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        h->counts[i] = be64toh(counts_array[i]);
+    }
 
 cleanup:
     (void)inflateEnd(&strm);
+    free(counts_array);
 
     if (result != 0)
     {
