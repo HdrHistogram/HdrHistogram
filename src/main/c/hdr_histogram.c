@@ -240,6 +240,8 @@ int hdr_init(
     histogram->sub_bucket_count                = sub_bucket_count;
     histogram->min_value                       = INT64_MAX;
     histogram->max_value                       = 0;
+    histogram->normalizing_index_offset        = 0;
+    histogram->conversion_ratio                = 1.0;
     histogram->bucket_count                    = bucket_count;
     histogram->counts_len                      = counts_len;
     histogram->total_count                     = 0;

@@ -31,6 +31,8 @@ struct hdr_histogram
     int32_t bucket_count;
     int64_t min_value;
     int64_t max_value;
+    int32_t normalizing_index_offset;
+    double conversion_ratio;
     int32_t counts_len;
     int64_t total_count;
     int64_t counts[0];
