@@ -331,18 +331,18 @@ typedef struct __attribute__((__packed__))
 } _encoding_flyweight_v0;
 
 // TODO: Coming soon to a store near you.
-// static double int64_bits_to_double(int64_t i)
-// {
-//     union
-//     {
-//         uint64_t l;
-//         double d;
-//     } x;
+static double int64_bits_to_double(int64_t i)
+{
+    union
+    {
+        uint64_t l;
+        double d;
+    } x;
 
-//     x.l = i;
+    x.l = i;
 
-//     return x.d;
-// }
+    return x.d;
+}
 
 // static uint64_t double_to_int64_bits(double d)
 // {
@@ -511,6 +511,8 @@ static int hdr_decode_compressed_v0(
     }
 
     hdr_reset_internal_counters(h);
+    h->normalizing_index_offset = 0;
+    h->conversion_ratio = 1.0;
 
 cleanup:
     (void)inflateEnd(&strm);
@@ -598,6 +600,8 @@ static int hdr_decode_compressed_v1(
         h->counts[i] = be64toh(counts_array[i]);
     }
 
+    h->normalizing_index_offset = be64toh(encoding_flyweight.normalizing_index_offset);
+    h->conversion_ratio = int64_bits_to_double(be64toh(encoding_flyweight.conversion_ratio_bits));
     hdr_reset_internal_counters(h);
 
 cleanup:

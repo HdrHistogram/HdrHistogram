@@ -38,6 +38,28 @@ static int64_t power(int64_t base, int64_t exp)
     return result;
 }
 
+static int32_t normalize_index(struct hdr_histogram* h, int32_t index)
+{
+    if (h->normalizing_index_offset == 0)
+    {
+        return index;
+    }
+
+    int32_t normalized_index = index - h->normalizing_index_offset;
+    int32_t adjustment = 0;
+
+    if (normalized_index < 0)
+    {
+        adjustment = h->counts_len;
+    }
+    else if (normalized_index >= h->counts_len)
+    {
+        adjustment = -h->counts_len;
+    } 
+
+    return normalized_index + adjustment;
+}
+
 static int32_t get_bucket_index(struct hdr_histogram* h, int64_t value)
 {
     int32_t pow2ceiling = 64 - __builtin_clzll(value | h->sub_bucket_mask); // smallest power of 2 containing value
@@ -96,7 +118,7 @@ static int64_t get_count_at_index(
         int32_t bucket_index,
         int32_t sub_bucket_index)
 {
-    return h->counts[counts_index(h, bucket_index, sub_bucket_index)];
+    return h->counts[normalize_index(h, counts_index(h, bucket_index, sub_bucket_index))];
 }
 
 static int64_t size_of_equivalent_value_range(struct hdr_histogram* h, int64_t value)
@@ -289,7 +311,7 @@ bool hdr_record_value(struct hdr_histogram* h, int64_t value)
         return false;
     }
 
-    h->counts[counts_index]++;
+    h->counts[normalize_index(h, counts_index)]++;
     h->total_count++;
 
     update_min_max(h, value);
@@ -306,7 +328,7 @@ bool hdr_record_values(struct hdr_histogram* h, int64_t value, int64_t count)
         return false;
     }
 
-    h->counts[counts_index] += count;
+    h->counts[normalize_index(h, counts_index)] += count;
     h->total_count += count;
 
     update_min_max(h, value);
@@ -463,7 +485,7 @@ int64_t hdr_lowest_equivalent_value(struct hdr_histogram* h, int64_t value)
 
 int64_t hdr_count_at_value(struct hdr_histogram* h, int64_t value)
 {
-    return h->counts[counts_index_for(h, value)];
+    return h->counts[normalize_index(h, counts_index_for(h, value))];
 }
 
 
