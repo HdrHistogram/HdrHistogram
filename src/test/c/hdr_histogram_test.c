@@ -119,7 +119,7 @@ static char* test_create()
 
     mu_assert("Failed to allocate hdr_histogram", r == 0);
     mu_assert("Failed to allocate hdr_histogram", h != NULL);
-    mu_assert("Size is incorrect", s == 1704008);
+    mu_assert("Size is incorrect", s == 1704024);
 
     free(h);
 
@@ -446,10 +446,6 @@ static char* test_scaling_equivalence()
             compare_int64(
                     hdr_lowest_equivalent_value(cor_histogram, expected_99th),
                     hdr_lowest_equivalent_value(scaled_cor_histogram, scaled_99th)));
-
-    mu_assert(
-            "Max should be equivalent",
-            compare_int64(hdr_max(cor_histogram) * 512, hdr_max(scaled_cor_histogram)));
 
     return 0;
 }

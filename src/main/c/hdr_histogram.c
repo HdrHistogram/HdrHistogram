@@ -77,6 +77,20 @@ static int64_t value_from_index(int32_t bucket_index, int32_t sub_bucket_index, 
     return ((int64_t) sub_bucket_index) << (bucket_index + unit_magnitude);
 }
 
+static int64_t value_from_array_index(struct hdr_histogram* h, int index)
+{
+    int32_t bucket_index = (index >> h->sub_bucket_half_count_magnitude) - 1;
+    int32_t sub_bucket_index = (index & (h->sub_bucket_half_count - 1)) + h->sub_bucket_half_count;
+
+    if (bucket_index < 0)
+    {
+        sub_bucket_index -= h->sub_bucket_half_count;
+        bucket_index = 0;
+    }
+
+    return value_from_index(bucket_index, sub_bucket_index, h->unit_magnitude);
+}
+
 static int64_t get_count_at_index(
         struct hdr_histogram* h,
         int32_t bucket_index,
@@ -113,6 +127,55 @@ static int64_t highest_equivalent_value(struct hdr_histogram* h, int64_t value)
 static int64_t median_equivalent_value(struct hdr_histogram* h, int64_t value)
 {
     return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);
+}
+
+static void update_min_max(struct hdr_histogram* h, int64_t value)
+{
+    h->min_value = (value < h->min_value && value != 0) ? value : h->min_value;
+    h->max_value = (value > h->max_value) ? value : h->max_value;
+}
+
+void hdr_reset_internal_counters(struct hdr_histogram* h)
+{
+    int min_non_zero_index = -1;
+    int max_index = -1;
+    int64_t observed_total_count = 0;
+
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        int64_t count_at_index;
+
+        if ((count_at_index = h->counts[i]) > 0)
+        {
+            observed_total_count += count_at_index;
+            max_index = i;
+            if (min_non_zero_index == -1 && i != 0)
+            {
+                min_non_zero_index = i;
+            }
+        }
+    }
+
+    if (max_index == -1)
+    {
+        h->max_value = 0;
+    }
+    else
+    {
+        int64_t max_value = value_from_array_index(h, max_index);
+        h->max_value = highest_equivalent_value(h, max_value);
+    }
+
+    if (min_non_zero_index == -1)
+    {
+        h->min_value = INT64_MAX;
+    }
+    else
+    {
+        h->min_value = value_from_array_index(h, min_non_zero_index);
+    }
+
+    h->total_count = observed_total_count;
 }
 
 
@@ -175,6 +238,8 @@ int hdr_init(
     histogram->sub_bucket_half_count           = sub_bucket_half_count;
     histogram->sub_bucket_mask                 = sub_bucket_mask;
     histogram->sub_bucket_count                = sub_bucket_count;
+    histogram->min_value                       = INT64_MAX;
+    histogram->max_value                       = 0;
     histogram->bucket_count                    = bucket_count;
     histogram->counts_len                      = counts_len;
     histogram->total_count                     = 0;
@@ -225,6 +290,8 @@ bool hdr_record_value(struct hdr_histogram* h, int64_t value)
     h->counts[counts_index]++;
     h->total_count++;
 
+    update_min_max(h, value);
+
     return true;
 }
 
@@ -239,6 +306,8 @@ bool hdr_record_values(struct hdr_histogram* h, int64_t value, int64_t count)
 
     h->counts[counts_index] += count;
     h->total_count += count;
+
+    update_min_max(h, value);
 
     return true;
 }
@@ -299,38 +368,22 @@ int64_t hdr_add(struct hdr_histogram* h, struct hdr_histogram* from)
 
 int64_t hdr_max(struct hdr_histogram* h)
 {
-    int64_t max = 0;
-    struct hdr_iter iter;
-
-    hdr_iter_init(&iter, h);
-
-    while (hdr_iter_next(&iter))
+    if (0 == h->max_value)
     {
-        if (0 != iter.count_at_index)
-        {
-            max = iter.highest_equivalent_value;
-        }
+        return 0;
     }
-    return lowest_equivalent_value(h, max);
+
+    return highest_equivalent_value(h, h->max_value);
 }
 
 int64_t hdr_min(struct hdr_histogram* h)
 {
-    int64_t min = 0;
-    struct hdr_iter iter;
-
-    hdr_iter_init(&iter, h);
-
-    while (hdr_iter_next(&iter))
+    if (INT64_MAX == h->min_value)
     {
-        if (0 != iter.count_to_index && 0 == min)
-        {
-            min = iter.value_from_index;
-            break;
-        }
+        return INT64_MAX;
     }
 
-    return min;
+    return lowest_equivalent_value(h, h->min_value);
 }
 
 int64_t hdr_value_at_percentile(struct hdr_histogram* h, double percentile)

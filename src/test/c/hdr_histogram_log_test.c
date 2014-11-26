@@ -86,43 +86,51 @@ static bool compare_string(const char* a, const char* b, int len)
     return false;
 }
 
-static bool compare_binary(const void* a, const void* b, int len)
-{
-    if (memcmp(a, b, len) == 0)
-    {
-        return true;
-    }
-
-    uint8_t* u_a = (uint8_t*) a;
-    uint8_t* u_b = (uint8_t*) b;
-
-    int error_count = 0;
-    for (int i = 0; i < len; i++)
-    {
-        if (u_a[i] != u_b[i])
-        {
-            printf("%d of %d, a = %d, b = %d\n", i, len, u_a[i], u_b[i]);
-            if (++error_count >= 10)
-            {
-                printf("%d or more mismatches\n", error_count);
-                break;
-            }
-        }
-    }
-    return false;
-}
-
 static bool compare_histogram(struct hdr_histogram* a, struct hdr_histogram* b)
 {
+    if (a->counts_len != b->counts_len)
+    {
+        printf(
+            "a.counts_len = %"PRIu32", b.counts_len = %"PRIu32"\n",
+            a->counts_len, b->counts_len);
+        return false;
+    }
+
+    int64_t a_max = hdr_max(a);
+    int64_t b_max = hdr_max(b);
+
+    if (a_max != b_max)
+    {
+        printf("a.max = %"PRIu64", b.max = %"PRIu64"\n", a_max, b_max);
+        return false;
+    }
+
+    int64_t a_min = hdr_min(a);
+    int64_t b_min = hdr_min(b);
+
+    if (a_min != b_min)
+    {
+        printf("a.min = %"PRIu64", b.min = %"PRIu64"\n", a_min, b_min);
+        return false;
+    }
+
     size_t a_size = hdr_get_memory_size(a);
     size_t b_size = hdr_get_memory_size(b);
 
-    if (a_size == b_size && memcmp(a, b, a_size) == 0)
+    if (a_size != b_size)
+    {
+        printf("a.size: %zu, b.size: %zu\n", a_size, b_size);
+        return false;
+    }
+
+    size_t counts_size = a->counts_len * sizeof(int64_t);
+
+    if (memcmp(a->counts, b->counts, counts_size) == 0)
     {
         return true;
     }
 
-    printf("Sizes a: %zu, b: %zu\n", a_size, b_size);
+    printf("%s\n", "Counts incorrect");
 
     struct hdr_iter iter_a;
     struct hdr_iter iter_b;
@@ -198,7 +206,6 @@ static char* test_encode_and_decode_compressed()
     int rc = 0;
     struct hdr_histogram* actual = NULL;
     struct hdr_histogram* expected = raw_histogram;
-    size_t histogram_size = hdr_get_memory_size(expected);
 
     rc = hdr_encode_compressed(expected, &buffer, &len);
     mu_assert("Did not encode", validate_return_code(rc));
@@ -210,7 +217,7 @@ static char* test_encode_and_decode_compressed()
 
     mu_assert(
         "Comparison did not match",
-        compare_binary(expected, actual, histogram_size));
+        compare_histogram(expected, actual));
 
     free(actual);
 

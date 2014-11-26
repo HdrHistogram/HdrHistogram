@@ -400,6 +400,9 @@ cleanup:
 // ##     ## ##       ##    ## ##     ## ##     ##  ##  ##   ### ##    ##
 // ########  ########  ######   #######  ########  #### ##    ##  ######
 
+// Prototype to avoid exposing in header
+void hdr_reset_internal_counters(struct hdr_histogram* h);
+
 int hdr_decode_compressed(
     uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
 {
@@ -478,6 +481,8 @@ int hdr_decode_compressed(
     {
         h->counts[i] = be64toh(counts_array[i]);
     }
+
+    hdr_reset_internal_counters(h);
 
 cleanup:
     (void)inflateEnd(&strm);
