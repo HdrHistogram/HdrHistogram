@@ -51,6 +51,7 @@ prf.Program(bin_directory + 'perftests', Glob('src/test/c/*_perf.c'))
 
 exp = tst.Clone()
 exp.Program(bin_directory + 'format_example', ['src/examples/c/hdr_histogram_format_example.c'])
+exp.Program(bin_directory + 'hdr_decoder', ['src/examples/c/hdr_decoder.c'])
 
 env.Install(include_directory, Glob('src/main/c/*.h'))
 env.Install(src_directory,     Glob('src/main/c/*.c')     + Glob('src/main/c/*.h'))

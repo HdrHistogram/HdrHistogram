@@ -285,6 +285,9 @@ int base64_decode(
 static const int32_t ENCODING_COOKIE    = 0x1c849308 + (8 << 4);
 static const int32_t COMPRESSION_COOKIE = 0x1c849309 + (8 << 4);
 
+static const int32_t V1_ENCODING_COOKIE    = 0x1c849301 + (8 << 4);
+static const int32_t V1_COMPRESSION_COOKIE = 0x1c849302 + (8 << 4);
+
 const char* hdr_strerror(int errnum)
 {
     switch (errnum)
@@ -325,7 +328,46 @@ typedef struct __attribute__((__packed__))
     int64_t highest_trackable_value;
     int64_t total_count;
     int64_t counts[0];
-} _encoding_flyweight;
+} _encoding_flyweight_v0;
+
+// TODO: Coming soon to a store near you.
+// static double int64_bits_to_double(int64_t i)
+// {
+//     union
+//     {
+//         uint64_t l;
+//         double d;
+//     } x;
+
+//     x.l = i;
+
+//     return x.d;
+// }
+
+// static uint64_t double_to_int64_bits(double d)
+// {
+//     union
+//     {
+//         uint64_t l;
+//         double d;
+//     } x;
+
+//     x.d = d;
+    
+//     return x.l;
+// }
+
+typedef struct __attribute__((__packed__))
+{
+    int32_t cookie;
+    int32_t payload_len;
+    int32_t normalizing_index_offset;
+    int32_t significant_figures;
+    int64_t lowest_trackable_value;
+    int64_t highest_trackable_value;
+    uint64_t conversion_ratio_bits;
+    int64_t counts[0];
+} _encoding_flyweight_v1;
 
 typedef struct __attribute__((__packed__))
 {
@@ -339,14 +381,14 @@ int hdr_encode_compressed(
     uint8_t** compressed_histogram,
     int* compressed_len)
 {
-    _encoding_flyweight* encoded = NULL;
+    _encoding_flyweight_v0* encoded = NULL;
     _compression_flyweight* compressed = NULL;
     int result = 0;
 
     size_t encoded_size =
-        sizeof(_encoding_flyweight) + (sizeof(int64_t) * h->counts_len);
+        sizeof(_encoding_flyweight_v0) + (sizeof(int64_t) * h->counts_len);
 
-    if ((encoded = (_encoding_flyweight*) malloc(encoded_size)) == NULL)
+    if ((encoded = (_encoding_flyweight_v0*) malloc(encoded_size)) == NULL)
     {
         FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
@@ -403,40 +445,28 @@ cleanup:
 // Prototype to avoid exposing in header
 void hdr_reset_internal_counters(struct hdr_histogram* h);
 
-int hdr_decode_compressed(
-    uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
+static int hdr_decode_compressed_v0(
+    _compression_flyweight* compression_flyweight, 
+    size_t length, 
+    struct hdr_histogram** histogram)
 {
     struct hdr_histogram* h = NULL;
     int result = 0;
-    int64_t* counts_array = NULL;
+    int64_t* counts_array = NULL;    
+    _encoding_flyweight_v0 encoding_flyweight;
+    z_stream strm;    
 
-    z_stream strm;
     strm_init(&strm);
-
-    if (length < sizeof(_compression_flyweight))
-    {
-        FAIL_AND_CLEANUP(cleanup, result, EINVAL);
-    }
-
-    _compression_flyweight* compression_flyweight = (_compression_flyweight*) buffer;
-    _encoding_flyweight encoding_flyweight;
-
-    if (COMPRESSION_COOKIE != be32toh(compression_flyweight->cookie))
-    {
-        FAIL_AND_CLEANUP(cleanup, result, HDR_COMPRESSION_COOKIE_MISMATCH);
-    }
-
-    int32_t compressed_length = be32toh(compression_flyweight->length);
-
     if (inflateInit(&strm) != Z_OK)
     {
         FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
     }
 
+    int32_t compressed_length = be32toh(compression_flyweight->length);
     strm.next_in = compression_flyweight->data;
     strm.avail_in = compressed_length;
     strm.next_out = (uint8_t *) &encoding_flyweight;
-    strm.avail_out = sizeof(_encoding_flyweight);
+    strm.avail_out = sizeof(_encoding_flyweight_v0);
 
     if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
     {
@@ -460,8 +490,6 @@ int hdr_decode_compressed(
     {
         FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
-
-    h->total_count = be64toh(encoding_flyweight.total_count);
 
     if ((counts_array = calloc(h->counts_len, sizeof(int64_t))) == NULL)
     {
@@ -503,6 +531,116 @@ cleanup:
     }
 
     return result;
+}
+
+static int hdr_decode_compressed_v1(
+    _compression_flyweight* compression_flyweight, 
+    size_t length, 
+    struct hdr_histogram** histogram)
+{
+    struct hdr_histogram* h = NULL;
+    int result = 0;
+    int64_t* counts_array = NULL;    
+    _encoding_flyweight_v1 encoding_flyweight;
+    z_stream strm;    
+
+    strm_init(&strm);
+    if (inflateInit(&strm) != Z_OK)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
+    }
+
+    int32_t compressed_length = be32toh(compression_flyweight->length);
+    strm.next_in = compression_flyweight->data;
+    strm.avail_in = compressed_length;
+    strm.next_out = (uint8_t *) &encoding_flyweight;
+    strm.avail_out = sizeof(_encoding_flyweight_v1);
+
+    if (inflate(&strm, Z_SYNC_FLUSH) != Z_OK)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
+    }
+
+    if (V1_ENCODING_COOKIE != be32toh(encoding_flyweight.cookie))
+    {
+        FAIL_AND_CLEANUP(cleanup, result, HDR_ENCODING_COOKIE_MISMATCH);
+    }
+
+    int64_t lowest_trackable_value = be64toh(encoding_flyweight.lowest_trackable_value);
+    int64_t highest_trackable_value = be64toh(encoding_flyweight.highest_trackable_value);
+    int32_t significant_figures = be32toh(encoding_flyweight.significant_figures);
+
+    if (hdr_init(
+        lowest_trackable_value,
+        highest_trackable_value,
+        significant_figures,
+        &h) != 0)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
+    }
+
+    if ((counts_array = calloc(h->counts_len, sizeof(int64_t))) == NULL)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
+    }
+
+    strm.next_out = (uint8_t*) counts_array;
+    strm.avail_out = sizeof(int64_t) * h->counts_len;
+
+    int r = inflate(&strm, Z_SYNC_FLUSH);
+    if (r != Z_STREAM_END && r != Z_OK)
+    {
+        FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
+    }
+
+    for (int i = 0; i < h->counts_len; i++)
+    {
+        h->counts[i] = be64toh(counts_array[i]);
+    }
+
+    hdr_reset_internal_counters(h);
+
+cleanup:
+    (void)inflateEnd(&strm);
+    free(counts_array);
+
+    if (result != 0)
+    {
+        free(h);
+    }
+    else if (NULL == *histogram)
+    {
+        *histogram = h;
+    }
+    else
+    {
+        hdr_add(*histogram, h);
+        free(h);
+    }
+
+    return result;    
+}
+
+int hdr_decode_compressed(
+    uint8_t* buffer, size_t length, struct hdr_histogram** histogram)
+{
+    if (length < sizeof(_compression_flyweight))
+    {
+        return EINVAL;
+    }
+
+    _compression_flyweight* compression_flyweight = (_compression_flyweight*) buffer;
+
+    if (COMPRESSION_COOKIE == be32toh(compression_flyweight->cookie))
+    {
+        return hdr_decode_compressed_v0(compression_flyweight, length, histogram);
+    }
+    else if (V1_COMPRESSION_COOKIE == be32toh(compression_flyweight->cookie))
+    {
+        return hdr_decode_compressed_v1(compression_flyweight, length, histogram);
+    }
+
+    return HDR_COMPRESSION_COOKIE_MISMATCH;
 }
 
 // ##      ## ########  #### ######## ######## ########
@@ -759,9 +897,16 @@ int hdr_log_read(
     int interval_max_ms = 0;
 
     int read = getline(&line, &line_len, file);
-    if (read == -1)
+    if (-1 == read)
     {
-        FAIL_AND_CLEANUP(cleanup, result, EIO);
+        if (0 == errno)
+        {
+            FAIL_AND_CLEANUP(cleanup, result, EOF);
+        }
+        else
+        {
+            FAIL_AND_CLEANUP(cleanup, result, EIO);
+        }
     }
 
     null_trailing_whitespace(line, read);

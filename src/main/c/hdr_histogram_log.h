@@ -129,7 +129,9 @@ int hdr_log_read_header(struct hdr_log_reader* reader, FILE* file);
  * @param timestamp The first timestamp from the CSV entry.
  * @param interval The second timestamp from the CSV entry
  * @return Will return 0 on success or an error number if there was some wrong
- * when reading in the histogram.  HDR_INFLATE_INIT_FAIL or HDR_INFLATE_FAIL if
+ * when reading in the histogram.  EOF (-1) will indicate that there are no more
+ * histograms left to be read from 'file'.
+ * HDR_INFLATE_INIT_FAIL or HDR_INFLATE_FAIL if
  * there was a problem with Gzip.  HDR_COMPRESSION_COOKIE_MISMATCH or
  * HDR_ENCODING_COOKIE_MISMATCH if the cookie values are incorrect.
  * HDR_LOG_INVALID_VERSION if the log can not be parsed.  ENOMEM if buffer space
