@@ -282,8 +282,8 @@ int base64_decode(
 // ##       ##   ### ##    ## ##     ## ##     ##  ##  ##   ### ##    ##
 // ######## ##    ##  ######   #######  ########  #### ##    ##  ######
 
-static const int32_t ENCODING_COOKIE    = 0x1c849308 + (8 << 4);
-static const int32_t COMPRESSION_COOKIE = 0x1c849309 + (8 << 4);
+static const int32_t V0_ENCODING_COOKIE    = 0x1c849308 + (8 << 4);
+static const int32_t V0_COMPRESSION_COOKIE = 0x1c849309 + (8 << 4);
 
 static const int32_t V1_ENCODING_COOKIE    = 0x1c849301 + (8 << 4);
 static const int32_t V1_COMPRESSION_COOKIE = 0x1c849302 + (8 << 4);
@@ -320,17 +320,6 @@ static void strm_init(z_stream* strm)
     strm->avail_in = 0;
 }
 
-typedef struct __attribute__((__packed__))
-{
-    int32_t cookie;
-    int32_t significant_figures;
-    int64_t lowest_trackable_value;
-    int64_t highest_trackable_value;
-    int64_t total_count;
-    int64_t counts[0];
-} _encoding_flyweight_v0;
-
-// TODO: Coming soon to a store near you.
 static double int64_bits_to_double(int64_t i)
 {
     union
@@ -344,18 +333,28 @@ static double int64_bits_to_double(int64_t i)
     return x.d;
 }
 
-// static uint64_t double_to_int64_bits(double d)
-// {
-//     union
-//     {
-//         uint64_t l;
-//         double d;
-//     } x;
+static uint64_t double_to_int64_bits(double d)
+{
+    union
+    {
+        uint64_t l;
+        double d;
+    } x;
 
-//     x.d = d;
+    x.d = d;
     
-//     return x.l;
-// }
+    return x.l;
+}
+
+typedef struct __attribute__((__packed__))
+{
+    int32_t cookie;
+    int32_t significant_figures;
+    int64_t lowest_trackable_value;
+    int64_t highest_trackable_value;
+    int64_t total_count;
+    int64_t counts[0];
+} _encoding_flyweight_v0;
 
 typedef struct __attribute__((__packed__))
 {
@@ -381,14 +380,14 @@ int hdr_encode_compressed(
     uint8_t** compressed_histogram,
     int* compressed_len)
 {
-    _encoding_flyweight_v0* encoded = NULL;
+    _encoding_flyweight_v1* encoded = NULL;
     _compression_flyweight* compressed = NULL;
     int result = 0;
 
     size_t encoded_size =
-        sizeof(_encoding_flyweight_v0) + (sizeof(int64_t) * h->counts_len);
+        sizeof(_encoding_flyweight_v1) + (sizeof(int64_t) * h->counts_len);
 
-    if ((encoded = (_encoding_flyweight_v0*) malloc(encoded_size)) == NULL)
+    if ((encoded = (_encoding_flyweight_v1*) malloc(encoded_size)) == NULL)
     {
         FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
@@ -402,11 +401,14 @@ int hdr_encode_compressed(
         FAIL_AND_CLEANUP(cleanup, result, ENOMEM);
     }
 
-    encoded->cookie                  = htobe32(ENCODING_COOKIE);
-    encoded->significant_figures     = htobe32(h->significant_figures);
-    encoded->lowest_trackable_value  = htobe64(h->lowest_trackable_value);
-    encoded->highest_trackable_value = htobe64(h->highest_trackable_value);
-    encoded->total_count             = htobe64(h->total_count);
+    encoded->cookie                   = htobe32(V1_ENCODING_COOKIE);
+    encoded->payload_len              = htobe32(encoded_size);
+    encoded->normalizing_index_offset = htobe32(h->normalizing_index_offset);
+    encoded->significant_figures      = htobe32(h->significant_figures);
+    encoded->lowest_trackable_value   = htobe64(h->lowest_trackable_value);
+    encoded->highest_trackable_value  = htobe64(h->highest_trackable_value);
+    encoded->conversion_ratio_bits    = htobe64(double_to_int64_bits(h->conversion_ratio));
+
 
     for (int i = 0; i < h->counts_len; i++)
     {
@@ -418,7 +420,7 @@ int hdr_encode_compressed(
         FAIL_AND_CLEANUP(cleanup, result, HDR_DEFLATE_FAIL);
     }
 
-    compressed->cookie = htobe32(COMPRESSION_COOKIE);
+    compressed->cookie = htobe32(V1_COMPRESSION_COOKIE);
     compressed->length = htobe32((int32_t)destLen);
 
     *compressed_histogram = (uint8_t*) compressed;
@@ -473,7 +475,7 @@ static int hdr_decode_compressed_v0(
         FAIL_AND_CLEANUP(cleanup, result, HDR_INFLATE_FAIL);
     }
 
-    if (ENCODING_COOKIE != be32toh(encoding_flyweight.cookie))
+    if (V0_ENCODING_COOKIE != be32toh(encoding_flyweight.cookie))
     {
         FAIL_AND_CLEANUP(cleanup, result, HDR_ENCODING_COOKIE_MISMATCH);
     }
@@ -635,7 +637,7 @@ int hdr_decode_compressed(
 
     _compression_flyweight* compression_flyweight = (_compression_flyweight*) buffer;
 
-    if (COMPRESSION_COOKIE == be32toh(compression_flyweight->cookie))
+    if (V0_COMPRESSION_COOKIE == be32toh(compression_flyweight->cookie))
     {
         return hdr_decode_compressed_v0(compression_flyweight, length, histogram);
     }
