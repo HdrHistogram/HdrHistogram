@@ -18,25 +18,13 @@
 
 #include "hdr_histogram.h"
 
-
-// ##     ## ######## #### ##       #### ######## ##    ##
-// ##     ##    ##     ##  ##        ##     ##     ##  ##
-// ##     ##    ##     ##  ##        ##     ##      ####
-// ##     ##    ##     ##  ##        ##     ##       ##
-// ##     ##    ##     ##  ##        ##     ##       ##
-// ##     ##    ##     ##  ##        ##     ##       ##
-//  #######     ##    #### ######## ####    ##       ##
-
-
-static int64_t power(int64_t base, int64_t exp)
-{
-    int result = 1;
-    while(exp)
-    {
-        result *= base; exp--;
-    }
-    return result;
-}
+//  ######   #######  ##     ## ##    ## ########  ######  
+// ##    ## ##     ## ##     ## ###   ##    ##    ##    ## 
+// ##       ##     ## ##     ## ####  ##    ##    ##       
+// ##       ##     ## ##     ## ## ## ##    ##     ######  
+// ##       ##     ## ##     ## ##  ####    ##          ## 
+// ##    ## ##     ## ##     ## ##   ###    ##    ##    ## 
+//  ######   #######   #######  ##    ##    ##     ######
 
 static int32_t normalize_index(struct hdr_histogram* h, int32_t index)
 {
@@ -58,6 +46,48 @@ static int32_t normalize_index(struct hdr_histogram* h, int32_t index)
     } 
 
     return normalized_index + adjustment;
+}
+
+static int32_t counts_get_normalised(struct hdr_histogram* h, int32_t index)
+{
+    return h->counts[normalize_index(h, index)];
+}
+
+static void counts_inc_normalised(
+    struct hdr_histogram* h, int32_t index, int64_t value)
+{
+    h->counts[normalize_index(h, index)] += value;
+    h->total_count += value;
+}
+
+static void counts_set_direct(
+    struct hdr_histogram* h, int32_t index, int64_t value)
+{
+    h->counts[index] = value;
+}
+
+static int64_t counts_get_direct(struct hdr_histogram* h, int32_t index)
+{
+    return h->counts[index];
+}
+
+// ##     ## ######## #### ##       #### ######## ##    ##
+// ##     ##    ##     ##  ##        ##     ##     ##  ##
+// ##     ##    ##     ##  ##        ##     ##      ####
+// ##     ##    ##     ##  ##        ##     ##       ##
+// ##     ##    ##     ##  ##        ##     ##       ##
+// ##     ##    ##     ##  ##        ##     ##       ##
+//  #######     ##    #### ######## ####    ##       ##
+
+
+static int64_t power(int64_t base, int64_t exp)
+{
+    int result = 1;
+    while(exp)
+    {
+        result *= base; exp--;
+    }
+    return result;
 }
 
 static int32_t get_bucket_index(struct hdr_histogram* h, int64_t value)
@@ -118,7 +148,7 @@ static int64_t get_count_at_index(
         int32_t bucket_index,
         int32_t sub_bucket_index)
 {
-    return h->counts[normalize_index(h, counts_index(h, bucket_index, sub_bucket_index))];
+    return counts_get_normalised(h, counts_index(h, bucket_index, sub_bucket_index));
 }
 
 static int64_t size_of_equivalent_value_range(struct hdr_histogram* h, int64_t value)
@@ -167,7 +197,7 @@ void hdr_reset_internal_counters(struct hdr_histogram* h)
     {
         int64_t count_at_index;
 
-        if ((count_at_index = h->counts[i]) > 0)
+        if ((count_at_index = counts_get_direct(h, i)) > 0)
         {
             observed_total_count += count_at_index;
             max_index = i;
@@ -311,9 +341,7 @@ bool hdr_record_value(struct hdr_histogram* h, int64_t value)
         return false;
     }
 
-    h->counts[normalize_index(h, counts_index)]++;
-    h->total_count++;
-
+    counts_inc_normalised(h, counts_index, 1);
     update_min_max(h, value);
 
     return true;
@@ -328,9 +356,7 @@ bool hdr_record_values(struct hdr_histogram* h, int64_t value, int64_t count)
         return false;
     }
 
-    h->counts[normalize_index(h, counts_index)] += count;
-    h->total_count += count;
-
+    counts_inc_normalised(h, counts_index, count);
     update_min_max(h, value);
 
     return true;
@@ -485,7 +511,7 @@ int64_t hdr_lowest_equivalent_value(struct hdr_histogram* h, int64_t value)
 
 int64_t hdr_count_at_value(struct hdr_histogram* h, int64_t value)
 {
-    return h->counts[normalize_index(h, counts_index_for(h, value))];
+    return counts_get_normalised(h, counts_index_for(h, value));
 }
 
 
