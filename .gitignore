@@ -32,3 +32,4 @@ HdrHistogram.jar
 vs2013/packages/
 *.suo
 .DS_Store
+build
