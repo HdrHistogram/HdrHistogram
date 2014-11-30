@@ -13,5 +13,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/src/main/c")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/test/c")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/examples/c")
 
-#install(TARGETS hdr_histogram DESTINATION lib)
-#install(TARGETS hdr_histogram.h hdr_histogram_log.h DESTINATION include)
+SET(CPACK_GENERATOR "TGZ")
+
+INCLUDE(CPack)

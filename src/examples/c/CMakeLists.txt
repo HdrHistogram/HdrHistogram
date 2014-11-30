@@ -1,5 +1,7 @@
 add_executable(hdr_decoder hdr_decoder.c)
 target_link_libraries(hdr_decoder hdr_histogram m z)
+install(TARGETS hdr_decoder DESTINATION bin)
 
 add_executable(hdr_histogram_format_example hdr_histogram_format_example.c)
 target_link_libraries(hdr_histogram_format_example hdr_histogram m z)
+install(TARGETS hdr_histogram_format_example DESTINATION bin)
