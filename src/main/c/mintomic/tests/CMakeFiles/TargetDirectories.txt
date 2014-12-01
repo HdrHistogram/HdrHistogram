@@ -1,0 +1,4 @@
+/home/barkerm/sources/c/mintomic/tests/mintpack/CMakeFiles/MintPack.dir
+/home/barkerm/sources/c/mintomic/tests/mintsystem/CMakeFiles/MintSystem.dir
+/home/barkerm/sources/c/mintomic/tests/mintomic/CMakeFiles/Mintomic.dir
+/home/barkerm/sources/c/mintomic/tests/CMakeFiles/MintomicTests.dir

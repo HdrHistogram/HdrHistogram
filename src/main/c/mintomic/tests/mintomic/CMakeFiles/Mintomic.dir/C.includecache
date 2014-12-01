@@ -1,0 +1,40 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/core.h
+platform_detect.h
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/platform_detect.h
+stdint.h
+-
+private/stdint.h
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/stdint.h
+private/core_msvc.h
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/core_msvc.h
+private/core_gcc.h
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/core_gcc.h
+
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/platform_detect.h
+
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/core_gcc.h
+stddef.h
+-
+
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/core_msvc.h
+xtl.h
+-
+windows.h
+-
+intrin.h
+-
+
+/home/barkerm/sources/c/mintomic/src/mintomic/../../include/mintomic/private/stdint.h
+
+/home/barkerm/sources/c/mintomic/src/mintomic/mintomic_gcc.c
+mintomic/core.h
+-
+

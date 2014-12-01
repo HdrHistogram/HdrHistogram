@@ -8,6 +8,13 @@ if(UNIX)
     set(CMAKE_C_FLAGS_RELEASE "-O3")
 endif()
 
+set(MINTOMIC_DIR "${CMAKE_SOURCE_DIR}/src/main/c/mintomic")
+
+include_directories("${MINTOMIC_DIR}/include")
+add_subdirectory("${MINTOMIC_DIR}/src/mintomic" mintomic)
+add_subdirectory("${MINTOMIC_DIR}/src/mintsystem" mintsystem)
+#add_subdirectory("${MINTOMIC_DIR}/src/mintpack" mintpack)
+
 include_directories("${CMAKE_SOURCE_DIR}/src/main/c")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/main/c")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/test/c")

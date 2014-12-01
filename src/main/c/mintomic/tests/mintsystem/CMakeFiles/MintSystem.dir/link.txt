@@ -1,0 +1,2 @@
+/usr/bin/ar cr libMintSystem.a  CMakeFiles/MintSystem.dir/gcc/timer.c.o CMakeFiles/MintSystem.dir/gcc/mutex.c.o CMakeFiles/MintSystem.dir/gcc/semaphore.c.o CMakeFiles/MintSystem.dir/gcc/datetime.c.o
+/usr/bin/ranlib libMintSystem.a

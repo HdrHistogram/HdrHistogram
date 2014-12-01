@@ -5,3 +5,8 @@ install(TARGETS hdr_decoder DESTINATION bin)
 add_executable(hdr_histogram_format_example hdr_histogram_format_example.c)
 target_link_libraries(hdr_histogram_format_example hdr_histogram m z)
 install(TARGETS hdr_histogram_format_example DESTINATION bin)
+
+add_executable(hiccup hiccup.c)
+target_link_libraries(hiccup hdr_histogram Mintomic MintSystem m z pthread)
+install(TARGETS hiccup DESTINATION bin)
+
