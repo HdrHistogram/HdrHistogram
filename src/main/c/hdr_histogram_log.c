@@ -662,7 +662,7 @@ int hdr_log_writer_init(struct hdr_log_writer* writer)
     return 0;
 }
 
-#define LOG_VERION "1.01"
+#define LOG_VERION "1.1"
 #define LOG_MAJOR_VERSION 1
 #define LOG_MINOR_VERSION 1
 
