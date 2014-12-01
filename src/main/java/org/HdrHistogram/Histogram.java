@@ -26,7 +26,7 @@ import java.util.zip.DataFormatException;
  * within the range will thus be no larger than 1/1,000th (or 0.1%) of any value. This example Histogram could
  * be used to track and analyze the counts of observed response times ranging between 1 microsecond and 1 hour
  * in magnitude, while maintaining a value resolution of 1 microsecond up to 1 millisecond, a resolution of
- * 1 millisecond (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At it's
+ * 1 millisecond (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At its
  * maximum tracked value (1 hour), it would still maintain a resolution of 3.6 seconds (or better).
  * <p>
  * Histogram tracks value counts in <b><code>long</code></b> fields. Smaller field types are available in the
@@ -144,7 +144,7 @@ public class Histogram extends AbstractHistogram {
 
     /**
      * Construct a histogram with the same range settings as a given source histogram,
-     * duplicating the source's start/end timestamps (but NOT it's contents)
+     * duplicating the source's start/end timestamps (but NOT its contents)
      * @param source The source histogram to duplicate
      */
     public Histogram(final AbstractHistogram source) {
