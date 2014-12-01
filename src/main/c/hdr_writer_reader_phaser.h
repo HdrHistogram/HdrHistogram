@@ -25,7 +25,6 @@ void _hdr_phaser_set_epoch(mint_atomic64_t* field, int64_t val)
 {
     mint_thread_fence_release();
     mint_store_64_relaxed(field, val);
-    mint_thread_fence_acquire();
     mint_thread_fence_seq_cst();    
 }
 
@@ -36,11 +35,8 @@ int64_t _hdr_phaser_reset_epoch(mint_atomic64_t* field, int64_t initial_value)
     do
     {
         current = _hdr_phaser_get_epoch(field);
-
-        mint_thread_fence_release();
-        result = mint_compare_exchange_strong_64_relaxed(
+        result = mint_compare_exchange_strong_64_seq_cst(
             field, current, initial_value);
-        mint_thread_fence_acquire();
     }
     while (result != current);
 
@@ -82,21 +78,15 @@ void hdr_writer_reader_phaser_destory(struct hdr_writer_reader_phaser* p)
 
 int64_t hdr_phaser_writer_enter(struct hdr_writer_reader_phaser* p)
 {
-    mint_thread_fence_release();
-    int64_t r = mint_fetch_add_64_relaxed(&p->start_epoch, 1);
-    mint_thread_fence_acquire();
-
-    return r;
+    return mint_fetch_add_64_seq_cst(&p->start_epoch, 1);
 }
 
 void hdr_phaser_writer_exit(
     struct hdr_writer_reader_phaser* p, int64_t critical_value_at_enter)
 {
-    mint_thread_fence_release();
     mint_atomic64_t* end_epoch = 
         (critical_value_at_enter < 0) ? &p->odd_end_epoch : &p->even_end_epoch;
-    mint_fetch_add_64_relaxed(end_epoch, 1);
-    mint_thread_fence_acquire();
+    mint_fetch_add_64_seq_cst(end_epoch, 1);
 }
 
 void hdr_phaser_reader_lock(struct hdr_writer_reader_phaser* p)

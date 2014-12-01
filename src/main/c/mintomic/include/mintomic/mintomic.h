@@ -78,6 +78,83 @@ extern "C" {
     #error MINT_PTR_SIZE not set!
 #endif
 
+// With the current API, which separates the operations from the memory fences
+// chosen, it is difficult to use the operations in a semantically meaningful
+// way, such that is it possible to do an efficient sequentially consistent
+// compare and set.
+
+// This code happens to work as both ARM and X86's CAS operations have sufficient
+// barriers to prevent hardware re-ordering.  The mint_signal_fence_seq_cst is
+// a conveience operation to apply a compiler barrier either side of the CAS.
+// In both compiler variants (msvc/gcc) this happens to work as mint_signal_fence_seq_cst
+// is implemented as the necessary compiler barrier.
+
+// This code should be reviewed in the face of any changes to the asm (e.g. new
+// processor types) or additional compilers being added to the mix.
+
+MINT_C_INLINE uint32_t mint_compare_exchange_strong_32_seq_cst(mint_atomic32_t *object, uint32_t expected, uint32_t desired)
+{
+    mint_signal_fence_seq_cst();
+    uint32_t r = mint_compare_exchange_strong_32_relaxed(object, expected, desired);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint32_t mint_fetch_add_32_seq_cst(mint_atomic32_t *object, int32_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint32_t r = mint_fetch_add_32_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint32_t mint_fetch_and_32_seq_cst(mint_atomic32_t *object, uint32_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint32_t r = mint_fetch_and_32_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint32_t mint_fetch_or_32_seq_cst(mint_atomic32_t *object, uint32_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint32_t r = mint_fetch_or_32_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint64_t mint_compare_exchange_strong_64_seq_cst(mint_atomic64_t *object, uint64_t expected, uint64_t desired)
+{
+    mint_signal_fence_seq_cst();
+    uint64_t r = mint_compare_exchange_strong_64_relaxed(object, expected, desired);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint64_t mint_fetch_add_64_seq_cst(mint_atomic64_t *object, int64_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint64_t r = mint_fetch_add_64_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint64_t mint_fetch_and_64_seq_cst(mint_atomic64_t *object, uint64_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint64_t r = mint_fetch_and_64_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
+
+MINT_C_INLINE uint64_t mint_fetch_or_64_seq_cst(mint_atomic64_t *object, uint64_t operand)
+{
+    mint_signal_fence_seq_cst();
+    uint64_t r = mint_fetch_or_64_relaxed(object, operand);
+    mint_signal_fence_seq_cst();
+    return r;
+}
 
 #ifdef __cplusplus
 } // extern "C"
