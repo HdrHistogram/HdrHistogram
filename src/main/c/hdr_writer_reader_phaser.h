@@ -1,3 +1,9 @@
+/**
+ * hdr_histogram.c
+ * Written by Michael Barker and released to the public domain,
+ * as explained at http://creativecommons.org/publicdomain/zero/1.0/
+ */
+
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -126,19 +132,12 @@ void hdr_phaser_flip_phase(
         _hdr_phaser_reset_epoch(&p->start_epoch, initial_start_value);
 
     bool caught_up = false;
-
     do
     {
-        if (next_phase_is_even)
-        {
-            int64_t end_epoch = _hdr_phaser_get_epoch(&p->odd_end_epoch);
-            caught_up = (end_epoch == start_value_at_flip);
-        }
-        else
-        {
-            int64_t end_epoch = _hdr_phaser_get_epoch(&p->even_end_epoch);
-            caught_up = (end_epoch == start_value_at_flip);            
-        }
+        mint_atomic64_t* end_epoch = 
+            next_phase_is_even ? &p->odd_end_epoch : &p->even_end_epoch;
+
+        caught_up = _hdr_phaser_get_epoch(end_epoch) == start_value_at_flip;
 
         if (!caught_up)
         {
