@@ -56,7 +56,7 @@ int hdr_writer_reader_phaser_init(struct hdr_writer_reader_phaser* p)
 
 	p->start_epoch._nonatomic = 0;
 	p->even_end_epoch._nonatomic = 0;
-	p->odd_end_epoch._nonatomic = INT64_MAX;
+	p->odd_end_epoch._nonatomic = INT64_MIN;
 	p->reader_mutex = malloc(sizeof(mint_mutex_t));
 
 	if (!p->reader_mutex)
@@ -127,7 +127,7 @@ void hdr_phaser_flip_phase(
 	}
 	else
 	{
-		initial_start_value = INT64_MAX;
+		initial_start_value = INT64_MIN;
 		_hdr_phaser_set_epoch(&p->odd_end_epoch, initial_start_value);
 	}
 
