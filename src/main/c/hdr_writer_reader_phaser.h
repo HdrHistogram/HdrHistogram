@@ -5,7 +5,7 @@
 #include <mintsystem/mutex.h>
 #include <mintsystem/timer.h>
 
-struct hdr_writer_reader_phaser
+MINT_DECL_ALIGNED(struct, 8) hdr_writer_reader_phaser
 {
 	mint_atomic64_t start_epoch;
 	mint_atomic64_t even_end_epoch;
