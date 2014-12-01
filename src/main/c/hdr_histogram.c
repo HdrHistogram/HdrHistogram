@@ -313,6 +313,8 @@ int hdr_alloc(int64_t highest_trackable_value, int significant_figures, struct h
 void hdr_reset(struct hdr_histogram *h)
 {
      h->total_count=0;
+     h->min_value = INT64_MAX;
+     h->max_value = 0;
      memset((void *) &h->counts, 0, (sizeof(int64_t) * h->counts_len));
      return;
 }
