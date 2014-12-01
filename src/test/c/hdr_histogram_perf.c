@@ -1,5 +1,5 @@
 /**
- * hdr_histogram.c
+ * hdr_histogram_perf.c
  * Written by Michael Barker and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  */

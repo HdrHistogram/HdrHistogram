@@ -1,3 +1,9 @@
+/**
+ * hdr_time.h
+ * Written by Michael Barker and released to the public domain,
+ * as explained at http://creativecommons.org/publicdomain/zero/1.0/
+ */
+
 #ifdef __APPLE__
 #include <mach/clock.h>
 #include <mach/mach.h>
