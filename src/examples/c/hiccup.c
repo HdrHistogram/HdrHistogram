@@ -15,6 +15,7 @@
 #include <signal.h>
 
 #include <hdr_histogram.h>
+#include <hdr_histogram_log.h>
 #include <hdr_interval_recorder.h>
 #include <hdr_time.h>
 
@@ -73,20 +74,32 @@ void* record_hiccups(void* thread_context)
 
 int main(int argc, char** argv)
 {
+    struct timespec timestamp;
+    struct timespec start_timestamp;
+    struct timespec end_timestamp;
     struct hdr_interval_recorder recorder;
+    struct hdr_log_writer log_writer;
     pthread_t recording_thread;
-
-    hdr_init(
-        1, 24L * 60 * 60 * 1000000, 3,
-        (struct hdr_histogram**) &recorder.active._nonatomic);
-
-    hdr_init(
-        1, 24L * 60 * 60 * 1000000, 3, 
-        (struct hdr_histogram**) &recorder.inactive);
 
     if (0 != hdr_interval_recorder_init(&recorder))
     {
         fprintf(stderr, "%s\n", "Failed to init phaser");
+        return -1;
+    }
+
+    if (0 != hdr_init(
+        1, 24L * 60 * 60 * 1000000, 3,
+        (struct hdr_histogram**) &recorder.active._nonatomic))
+    {
+        fprintf(stderr, "%s\n", "Failed to init hdr_histogram");
+        return -1;
+    }
+
+    if (0 != hdr_init(
+        1, 24L * 60 * 60 * 1000000, 3, 
+        (struct hdr_histogram**) &recorder.inactive))
+    {
+        fprintf(stderr, "%s\n", "Failed to init hdr_histogram");
         return -1;
     }
 
@@ -96,14 +109,23 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    hdr_gettime(&start_timestamp);
+    hdr_log_writer_init(&log_writer);
+    hdr_log_write_header(&log_writer, stdout, "foobar", &timestamp);
+
     while (true)
-    {
+    {        
         mint_sleep_millis(5000);
 
         hdr_reset(recorder.inactive);
         struct hdr_histogram* h = hdr_interval_recorder_sample(&recorder);
 
-        hdr_percentiles_print(h, stdout, 5, 1.0, CLASSIC);
+        hdr_gettime(&end_timestamp);
+        timestamp = start_timestamp;
+
+        hdr_gettime(&start_timestamp);
+
+        hdr_log_write(&log_writer, stdout, &timestamp, &end_timestamp, h);
     }
 
     pthread_exit(NULL);
