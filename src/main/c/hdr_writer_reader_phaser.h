@@ -4,6 +4,9 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+#ifndef HDR_WRITER_READER_PHASER_H
+#define HDR_WRITER_READER_PHASER_H 1
+
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -153,3 +156,5 @@ void hdr_phaser_flip_phase(
     }
     while (!caught_up);
 }
+
+#endif

@@ -15,16 +15,8 @@
 #include <signal.h>
 
 #include <hdr_histogram.h>
-#include <hdr_writer_reader_phaser.h>
+#include <hdr_interval_recorder.h>
 #include <hdr_time.h>
-
-struct thread_data
-{
-    mint_atomicPtr_t active_histogram;
-    struct hdr_histogram* inactive_histogram;
-
-    struct hdr_writer_reader_phaser phaser;
-};
 
 int64_t diff(struct timespec t0, struct timespec t1)
 {
@@ -35,14 +27,21 @@ int64_t diff(struct timespec t0, struct timespec t1)
     return delta_us;
 }
 
+void update_histogram(void* data, void* arg)
+{
+    struct hdr_histogram* h = data;
+    int64_t* values = arg;
+
+    hdr_record_value(h, values[0]);
+}
+
 void* record_hiccups(void* thread_context)
 {
     struct pollfd fd;
-    struct thread_data* data = thread_context;
     struct timespec t0;
     struct timespec t1;
-    struct hdr_histogram* h;
     struct itimerspec timeout; 
+    struct hdr_interval_recorder* r = thread_context;
 
     memset(&fd, 0, sizeof(struct pollfd));
     memset(&timeout, 0, sizeof(struct itimerspec));
@@ -66,63 +65,32 @@ void* record_hiccups(void* thread_context)
         int64_t delta_us = diff(t0, t1) - 1000;
         delta_us = delta_us < 0 ? 0 : delta_us;
 
-        int64_t val = hdr_phaser_writer_enter(&data->phaser);
-
-        h = mint_load_ptr_relaxed(&data->active_histogram);
-        mint_thread_fence_acquire();
-
-        hdr_record_value(h, delta_us);
-
-        hdr_phaser_writer_exit(&data->phaser, val);
+        hdr_interval_recorder_update(r, update_histogram, &delta_us);
     }
 
     pthread_exit(NULL);
 }
 
-struct hdr_histogram* sample(struct thread_data* data)
-{
-    struct hdr_histogram* temp;
-
-    hdr_reset(data->inactive_histogram);
-
-    hdr_phaser_reader_lock(&data->phaser);
-
-    temp = data->inactive_histogram;
-    data->inactive_histogram =
-        mint_load_ptr_relaxed(&data->active_histogram);
-    mint_thread_fence_acquire();
-
-    mint_thread_fence_release();
-    mint_store_ptr_relaxed(&data->active_histogram, temp);
-    mint_thread_fence_acquire();
-    mint_thread_fence_seq_cst();
-
-    hdr_phaser_flip_phase(&data->phaser, 0);
-
-    hdr_phaser_reader_unlock(&data->phaser);
-
-    return data->inactive_histogram;
-}
-
 int main(int argc, char** argv)
 {
-    struct thread_data data;
+    struct hdr_interval_recorder recorder;
     pthread_t recording_thread;
 
     hdr_init(
         1, 24L * 60 * 60 * 1000000, 3,
-        (struct hdr_histogram**) &data.active_histogram._nonatomic);
+        (struct hdr_histogram**) &recorder.active._nonatomic);
 
     hdr_init(
-        1, 24L * 60 * 60 * 1000000, 3, &data.inactive_histogram);
+        1, 24L * 60 * 60 * 1000000, 3, 
+        (struct hdr_histogram**) &recorder.inactive);
 
-    if (0 != hdr_writer_reader_phaser_init(&data.phaser))
+    if (0 != hdr_interval_recorder_init(&recorder))
     {
         fprintf(stderr, "%s\n", "Failed to init phaser");
         return -1;
     }
 
-    if (pthread_create(&recording_thread, NULL, record_hiccups, &data))
+    if (pthread_create(&recording_thread, NULL, record_hiccups, &recorder))
     {
         fprintf(stderr, "%s\n", "Failed to create thread");
         return -1;
@@ -132,7 +100,9 @@ int main(int argc, char** argv)
     {
         mint_sleep_millis(5000);
 
-        struct hdr_histogram* h = sample(&data);
+        hdr_reset(recorder.inactive);
+        struct hdr_histogram* h = hdr_interval_recorder_sample(&recorder);
+
         hdr_percentiles_print(h, stdout, 5, 1.0, CLASSIC);
     }
 
