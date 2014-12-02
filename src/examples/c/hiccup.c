@@ -13,6 +13,10 @@
 #include <poll.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include <hdr_histogram.h>
 #include <hdr_histogram_log.h>
@@ -72,6 +76,49 @@ void* record_hiccups(void* thread_context)
     pthread_exit(NULL);
 }
 
+struct config_t
+{
+    int interval;
+    const char* filename;
+};
+
+const char* USAGE =
+"hiccup [-i <interval>] [-f <filename>]\n"
+"  interval: <number> Time in seconds between samples (default 1).\n"
+"  filename: <string> Name of the file to log to (default stdout).\n";
+
+int handle_opts(int argc, char** argv, struct config_t* config)
+{
+    int c;
+    int interval = 1;
+
+    while ((c = getopt(argc, argv, "i:f:")) != -1)
+    {
+        switch (c)
+        {
+        case 'h':
+            return 0;
+
+        case 'i':
+            interval = atoi(optarg);
+            if (interval < 1)
+            {
+                return 0;
+            }
+
+            break;
+        case 'f':
+            config->filename = optarg;
+            break;
+        default:
+            return 0;
+        }
+    }
+
+    config->interval = interval < 1 ? 1 : interval;
+    return 1;
+}
+
 int main(int argc, char** argv)
 {
     struct timespec timestamp;
@@ -79,7 +126,29 @@ int main(int argc, char** argv)
     struct timespec end_timestamp;
     struct hdr_interval_recorder recorder;
     struct hdr_log_writer log_writer;
+    struct config_t config;
     pthread_t recording_thread;
+    FILE* output = stdout;
+
+    memset(&config, 0, sizeof(struct config_t));
+    if (!handle_opts(argc, argv, &config))
+    {
+        printf(USAGE);
+        return 0;
+    }
+
+    if (config.filename)
+    {
+        output = fopen(config.filename, "a+");
+        if (!output)
+        {
+            fprintf(
+                stderr, "Failed to open/create file: %s, %s", 
+                config.filename, strerror(errno));
+
+            return -1;
+        }
+    }
 
     if (0 != hdr_interval_recorder_init(&recorder))
     {
@@ -111,11 +180,11 @@ int main(int argc, char** argv)
 
     hdr_gettime(&start_timestamp);
     hdr_log_writer_init(&log_writer);
-    hdr_log_write_header(&log_writer, stdout, "foobar", &timestamp);
+    hdr_log_write_header(&log_writer, output, "foobar", &timestamp);
 
     while (true)
     {        
-        mint_sleep_millis(5000);
+        sleep(config.interval);
 
         hdr_reset(recorder.inactive);
         struct hdr_histogram* h = hdr_interval_recorder_sample(&recorder);
@@ -125,7 +194,8 @@ int main(int argc, char** argv)
 
         hdr_gettime(&start_timestamp);
 
-        hdr_log_write(&log_writer, stdout, &timestamp, &end_timestamp, h);
+        hdr_log_write(&log_writer, output, &timestamp, &end_timestamp, h);
+        fflush(output);
     }
 
     pthread_exit(NULL);
