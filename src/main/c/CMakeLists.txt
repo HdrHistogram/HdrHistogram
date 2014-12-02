@@ -1,6 +1,6 @@
 
-add_library(hdr_histogram SHARED hdr_histogram.c hdr_histogram_log.c)
-add_library(hdr_histogram_static STATIC hdr_histogram.c hdr_histogram_log.c)
+add_library(hdr_histogram SHARED hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c)
+add_library(hdr_histogram_static STATIC hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c)
 
 install(TARGETS hdr_histogram DESTINATION lib)
 install(TARGETS hdr_histogram_static DESTINATION lib)
