@@ -18,21 +18,22 @@
 int main(int argc, char** argv)
 {
     int rc = 0;
-    if (argc < 2)
-    {
-        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
-        return -1;
-    }
+    FILE* f;
 
-    FILE* f = fopen(argv[1], "r");
+    if (argc == 1)
+    {
+        f = stdin;
+    }
+    else
+    {
+        f = fopen(argv[1], "r");
+    }
 
     if (!f)
     {
         fprintf(stderr, "Failed to open file(%s):%s\n", argv[1], strerror(errno));
         return -1;
     }
-
-    printf("Processing file (%s)\n", argv[1]);
 
     struct hdr_log_reader reader;
     if (hdr_log_reader_init(&reader))
