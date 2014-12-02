@@ -17,7 +17,6 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     AbstractHistogram histogram;
     long savedHistogramTotalRawCount;
 
-
     int currentIndex;
     long currentValueAtIndex;
 
@@ -27,13 +26,12 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     long totalCountToPrevIndex;
 
     long totalCountToCurrentIndex;
-    long totalValueToCurrentIndex;
 
     long arrayTotalCount;
     long countAtThisValue;
 
     private boolean freshSubBucket;
-    HistogramIterationValue currentIterationValue;
+    final HistogramIterationValue currentIterationValue = new HistogramIterationValue();
 
     private double integerToDoubleValueConversionRatio;
 
@@ -48,11 +46,8 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         this.prevValueIteratedTo = 0;
         this.totalCountToPrevIndex = 0;
         this.totalCountToCurrentIndex = 0;
-        this.totalValueToCurrentIndex = 0;
         this.countAtThisValue = 0;
         this.freshSubBucket = true;
-        if (this.currentIterationValue == null)
-            this.currentIterationValue = new HistogramIterationValue();
         currentIterationValue.reset();
     }
 
@@ -80,14 +75,13 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
             countAtThisValue = histogram.getCountAtIndex(currentIndex);
             if (freshSubBucket) { // Don't add unless we've incremented since last bucket...
                 totalCountToCurrentIndex += countAtThisValue;
-                totalValueToCurrentIndex += countAtThisValue * histogram.medianEquivalentValue(currentValueAtIndex);
                 freshSubBucket = false;
             }
             if (reachedIterationLevel()) {
                 long valueIteratedTo = getValueIteratedTo();
                 currentIterationValue.set(valueIteratedTo, prevValueIteratedTo, countAtThisValue,
                         (totalCountToCurrentIndex - totalCountToPrevIndex), totalCountToCurrentIndex,
-                        totalValueToCurrentIndex, ((100.0 * totalCountToCurrentIndex) / arrayTotalCount),
+                        ((100.0 * totalCountToCurrentIndex) / arrayTotalCount),
                         getPercentileIteratedTo(), integerToDoubleValueConversionRatio);
                 prevValueIteratedTo = valueIteratedTo;
                 totalCountToPrevIndex = totalCountToCurrentIndex;
