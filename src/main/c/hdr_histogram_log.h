@@ -30,10 +30,6 @@
 #define HDR_INFLATE_FAIL -29994
 #define HDR_LOG_INVALID_VERSION -29993
 
-#ifndef __STDC_IEC_559__
-#error "Need ieee 754 floating point"
-#endif
-
 struct hdr_log_writer
 {
 };

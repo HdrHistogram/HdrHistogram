@@ -7,7 +7,7 @@
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <zlib.h>
@@ -342,7 +342,7 @@ static uint64_t double_to_int64_bits(double d)
     } x;
 
     x.d = d;
-    
+
     return x.l;
 }
 
@@ -448,15 +448,15 @@ cleanup:
 void hdr_reset_internal_counters(struct hdr_histogram* h);
 
 static int hdr_decode_compressed_v0(
-    _compression_flyweight* compression_flyweight, 
-    size_t length, 
+    _compression_flyweight* compression_flyweight,
+    size_t length,
     struct hdr_histogram** histogram)
 {
     struct hdr_histogram* h = NULL;
     int result = 0;
-    int64_t* counts_array = NULL;    
+    int64_t* counts_array = NULL;
     _encoding_flyweight_v0 encoding_flyweight;
-    z_stream strm;    
+    z_stream strm;
 
     strm_init(&strm);
     if (inflateInit(&strm) != Z_OK)
@@ -538,15 +538,15 @@ cleanup:
 }
 
 static int hdr_decode_compressed_v1(
-    _compression_flyweight* compression_flyweight, 
-    size_t length, 
+    _compression_flyweight* compression_flyweight,
+    size_t length,
     struct hdr_histogram** histogram)
 {
     struct hdr_histogram* h = NULL;
     int result = 0;
-    int64_t* counts_array = NULL;    
+    int64_t* counts_array = NULL;
     _encoding_flyweight_v1 encoding_flyweight;
-    z_stream strm;    
+    z_stream strm;
 
     strm_init(&strm);
     if (inflateInit(&strm) != Z_OK)
@@ -624,7 +624,7 @@ cleanup:
         free(h);
     }
 
-    return result;    
+    return result;
 }
 
 int hdr_decode_compressed(
@@ -765,7 +765,7 @@ int hdr_log_write(
     }
 
     if (fprintf(
-        file, "%d.%d,%d.%d,%ld.0,%s\n",
+        file, "%d.%d,%d.%d,%"PRIu64".0,%s\n",
         (int) start_timestamp->tv_sec, (int) (start_timestamp->tv_nsec / 1000000),
         (int) end_timestamp->tv_sec, (int) (end_timestamp->tv_nsec / 1000000),
         hdr_max(histogram),
