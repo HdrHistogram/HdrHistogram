@@ -10,57 +10,56 @@ package org.HdrHistogram;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * {@link org.HdrHistogram.IntervalDoubleHistogramRecorder} records values, and provides stable
- * interval histograms from live recorded data without interrupting or stalling active recording
- * of values. Each interval histogram provided contains all value counts accumulated since the
- * previous interval histogram was taken.
+ * {@link SingleWriterIntervalDoubleHistogramRecorder} records values, and provides stable interval histograms from
+ * live recorded data without interrupting or stalling active recording of values. Each interval
+ * histogram provided contains all value counts accumulated since the previous interval histogram
+ * was taken.
  * <p>
  * This pattern is commonly used in logging interval histogram information while recoding is ongoing.
  * <p>
- * {@link IntervalDoubleHistogramRecorder} supports concurrent
- * {@link IntervalDoubleHistogramRecorder#recordValue} or
- * {@link IntervalDoubleHistogramRecorder#recordValueWithExpectedInterval} calls.
- * Recording calls are wait-free on architectures that support atomic increment operations, and
- * are lock-free on architectures that do no.
+ * {@link SingleWriterIntervalDoubleHistogramRecorder} expects only a single thread (the "single writer") to
+ * call {@link SingleWriterIntervalDoubleHistogramRecorder#recordValue} or
+ * {@link SingleWriterIntervalDoubleHistogramRecorder#recordValueWithExpectedInterval} at any point in time.
+ * It DOES NOT support concurrent recording calls.
  *
  */
 
-public class IntervalDoubleHistogramRecorder {
+public class SingleWriterIntervalDoubleHistogramRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile InternalConcurrentDoubleHistogram activeHistogram;
-    private InternalConcurrentDoubleHistogram inactiveHistogram;
+    private volatile InternalDoubleHistogram activeHistogram;
+    private InternalDoubleHistogram inactiveHistogram;
 
     /**
-     * Construct an auto-resizing {@link IntervalDoubleHistogramRecorder} using a precision stated as a number
-     * of significant decimal digits.
+     * Construct an auto-resizing {@link SingleWriterIntervalDoubleHistogramRecorder} using a precision stated as a
+     * number of significant decimal digits.
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalDoubleHistogramRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+    public SingleWriterIntervalDoubleHistogramRecorder(final int numberOfSignificantValueDigits) {
+        activeHistogram = new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
     }
 
     /**
-     * Construct a {@link IntervalDoubleHistogramRecorder} dynamic range of values to cover and a number of significant
-     * decimal digits.
+     * Construct a {@link SingleWriterIntervalDoubleHistogramRecorder} dynamic range of values to cover and a number
+     * of significant decimal digits.
      *
      * @param highestToLowestValueRatio specifies the dynamic range to use (as a ratio)
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalDoubleHistogramRecorder(final long highestToLowestValueRatio,
-                                           final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalConcurrentDoubleHistogram(
+    public SingleWriterIntervalDoubleHistogramRecorder(final long highestToLowestValueRatio,
+                                                       final int numberOfSignificantValueDigits) {
+        activeHistogram = new InternalDoubleHistogram(
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentDoubleHistogram(
+        inactiveHistogram = new InternalDoubleHistogram(
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
     }
 
@@ -108,7 +107,7 @@ public class IntervalDoubleHistogramRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()} will reset
+     * Calling {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
@@ -121,22 +120,23 @@ public class IntervalDoubleHistogramRecorder {
      * Get an interval histogram, which will include a stable, consistent view of all value counts
      * accumulated since the last interval histogram was taken.
      * <p>
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)}
      * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
      * and content copying operations, and is therefore siginificantly more efficient for repeated use than
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()} and
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
-     * {@code histogramToRecycle} must
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram()} and
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The
+     * provided {@code histogramToRecycle} must
      * be either be null or an interval histogram returned by a previous call to
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} or
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()}.
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram()}.
      * <p>
      * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
      * the same interval histogram instance is recycled more than once, behavior is undefined.
      * <p>
-     * Calling {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * Calling
+     * {@link SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
      * counts for the next interval
      *
@@ -146,13 +146,13 @@ public class IntervalDoubleHistogramRecorder {
      */
     public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
         if (histogramToRecycle == null) {
-                histogramToRecycle = new InternalConcurrentDoubleHistogram(inactiveHistogram);
+            histogramToRecycle = new InternalDoubleHistogram(inactiveHistogram);
         }
         // Verify that replacement histogram can validly be used as an inactiuve histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
         try {
             recordingPhaser.readerLock();
-            inactiveHistogram = (InternalConcurrentDoubleHistogram) histogramToRecycle;
+            inactiveHistogram = (InternalDoubleHistogram) histogramToRecycle;
             performIntervalSample();
             return inactiveHistogram;
         } finally {
@@ -164,8 +164,8 @@ public class IntervalDoubleHistogramRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@link org.HdrHistogram.IntervalDoubleHistogramRecorder#getIntervalHistogramInto}() will reset
-     * the value counts, and start accumulating value counts for the next interval.
+     * Calling {@link org.HdrHistogram.SingleWriterIntervalDoubleHistogramRecorder#getIntervalHistogramInto}() will
+     * reset the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
      */
@@ -189,7 +189,7 @@ public class IntervalDoubleHistogramRecorder {
             recordingPhaser.readerLock();
 
             // Swap active and inactive histograms:
-            final InternalConcurrentDoubleHistogram tempHistogram = inactiveHistogram;
+            final InternalDoubleHistogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -207,22 +207,22 @@ public class IntervalDoubleHistogramRecorder {
         }
     }
 
-    private class InternalConcurrentDoubleHistogram extends ConcurrentDoubleHistogram {
+    private class InternalDoubleHistogram extends DoubleHistogram {
         private final long containingInstanceId;
 
-        private InternalConcurrentDoubleHistogram(long id, int numberOfSignificantValueDigits) {
+        private InternalDoubleHistogram(long id, int numberOfSignificantValueDigits) {
             super(numberOfSignificantValueDigits);
             this.containingInstanceId = id;
         }
 
-        private InternalConcurrentDoubleHistogram(long id,
+        private InternalDoubleHistogram(long id,
                                         long highestToLowestValueRatio,
                                         int numberOfSignificantValueDigits) {
             super(highestToLowestValueRatio, numberOfSignificantValueDigits);
             this.containingInstanceId = id;
         }
 
-        private InternalConcurrentDoubleHistogram(InternalConcurrentDoubleHistogram source) {
+        private InternalDoubleHistogram(InternalDoubleHistogram source) {
             super(source);
             this.containingInstanceId = source.containingInstanceId;
         }
@@ -230,10 +230,10 @@ public class IntervalDoubleHistogramRecorder {
 
     void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
         boolean bad = true;
-        if ((replacementHistogram instanceof InternalConcurrentDoubleHistogram)
+        if ((replacementHistogram instanceof InternalDoubleHistogram)
                 &&
-                (((InternalConcurrentDoubleHistogram) replacementHistogram).containingInstanceId ==
-                        ((InternalConcurrentDoubleHistogram) activeHistogram).containingInstanceId)
+                (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
+                        ((InternalDoubleHistogram) activeHistogram).containingInstanceId)
                 &&
                 (replacementHistogram.getNumberOfSignificantValueDigits() ==
                         activeHistogram.getNumberOfSignificantValueDigits())

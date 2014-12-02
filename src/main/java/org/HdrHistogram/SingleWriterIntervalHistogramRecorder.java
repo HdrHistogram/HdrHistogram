@@ -10,46 +10,45 @@ package org.HdrHistogram;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * {@link IntervalHistogramRecorder} records values, and provides stable interval histograms from
+ * {@link SingleWriterIntervalHistogramRecorder} records values, and provides stable interval histograms from
  * live recorded data without interrupting or stalling active recording of values. Each interval
  * histogram provided contains all value counts accumulated since the previous interval histogram
  * was taken.
  * <p>
  * This pattern is commonly used in logging interval histogram information while recoding is ongoing.
  * <p>
- * {@link IntervalHistogramRecorder} supports concurrent
- * {@link org.HdrHistogram.IntervalHistogramRecorder#recordValue} or
- * {@link org.HdrHistogram.IntervalHistogramRecorder#recordValueWithExpectedInterval} calls.
- * Recording calls are wait-free on architectures that support atomic increment operations, and
- * are lock-free on architectures that do no.
- *
+ * {@link SingleWriterIntervalHistogramRecorder} expects only a single thread (the "single writer") to
+ * call {@link SingleWriterIntervalHistogramRecorder#recordValue} or
+ * {@link SingleWriterIntervalHistogramRecorder#recordValueWithExpectedInterval} at any point in time.
+ * It DOES NOT safely support concurrent recording calls.
  */
 
-public class IntervalHistogramRecorder {
+public class SingleWriterIntervalHistogramRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile Histogram activeHistogram;
-    private Histogram inactiveHistogram;
+    private volatile InternalHistogram activeHistogram;
+    private InternalHistogram inactiveHistogram;
 
     /**
-     * Construct an auto-resizing {@link IntervalHistogramRecorder} with a lowest discernible value of
+     * Construct an auto-resizing {@link SingleWriterIntervalHistogramRecorder} with a lowest discernible value of
      * 1 and an auto-adjusting highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalHistogramRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
+    public SingleWriterIntervalHistogramRecorder(final int numberOfSignificantValueDigits) {
+        activeHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
     }
 
     /**
-     * Construct a {@link IntervalHistogramRecorder} given the highest value to be tracked and a number of significant
-     * decimal digits. The histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
+     * Construct a {@link SingleWriterIntervalHistogramRecorder} given the highest value to be tracked and a number
+     * of significant decimal digits. The histogram will be constructed to implicitly track (distinguish from 0)
+     * values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
@@ -57,16 +56,16 @@ public class IntervalHistogramRecorder {
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalHistogramRecorder(final long highestTrackableValue,
-                                     final int numberOfSignificantValueDigits) {
+    public SingleWriterIntervalHistogramRecorder(final long highestTrackableValue,
+                                                 final int numberOfSignificantValueDigits) {
         this(1, highestTrackableValue, numberOfSignificantValueDigits);
     }
 
     /**
-     * Construct a {@link IntervalHistogramRecorder} given the Lowest and highest values to be tracked and a number
-     * of significant decimal digits. Providing a lowestDiscernibleValue is useful is situations where the units used
-     * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
-     * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
+     * Construct a {@link SingleWriterIntervalHistogramRecorder} given the Lowest and highest values to be tracked
+     * and a number of significant decimal digits. Providing a lowestDiscernibleValue is useful is situations where
+     * the units used for the histogram's values are much smaller that the minimal accuracy required. E.g. when
+     * tracking time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
      * proper value for lowestDiscernibleValue would be 1000.
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
@@ -78,12 +77,12 @@ public class IntervalHistogramRecorder {
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalHistogramRecorder(final long lowestDiscernibleValue,
-                                     final long highestTrackableValue,
-                                     final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalAtomicHistogram(
+    public SingleWriterIntervalHistogramRecorder(final long lowestDiscernibleValue,
+                                                 final long highestTrackableValue,
+                                                 final int numberOfSignificantValueDigits) {
+        activeHistogram = new InternalHistogram(
                 instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalAtomicHistogram(
+        inactiveHistogram = new InternalHistogram(
                 instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
     }
 
@@ -131,7 +130,7 @@ public class IntervalHistogramRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link IntervalHistogramRecorder#getIntervalHistogram()} will reset
+     * Calling {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
@@ -144,22 +143,22 @@ public class IntervalHistogramRecorder {
      * Get an interval histogram, which will include a stable, consistent view of all value counts
      * accumulated since the last interval histogram was taken.
      * <p>
-     * {@link IntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)}
      * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
      * and content copying operations, and is therefore siginificantly more efficient for repeated use than
-     * {@link IntervalHistogramRecorder#getIntervalHistogram()} and
-     * {@link IntervalHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
+     * {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram()} and
+     * {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
      * {@code histogramToRecycle} must
      * be either be null or an interval histogram returned by a previous call to
-     * {@link IntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} or
-     * {@link IntervalHistogramRecorder#getIntervalHistogram()}.
+     * {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram()}.
      * <p>
      * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
      * the same interval histogram instance is recycled more than once, behavior is undefined.
      * <p>
-     * Calling {@link IntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * Calling {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogram(Histogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
      * counts for the next interval
      *
@@ -169,23 +168,13 @@ public class IntervalHistogramRecorder {
      */
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
         if (histogramToRecycle == null) {
-            if (inactiveHistogram instanceof InternalAtomicHistogram) {
-                histogramToRecycle = new InternalAtomicHistogram(
-                        instanceId,
-                        inactiveHistogram.getLowestDiscernibleValue(),
-                        inactiveHistogram.getHighestTrackableValue(),
-                        inactiveHistogram.getNumberOfSignificantValueDigits());
-            } else {
-                histogramToRecycle = new InternalConcurrentHistogram(
-                        instanceId,
-                        inactiveHistogram.getNumberOfSignificantValueDigits());
-            }
+            histogramToRecycle = new InternalHistogram(inactiveHistogram);
         }
         // Verify that replacement histogram can validly be used as an inactiuve histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
         try {
             recordingPhaser.readerLock();
-            inactiveHistogram = histogramToRecycle;
+            inactiveHistogram = (InternalHistogram) histogramToRecycle;
             performIntervalSample();
             return inactiveHistogram;
         } finally {
@@ -197,7 +186,7 @@ public class IntervalHistogramRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@link IntervalHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()} will reset
+     * Calling {@link SingleWriterIntervalHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
@@ -222,7 +211,7 @@ public class IntervalHistogramRecorder {
             recordingPhaser.readerLock();
 
             // Swap active and inactive histograms:
-            final Histogram tempHistogram = inactiveHistogram;
+            final InternalHistogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -240,58 +229,47 @@ public class IntervalHistogramRecorder {
         }
     }
 
-    private class InternalAtomicHistogram extends AtomicHistogram {
+    private class InternalHistogram extends Histogram {
         private final long containingInstanceId;
 
-        private InternalAtomicHistogram(long id,
-                                        long lowestDiscernibleValue,
-                                        long highestTrackableValue,
-                                        int numberOfSignificantValueDigits) {
+        private InternalHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+
+        private InternalHistogram(long id,
+                                  long lowestDiscernibleValue,
+                                  long highestTrackableValue,
+                                  int numberOfSignificantValueDigits) {
             super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
             this.containingInstanceId = id;
         }
-    }
 
-    private class InternalConcurrentHistogram extends ConcurrentHistogram {
-        private final long containingInstanceId;
-
-        private InternalConcurrentHistogram(long id, int numberOfSignificantValueDigits) {
-            super(numberOfSignificantValueDigits);
-            this.containingInstanceId = id;
+        private InternalHistogram(InternalHistogram source) {
+            super(source);
+            this.containingInstanceId = source.containingInstanceId;
         }
     }
 
     void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
         boolean bad = true;
-        if (replacementHistogram instanceof InternalAtomicHistogram) {
-            if ((activeHistogram instanceof InternalAtomicHistogram)
-                    &&
-                    (replacementHistogram.getNumberOfSignificantValueDigits() ==
-                            activeHistogram.getNumberOfSignificantValueDigits())
-                    &&
-                    (replacementHistogram.getLowestDiscernibleValue() ==
-                            activeHistogram.getLowestDiscernibleValue())
-                    &&
-                    (replacementHistogram.getHighestTrackableValue() ==
-                            activeHistogram.getHighestTrackableValue())
-                    &&
-                    (((InternalAtomicHistogram)replacementHistogram).containingInstanceId ==
-                            ((InternalAtomicHistogram)activeHistogram).containingInstanceId)
-                    ) {
-                bad = false;
-            }
-        } else if (replacementHistogram instanceof InternalConcurrentHistogram) {
-            if ((activeHistogram instanceof InternalAtomicHistogram)
-                    &&
-                    (replacementHistogram.getNumberOfSignificantValueDigits() ==
-                    activeHistogram.getNumberOfSignificantValueDigits())
-                    &&
-                    (((InternalConcurrentHistogram)replacementHistogram).containingInstanceId ==
-                            ((InternalConcurrentHistogram)activeHistogram).containingInstanceId)
-                    ) {
-                bad = false;
-            }
+        if ((replacementHistogram instanceof InternalHistogram)
+                &&
+                (((InternalHistogram) replacementHistogram).containingInstanceId ==
+                        ((InternalHistogram) activeHistogram).containingInstanceId)
+                &&
+                (replacementHistogram.getNumberOfSignificantValueDigits() ==
+                        activeHistogram.getNumberOfSignificantValueDigits())
+                &&
+                (activeHistogram.isAutoResize() || (replacementHistogram.getLowestDiscernibleValue() ==
+                        activeHistogram.getLowestDiscernibleValue()))
+                &&
+                (activeHistogram.isAutoResize() || (replacementHistogram.getHighestTrackableValue() ==
+                        activeHistogram.getHighestTrackableValue()))
+                ) {
+            bad = false;
         }
+
         if (bad) {
             throw new IllegalArgumentException("replacement histogram must have been obtained via a previous" +
                     "getIntervalHistogram() call from this " + this.getClass().getName() +" instance");
