@@ -22,12 +22,18 @@
  * <p>
  * The HdrHistogram package was specifically designed with latency and performance sensitive applications in mind.
  * Experimental u-benchmark measurements show value recording times as low as 3-6 nanoseconds on modern
- * (circa 2012) Intel CPUs. All Histogram variants maintain a fixed cost in both space and time. A Histogram's memory
- * footprint is constant, with no allocation operations involved in recording data values or in iterating through them.
- * The memory footprint is fixed regardless of the number of data value samples recorded, and depends solely on
- * the dynamic range and precision chosen. The amount of work involved in recording a sample is constant, and
- * directly computes storage index locations such that no iteration or searching is ever involved in recording
- * data values.
+ * (circa 2012) Intel CPUs. All Histogram variants can maintain a fixed cost in both space and time. When not
+ * configured to auto-resize, a Histogram's memory footprint is constant, with no allocation operations involved in
+ * recording data values or in iterating through them. The memory footprint is fixed regardless of the number of data
+ * value samples recorded, and depends solely on the dynamic range and precision chosen. The amount of work involved in
+ * recording a sample is constant, and directly computes storage index locations such that no iteration or searching
+ * is ever involved in recording data values.
+ * <p>
+ *     NOTE: Histograms can optionally be configured to auto-resize their dynamic range as a convenience feature.
+ *     When configured to auto-resize, recording operations that need to expand a histogram will auto-resize its
+ *     dynamic range to include recorded values as they are encountered. Note that recording calls that cause
+ *     auto-resizing may take longer to execute, and that resizing incurrs allocation and copying of internal data
+ *     structures.
  * </p>
  * <p>
  * The combination of high dynamic range and precision is useful for collection and accurate post-recording
@@ -70,7 +76,7 @@
  * .
  * .
  * // Report histogram percentiles, expressed in msec units:
- * histogram.{@link org.HdrHistogram.AbstractHistogram#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0);
+ * histogram.{@link org.HdrHistogram.AbstractHistogram#outputPercentileDistribution(java.io.PrintStream, Double) outputPercentileDistribution}(histogramLog, 1000.0)};
  * </code>
  * </pre>
  * Specifying 3 decimal points of precision in this example guarantees that value quantization within the value range
@@ -89,7 +95,8 @@
  * <b><code>short</code></b> fields respectively, are provided for use cases where smaller count ranges are practical
  * and smaller overall storage is beneficial (e.g. systems where tens of thousands of in-memory histogram are
  * being tracked).</li>
- *  <li>{@link org.HdrHistogram.AtomicHistogram} and {@link org.HdrHistogram.SynchronizedHistogram}</li>
+ *  <li>{@link org.HdrHistogram.AtomicHistogram}, {@link org.HdrHistogram.ConcurrentHistogram}
+ *  and {@link org.HdrHistogram.SynchronizedHistogram}</li>
  * </ul>
  * <p>
  * Internally, data in HdrHistogram variants is maintained using a concept somewhat similar to that of floating
@@ -105,16 +112,20 @@
  * </p>
  * <h3>Synchronization and concurrent access</h3>
  * In the interest of keeping value recording cost to a minimum, the commonly used {@link org.HdrHistogram.Histogram}
- * class and it's {@link org.HdrHistogram.IntCountsHistogram} and {@link org.HdrHistogram.ShortCountsHistogram} variants are NOT
- * internally synchronized, and do NOT use atomic variables. Callers wishing to make potentially concurrent,
- * multi-threaded updates or queries against Histogram objects should either take care to externally synchronize and/or
- * order their access, or use the {@link org.HdrHistogram.SynchronizedHistogram} or
- * {@link org.HdrHistogram.AtomicHistogram} variants.
+ * class and it's {@link org.HdrHistogram.IntCountsHistogram} and {@link org.HdrHistogram.ShortCountsHistogram}
+ * variants are NOT internally synchronized, and do NOT use atomic variables. Callers wishing to make potentially
+ * concurrent, multi-threaded updates or queries against Histogram objects should either take care to externally
+ * synchronize and/or order their access, or use the {@link org.HdrHistogram.SynchronizedHistogram},
+ * {@link org.HdrHistogram.AtomicHistogram}, or {@link org.HdrHistogram.ConcurrentHistogram} variants.
  * <p>
  * It's worth mentioning that since Histogram objects are additive, it is common practice to use per-thread,
  * non-synchronized histograms for the recording fast path, and "flipping" the actively recorded-to histogram
  * (usually with some non-locking variants on the fast path) and having a summary/reporting thread perform
- * histogram aggregation math across time and/or threads.
+ * histogram aggregation math across time and/or threads. When such continuous non-blocking recording operation
+ * (concurrent or not) is desired even when sampling, analyzing, or reporting operations are needed, consider using
+ * the {@link org.HdrHistogram.IntervalHistogramRecorder} and
+ * {@link org.HdrHistogram.SingleWriterIntervalHistogramRecorder} recorder variants that were specifically designed
+ * for that purpose.
  * </p>
  * <h3>Iteration</h3>
  * Histograms supports multiple convenient forms of iterating through the histogram data set, including linear,
@@ -250,6 +261,29 @@
  * much more accurately reflect the response time distribution that a random, uncoordinated request would have
  * experienced.
  * </p>
+ * <h3>Floating point values and DoubleHistogram variants</h3>
+ * The above discussion relates to integer value histograms (the various subclasses of
+ * {@link org.HdrHistogram.AbstractHistogram} and their related supporting classes). HdrHistogram supports floating
+ * point value recording and reporting with a similar set of classes, including the
+ * {@link org.HdrHistogram.DoubleHistogram}, {@link org.HdrHistogram.ConcurrentDoubleHistogram} and
+ * {@link org.HdrHistogram.SynchronizedDoubleHistogram} histogram classes. Support for floating point value
+ * iteration is provided with {@link org.HdrHistogram.DoubleHistogramIterationValue} and related iterator classes (
+ * {@link org.HdrHistogram.DoubleLinearIterator}, {@link org.HdrHistogram.DoubleLogarithmicIterator},
+ * {@link org.HdrHistogram.DoublePercentileIterator}, {@link org.HdrHistogram.DoubleRecordedValuesIterator},
+ * {@link org.HdrHistogram.DoubleAllValuesIterator}). Support for interval recording is provided with
+ * {@link org.HdrHistogram.IntervalDoubleHistogramRecorder} and
+ * {@link org.HdrHistogram.SingleWriterIntervalDoubleHistogramRecorder}.
+ * <p>
+ * <p/>
+ * <h4>Auto-ranging in floating point histograms</h4>
+ * Unlike integer value based histograms, the specific value range tracked by a {@link
+ * org.HdrHistogram.DoubleHistogram} (and variants) is not specified upfront. Only the dynamic range of values
+ * that the histogram can cover is (optionally) specified. E.g. When a {@link org.HdrHistogram.DoubleHistogram}
+ * is created to track a dynamic range of 3600000000000 (enoygh to track values from a nanosecond to an hour),
+ * values could be recorded into into it in any consistent unit of time as long as the ratio between the highest
+ * and lowest non-zero values stays within the specified dynamic range, so recording in units of nanoseconds
+ * (1.0 thru 3600000000000.0), milliseconds (0.000001 thru 3600000.0) seconds (0.000000001 thru 3600.0), hours
+ * (1/3.6E12 thru 1.0) will all work just as well.
  * <h3>Footprint estimation</h3>
  * Due to it's dynamic range representation, Histogram is relatively efficient in memory space requirements given
  * the accuracy and dynamic range it covers. Still, it is useful to be able to estimate the memory footprint involved

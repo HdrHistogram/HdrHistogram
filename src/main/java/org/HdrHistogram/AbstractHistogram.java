@@ -32,6 +32,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     // "Cold" accessed fields. Not used in the recording code path:
     long identity;
+    boolean autoResize = false;
 
     long highestTrackableValue;
     long lowestDiscernibleValue;
@@ -90,7 +91,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     int subBucketHalfCountMagnitude;
     int unitMagnitude;
     int subBucketHalfCount;
-    volatile int normalizingIndexOffset;
     long subBucketMask;
     volatile long maxValue = 0;
     volatile long minNonZeroValue = Long.MAX_VALUE;
@@ -111,13 +111,23 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
 
+    abstract long getCountAtIndex(int index);
+
     abstract long getCountAtNormalizedIndex(int index);
 
-    abstract void incrementCountAtNormalizedIndex(int index);
+    abstract void incrementCountAtIndex(int index);
 
-    abstract void addToCountAtNormalizedIndex(int index, long value);
+    abstract void addToCountAtIndex(int index, long value);
+
+    abstract void setCountAtIndex(int index, long value);
 
     abstract void setCountAtNormalizedIndex(int index, long value);
+
+    abstract int getNormalizingIndexOffset();
+
+    abstract void setNormalizingIndexOffset(int normalizingIndexOffset);
+
+    abstract void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated);
 
     abstract void setTotalCount(long totalCount);
 
@@ -128,6 +138,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     abstract void clearCounts();
 
     abstract int _getEstimatedFootprintInBytes();
+
+    abstract void resize(long newHighestTrackableValue);
 
     /**
      * Get the total count of all recorded values in the histogram
@@ -148,10 +160,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     final void resetMaxValue(final long maxValue) {
         this.maxValue = maxValue;
-    }
-
-    final void resetNormalizingIndexOffset(final int normalizingIndexOffset) {
-        this.normalizingIndexOffset = normalizingIndexOffset;
     }
 
     /**
@@ -178,6 +186,19 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
 
     /**
+     * Construct an auto-resizing histogram with a lowest discernible value of 1 and an auto-adjusting
+     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     *
+     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
+     *                                       maintain value resolution and separation. Must be a non-negative
+     *                                       integer between 0 and 5.
+     */
+    protected AbstractHistogram(final int numberOfSignificantValueDigits) {
+        this(1, 2, numberOfSignificantValueDigits);
+        autoResize = true;
+    }
+
+    /**
      * Construct a histogram given the Lowest and Highest values to be tracked and a number of significant
      * decimal digits. Providing a lowestDiscernibleValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
@@ -188,27 +209,22 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
      *                               down to nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
-     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue). Must not be
-     *                              larger than (Long.MAX_VALUE/2).
+     *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
      *                                       integer between 0 and 5.
      */
-    public AbstractHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
+    protected AbstractHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
                              final int numberOfSignificantValueDigits) {
         // Verify argument validity
         if (lowestDiscernibleValue < 1) {
             throw new IllegalArgumentException("lowestDiscernibleValue must be >= 1");
         }
-        if (highestTrackableValue < 2 * lowestDiscernibleValue) {
+        if (highestTrackableValue < 2L * lowestDiscernibleValue) {
             throw new IllegalArgumentException("highestTrackableValue must be >= 2 * lowestDiscernibleValue");
         }
         if ((numberOfSignificantValueDigits < 0) || (numberOfSignificantValueDigits > 5)) {
-            throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 6");
-        }
-        if (highestTrackableValue > (Long.MAX_VALUE / 2)) {
-            throw new IllegalArgumentException("highestTrackableValue must be <= (Long.MAX_VALUE / 2) (" +
-                    highestTrackableValue + ")");
+            throw new IllegalArgumentException("numberOfSignificantValueDigits must be between 0 and 5");
         }
         identity = constructionIdentityCount.getAndIncrement();
 
@@ -220,11 +236,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * duplicating the source's start/end timestamps (but NOT it's contents)
      * @param source The source histogram to duplicate
      */
-    public AbstractHistogram(final AbstractHistogram source) {
+    protected AbstractHistogram(final AbstractHistogram source) {
         this(source.getLowestDiscernibleValue(), source.getHighestTrackableValue(),
                 source.getNumberOfSignificantValueDigits());
         this.setStartTimeStamp(source.getStartTimeStamp());
         this.setEndTimeStamp(source.getEndTimeStamp());
+        this.autoResize = source.autoResize;
     }
 
     @SuppressWarnings("deprecation")
@@ -237,7 +254,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.highestTrackableValue = highestTrackableValue;
         this.numberOfSignificantValueDigits = numberOfSignificantValueDigits;
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
-        this.normalizingIndexOffset = normalizingIndexOffset;
+        if (normalizingIndexOffset != 0) {
+            setNormalizingIndexOffset(normalizingIndexOffset);
+        }
 
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
@@ -254,16 +273,38 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
 
         // determine exponent range needed to support the trackable value with no overflow:
-
-        bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
-
-        countsArrayLength = getLengthForNumberOfBuckets(bucketCount);
+        establishSize(highestTrackableValue);
 
         // Establish leadingZeroCountBase, used in getBucketIndex() fast path:
         leadingZeroCountBase = 64 - unitMagnitude - subBucketHalfCountMagnitude - 1;
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
+    }
+
+    final void establishSize(long highestTrackableValue) {
+        if (highestTrackableValue < 2L * lowestDiscernibleValue) {
+            throw new IllegalArgumentException("highestTrackableValue (" + highestTrackableValue +
+                    ") cannot be < (2 * lowestDiscernibleValue)");
+        }
+        // determine exponent range needed to support the trackable value with no overflow:
+        bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
+        //establish counts array length:
+        countsArrayLength = getLengthForNumberOfBuckets(bucketCount);
+    }
+
+    //
+    //
+    // Auto-resizing control:
+    //
+    //
+
+    public boolean isAutoResize() {
+        return autoResize;
+    }
+
+    public void setAutoResize(boolean autoResize) {
+        this.autoResize = autoResize;
     }
 
     //
@@ -350,18 +391,39 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private void recordCountAtValue(final long count, final long value)
             throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
-        addToCountAtIndex(countsIndex, count);
+        try {
+            addToCountAtIndex(countsIndex, count);
+        } catch (ArrayIndexOutOfBoundsException ex) {
+            handleRecordException(count, value, ex);
+        } catch (IndexOutOfBoundsException ex) {
+            handleRecordException(count, value, ex);
+        }
         updateMinAndMax(value);
         addToTotalCount(count);
     }
 
     private void recordSingleValue(final long value) throws ArrayIndexOutOfBoundsException {
         int countsIndex = countsArrayIndex(value);
-        incrementCountAtIndex(countsIndex);
+        try {
+            incrementCountAtIndex(countsIndex);
+        } catch (ArrayIndexOutOfBoundsException ex) {
+            handleRecordException(1, value, ex);
+        } catch (IndexOutOfBoundsException ex) {
+            handleRecordException(1, value, ex);
+        }
         updateMinAndMax(value);
         incrementTotalCount();
     }
 
+    private void handleRecordException(final long count, final long value, Exception ex) {
+        if (!autoResize) {
+            throw new ArrayIndexOutOfBoundsException("value outside of histogram covered range. Caused by: " + ex);
+        }
+        resize(value);
+        int countsIndex = countsArrayIndex(value);
+        addToCountAtIndex(countsIndex, count);
+        this.highestTrackableValue = highestEquivalentValue(valueFromIndex(countsArrayLength - 1));
+    }
 
     private void recordValueWithCountAndExpectedInterval(final long value, final long count,
                                                          final long expectedIntervalBetweenValueSamples)
@@ -404,7 +466,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         clearCounts();
         resetMaxValue(0);
         resetMinNonZeroValue(Long.MAX_VALUE);
-        resetNormalizingIndexOffset(0);
+        setNormalizingIndexOffset(0);
     }
 
     //
@@ -499,7 +561,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
                 (unitMagnitude == otherHistogram.unitMagnitude) &&
-                (normalizingIndexOffset == otherHistogram.normalizingIndexOffset)) {
+                (getNormalizingIndexOffset() == otherHistogram.getNormalizingIndexOffset())) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
             long observedOtherTotalCount = 0;
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
@@ -541,7 +603,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
                 (unitMagnitude == otherHistogram.unitMagnitude) &&
-                (normalizingIndexOffset == otherHistogram.normalizingIndexOffset)) {
+                (getNormalizingIndexOffset() == otherHistogram.getNormalizingIndexOffset())) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
             long observedOtherTotalCount = 0;
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
@@ -644,7 +706,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             return;
         }
 
-        final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
+        final int shiftAmount = numberOfBinaryOrdersOfMagnitude << subBucketHalfCountMagnitude;
         int maxValueIndex = countsArrayIndex(getMaxValue());
         // indicate overflow if maxValue is in the range being wrapped:
         if (maxValueIndex >= (countsArrayLength - shiftAmount)) {
@@ -652,51 +714,68 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     "Operation would overflow, would discard recorded value counts");
         }
 
-        // Perform the shift:
+        long maxValueBeforeShift = maxValueUpdater.getAndSet(this, 0);
+        long minNonZeroValueBeforeShift = minNonZeroValueUpdater.getAndSet(this, Long.MAX_VALUE);
 
-        // First deal with the lowest half-bucket, if it contains any non-0 values:
+        boolean lowestHalfBucketPopulated = (minNonZeroValueBeforeShift < subBucketHalfCount);
 
-        int minValueIndex = countsArrayIndex(getMinNonZeroValue());
-        if (minValueIndex < subBucketHalfCount) {
-            // The lowest half-bucket (not including the 0 value) is special: unlike all other half
-            // buckets, the lowest half bucket values cannot be scaled by simply changing the
-            // normalizing offset. Instead, they must be individually re-recorded at the new
-            // scale, and cleared from the current one.
-            //
-            // We know that all half buckets "below" the current lowest one are full of 0s, because
-            // we would have overflowed otherwise. So we need to shift the values in the current
-            // lowest half bucket into that range (including the current lowest half bucket itself).
-            // Iterating down from the topmost "from slot" and copying values to the newly scaled
-            // "to slot" (and then zeroing the "from slot"), will work in a single pass, becasue
-            // the "from slot" is always a higher index than its or any following "to slot":
-            //
-            // (Note that we specifically avoid slot 0, as it is directly handled in the outer case)
+            // Perform the shift:
+        shiftNormalizingIndexByOffset(shiftAmount, lowestHalfBucketPopulated);
 
-            for (int fromIndex = subBucketHalfCount - 1; fromIndex > 0; fromIndex--) {
-                int toIndex = (fromIndex << numberOfBinaryOrdersOfMagnitude) - shiftAmount;
-                setCountAtIndex(toIndex, getCountAtIndex(fromIndex));
-                setCountAtIndex(fromIndex, 0);
-            }
-
-            // Note that the above loop only creates O(N) work for histograms that have values in
-            // the lowest half-bucket (excluding the 0 value). Histograms that never have values
-            // there (e.g. all integer value histograms used as internal storage in DoubleHistograms)
-            // will never loop, and their shifts will remain O(1).
+        // adjust min, max:
+        updateMinAndMax(maxValueBeforeShift << numberOfBinaryOrdersOfMagnitude);
+        if (minNonZeroValueBeforeShift < Long.MAX_VALUE) {
+            updateMinAndMax(minNonZeroValueBeforeShift << numberOfBinaryOrdersOfMagnitude);
         }
+    }
+
+    void nonConcurrentNormalizingIndexShift(int shiftAmount, boolean lowestHalfBucketPopulated) {
 
         // Save and clear the 0 value count:
         long zeroValueCount = getCountAtIndex(0);
         setCountAtIndex(0, 0);
 
-        // move normalizingIndexOffset and adjust min, max:
-        normalizingIndexOffset += shiftAmount;
-        maxValue <<= numberOfBinaryOrdersOfMagnitude;
-        if (minNonZeroValue < Long.MAX_VALUE) {
-            minNonZeroValue <<= numberOfBinaryOrdersOfMagnitude;
+        setNormalizingIndexOffset(getNormalizingIndexOffset() + shiftAmount);
+
+        // Deal with lower half bucket if needed:
+        if (lowestHalfBucketPopulated) {
+            shiftLowestHalfBucketContentsLeft(shiftAmount);
         }
 
         // Restore the 0 value count:
         setCountAtIndex(0, zeroValueCount);
+    }
+
+    void shiftLowestHalfBucketContentsLeft(int shiftAmount) {
+        final int numberOfBinaryOrdersOfMagnitude = shiftAmount >> subBucketHalfCountMagnitude;
+
+        // The lowest half-bucket (not including the 0 value) is special: unlike all other half
+        // buckets, the lowest half bucket values cannot be scaled by simply changing the
+        // normalizing offset. Instead, they must be individually re-recorded at the new
+        // scale, and cleared from the current one.
+        //
+        // We know that all half buckets "below" the current lowest one are full of 0s, because
+        // we would have overflowed otherwise. So we need to shift the values in the current
+        // lowest half bucket into that range (including the current lowest half bucket itself).
+        // Iterating up from the lowermost non-zero "from slot" and copying values to the newly
+        // scaled "to slot" (and then zeroing the "from slot"), will work in a single pass,
+        // because the scale "to slot" index will always be a lower index than its or any
+        // preceding non-scaled "from slot" index:
+        //
+        // (Note that we specifically avoid slot 0, as it is directly handled in the outer case)
+
+        for (int fromIndex = 1; fromIndex < subBucketHalfCount; fromIndex++) {
+            long toValue = valueFromIndex(fromIndex) << numberOfBinaryOrdersOfMagnitude;
+            int toIndex = countsArrayIndex(toValue);
+            long countAtFromIndex = getCountAtNormalizedIndex(fromIndex);
+            setCountAtIndex(toIndex, countAtFromIndex);
+            setCountAtNormalizedIndex(fromIndex, 0);
+        }
+
+        // Note that the above loop only creates O(N) work for histograms that have values in
+        // the lowest half-bucket (excluding the 0 value). Histograms that never have values
+        // there (e.g. all integer value histograms used as internal storage in DoubleHistograms)
+        // will never loop, and their shifts will remain O(1).
     }
 
     /**
@@ -729,30 +808,28 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int shiftAmount = subBucketHalfCount * numberOfBinaryOrdersOfMagnitude;
 
         // indicate underflow if minValue is in the range being shifted from:
-        int minValueIndex = countsArrayIndex(getMinNonZeroValue());
+        int minNonZeroValueIndex = countsArrayIndex(getMinNonZeroValue());
         // Any shifting into the bottom-most half bucket would represents a loss of accuracy,
-        // and a non-reversible operation. Therefore and non-0 value that falls in an
+        // and a non-reversible operation. Therefore any non-0 value that falls in an
         // index below (shiftAmount + subBucketHalfCount) would represent an underflow:
-        if (minValueIndex < shiftAmount + subBucketHalfCount) {
+        if (minNonZeroValueIndex < shiftAmount + subBucketHalfCount) {
             throw new ArrayIndexOutOfBoundsException(
                     "Operation would underflow and lose precision of already recorded value counts");
         }
 
         // perform shift:
 
-        // Save and clear the 0 value count:
-        long zeroValueCount = getCountAtIndex(0);
-        setCountAtIndex(0, 0);
+        long maxValueBeforeShift = maxValueUpdater.getAndSet(this, 0);
+        long minNonZeroValueBeforeShift = minNonZeroValueUpdater.getAndSet(this, Long.MAX_VALUE);
 
-        // move normalizingIndexOffset and adjust min, max:
-        normalizingIndexOffset -= shiftAmount;
-        maxValue >>= numberOfBinaryOrdersOfMagnitude;
-        if (minNonZeroValue < Long.MAX_VALUE) {
-            minNonZeroValue >>= numberOfBinaryOrdersOfMagnitude;
+        // move normalizingIndexOffset
+        shiftNormalizingIndexByOffset(-shiftAmount, false);
+
+        // adjust min, max:
+        updateMinAndMax(maxValueBeforeShift >> numberOfBinaryOrdersOfMagnitude);
+        if (minNonZeroValueBeforeShift < Long.MAX_VALUE) {
+            updateMinAndMax(minNonZeroValueBeforeShift >> numberOfBinaryOrdersOfMagnitude);
         }
-
-        // Restore the 0 value count:
-        setCountAtIndex(0, zeroValueCount);
     }
 
     //
@@ -930,6 +1007,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * get the start time stamp [optionally] stored with this histogram
      * @return the start time stamp [optionally] stored with this histogram
      */
+    @Override
     public long getStartTimeStamp() {
         return startTimeStampMsec;
     }
@@ -938,6 +1016,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Set the start time stamp value associated with this histogram to a given value.
      * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
      */
+    @Override
     public void setStartTimeStamp(final long timeStampMsec) {
         this.startTimeStampMsec = timeStampMsec;
     }
@@ -946,6 +1025,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * get the end time stamp [optionally] stored with this histogram
      * @return the end time stamp [optionally] stored with this histogram
      */
+    @Override
     public long getEndTimeStamp() {
         return endTimeStampMsec;
     }
@@ -954,6 +1034,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Set the end time stamp value associated with this histogram to a given value.
      * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
      */
+    @Override
     public void setEndTimeStamp(final long timeStampMsec) {
         this.endTimeStampMsec = timeStampMsec;
     }
@@ -987,7 +1068,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return (maxValue == 0) ? 0 : highestEquivalentValue(maxValue);
     }
 
-    long getMinNonZeroValue() {
+    /**
+     * Get the lowest recorded non-zero value level in the histogram
+     *
+     * @return the lowest recorded non-zero value level in the histogram
+     */
+    public long getMinNonZeroValue() {
         return (minNonZeroValue == Long.MAX_VALUE) ?
                 Long.MAX_VALUE : lowestEquivalentValue(minNonZeroValue);
     }
@@ -997,6 +1083,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *
      * @return the Max value recorded in the histogram
      */
+    @Override
     public double getMaxValueAsDouble() {
         return getMaxValue();
     }
@@ -1008,10 +1095,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public double getMean() {
         recordedValuesIterator.reset();
-        long totalValue = 0;
+        double totalValue = 0;
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
-            totalValue = iterationValue.getTotalValueToThisValue();
+            totalValue += medianEquivalentValue(iterationValue.getValueIteratedTo())
+                     * iterationValue.getCountAtValueIteratedTo();
         }
         return (totalValue * 1.0) / getTotalCount();
     }
@@ -1035,14 +1123,21 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Get the value at a given percentile
+     * Get the value at a given percentile.
+     * When the percentile is > 0.0, the value returned is the value that the given the given
+     * percentage of the overall recorded value entries in the histogram are either smaller than
+     * or equivalent to. When the percentile is 0.0, the value returned is the value that all value
+     * entries in the histogram are either larger than or equivalent to.
+     * <p>
+     * Note that two values are "equivalent" in this statement if
+     * {@link org.HdrHistogram.AbstractHistogram#valuesAreEquivalent} would return true.
      *
-     * @param percentile    The percentile for which the return the associated value
-     * @return The value below which a given percentage of the overall recorded value entries in the
-     * histogram all fall.
+     * @param percentile  The percentile for which to return the associated value
+     * @return The value that the given percentage of the overall recorded value entries in the
+     * histogram are either smaller than or equivalent to. When the percentile is 0.0, returns the
+     * value that all value entries in the histogram are either larger than or equivalent to.
      */
     public long getValueAtPercentile(final double percentile) {
-        // TODO: implement binary search for percentile
         final double requestedPercentile = Math.min(percentile, 100.0); // Truncate down to 100%
         long countAtPercentile = (long)(((requestedPercentile / 100.0) * getTotalCount()) + 0.5); // round to nearest
         countAtPercentile = Math.max(countAtPercentile, 1); // Make sure we at least reach the first recorded entry
@@ -1051,21 +1146,28 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             totalToCurrentIndex += getCountAtIndex(i);
             if (totalToCurrentIndex >= countAtPercentile) {
                 long valueAtIndex = valueFromIndex(i);
-                return highestEquivalentValue(valueAtIndex);
+                return (percentile == 0.0) ?
+                        lowestEquivalentValue(valueAtIndex) :
+                        highestEquivalentValue(valueAtIndex);
             }
         }
         return 0;
     }
 
     /**
-     * Get the percentile at a given value
+     * Get the percentile at a given value.
+     * The percentile returned is the percentile of values recorded in the histogram that are smaller
+     * than or equivalent to the given value.
+     * <p>
+     * Note that two values are "equivalent" in this statement if
+     * {@link org.HdrHistogram.AbstractHistogram#valuesAreEquivalent} would return true.
      *
-     * @param value    The value for which the return the associated percentile
-     * @return The percentile of values recorded at or below the given percentage in the
-     * histogram all fall.
+     * @param value The value for which to return the associated percentile
+     * @return The percentile of values recorded in the histogram that are smaller than or equivalent
+     * to the given value.
      */
     public double getPercentileAtOrBelowValue(final long value) {
-        final int targetIndex = countsArrayIndex(value);
+        final int targetIndex = Math.min(countsArrayIndex(value), (countsArrayLength - 1));
         long totalToCurrentIndex = 0;
         for (int i = 0; i <= targetIndex; i++) {
             totalToCurrentIndex += getCountAtIndex(i);
@@ -1074,7 +1176,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Get the count of recorded values within a range of value levels. (inclusive to within the histogram's resolution)
+     * Get the count of recorded values within a range of value levels (inclusive to within the histogram's resolution).
      *
      * @param lowValue  The lower value bound on the range for which
      *                  to provide the recorded count. Will be rounded down with
@@ -1083,11 +1185,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                   Will be rounded up with {@link Histogram#highestEquivalentValue highestEquivalentValue}.
      * @return the total count of values recorded in the histogram within the value range that is
      * {@literal >=} lowestEquivalentValue(<i>lowValue</i>) and {@literal <=} highestEquivalentValue(<i>highValue</i>)
-     * @throws ArrayIndexOutOfBoundsException on values that are outside the tracked value range
      */
     public long getCountBetweenValues(final long lowValue, final long highValue) throws ArrayIndexOutOfBoundsException {
-        final int lowIndex = countsArrayIndex(lowValue);
-        final int highIndex = countsArrayIndex(highValue);
+        final int lowIndex = Math.max(0, countsArrayIndex(lowValue));
+        final int highIndex = Math.min(countsArrayIndex(highValue), (countsArrayLength - 1));
         long count = 0;
         for (int i = lowIndex ; i <= highIndex; i++) {
             count += getCountAtIndex(i);
@@ -1096,18 +1197,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Get the count of recorded values at a specific value
+     * Get the count of recorded values at a specific value (to within the histogram resolution at the value level).
      *
      * @param value The value for which to provide the recorded count
-     * @return The total count of values recorded in the histogram at the given value (to within
-     * the histogram resolution at the value level).
-     * @throws ArrayIndexOutOfBoundsException On values that are outside the tracked value range
+     * @return The total count of values recorded in the histogram within the value range that is
+     * {@literal >=} lowestEquivalentValue(<i>value</i>) and {@literal <=} highestEquivalentValue(<i>value</i>)
      */
     public long getCountAtValue(final long value) throws ArrayIndexOutOfBoundsException {
-        final int bucketIndex = getBucketIndex(value);
-        final int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-        // May throw ArrayIndexOutOfBoundsException:
-        return getCountAt(bucketIndex, subBucketIndex);
+        final int index = Math.min(Math.max(0, countsArrayIndex(value)), (countsArrayLength - 1));
+        return getCountAtIndex(index);
     }
 
     /**
@@ -1175,7 +1273,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *
      * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >}
      * through the histogram using
-     * a {@link RecordedValuesIterator}
+     * a {@link AllValuesIterator}
      */
     public AllValues allValues() {
         return new AllValues(this);
@@ -1433,7 +1531,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         o.writeLong(lowestDiscernibleValue);
         o.writeLong(highestTrackableValue);
         o.writeInt(numberOfSignificantValueDigits);
-        o.writeInt(normalizingIndexOffset);
+        o.writeInt(getNormalizingIndexOffset());
         o.writeDouble(integerToDoubleValueConversionRatio);
         o.writeLong(getTotalCount());
         // Max Value is added to the serialized form because establishing max via scanning is "harder" during
@@ -1473,6 +1571,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * Get the capacity needed to encode this histogram into a ByteBuffer
      * @return the capacity needed to encode this histogram into a ByteBuffer
      */
+    @Override
     public int getNeededByteBufferCapacity() {
         return getNeededByteBufferCapacity(countsArrayLength);
     }
@@ -1533,7 +1632,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int initialPosition = buffer.position();
         buffer.putInt(getEncodingCookie());
         buffer.putInt(relevantLength * wordSizeInBytes);
-        buffer.putInt(normalizingIndexOffset);
+        buffer.putInt(getNormalizingIndexOffset());
         buffer.putInt(numberOfSignificantValueDigits);
         buffer.putLong(lowestDiscernibleValue);
         buffer.putLong(highestTrackableValue);
@@ -1552,6 +1651,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param compressionLevel Compression level (for java.util.zip.Deflater).
      * @return The number of bytes written to the buffer
      */
+    @Override
     synchronized public int encodeIntoCompressedByteBuffer(
             final ByteBuffer targetBuffer,
             final int compressionLevel) {
@@ -1652,7 +1752,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             histogram = constructor.newInstance(lowestTrackableUnitValue, highestTrackableValue,
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
-            histogram.resetNormalizingIndexOffset(normalizingIndexOffset);
+            histogram.setNormalizingIndexOffset(normalizingIndexOffset);
             if ((cookie != histogram.getEncodingCookie()) &&
                     (cookie != histogram.getV0EncodingCookie())) {
                 throw new IllegalArgumentException(
@@ -1804,7 +1904,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     int getBucketsNeededToCoverValue(final long value) {
         long smallestUntrackableValue = ((long)subBucketCount) << unitMagnitude;
         int bucketsNeeded = 1;
-        while (smallestUntrackableValue < value) {
+        while (smallestUntrackableValue <= value) {
+            if (smallestUntrackableValue > (Long.MAX_VALUE / 2)) {
+                return bucketsNeeded + 1;
+            }
             smallestUntrackableValue <<= 1;
             bucketsNeeded++;
         }
@@ -1816,7 +1919,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return lengthNeeded;
     }
 
-    private int countsArrayIndex(final long value) {
+    int countsArrayIndex(final long value) {
+        if (value < 0) {
+            throw new ArrayIndexOutOfBoundsException("Histogram recorded value cannot be negative.");
+        }
         final int bucketIndex = getBucketIndex(value);
         final int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         return countsArrayIndex(bucketIndex, subBucketIndex);
@@ -1839,7 +1945,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getSubBucketIndex(final long value, final int bucketIndex) {
-        return  (int)(value >> (bucketIndex + unitMagnitude));
+        return  (int)(value >>> (bucketIndex + unitMagnitude));
     }
 
     long getCountAt(final int bucketIndex, final int subBucketIndex) {
@@ -1852,7 +1958,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    int normalizeIndex(int index) {
+    int normalizeIndex(int index, int normalizingIndexOffset) {
         if (normalizingIndexOffset == 0) {
             // Fastpath out of normalization. Keeps integer value histograms fast while allowing
             // others (like DoubleHistogram) to use normalization at a cost...
@@ -1870,22 +1976,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             normilizedIndex -= countsArrayLength;
         }
         return normilizedIndex;
-    }
-
-    long getCountAtIndex(int index) {
-        return getCountAtNormalizedIndex(normalizeIndex(index));
-    }
-
-    void incrementCountAtIndex(int index) {
-        incrementCountAtNormalizedIndex(normalizeIndex(index));
-    }
-
-    void addToCountAtIndex(int index, long value) {
-        addToCountAtNormalizedIndex(normalizeIndex(index), value);
-    }
-
-    void setCountAtIndex(int index, long value) {
-        setCountAtNormalizedIndex(normalizeIndex(index), value);
     }
 
     final long valueFromIndex(final int bucketIndex, final int subBucketIndex) {

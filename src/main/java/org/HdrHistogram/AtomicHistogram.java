@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.Arrays;
 import java.util.concurrent.atomic.*;
 import java.util.zip.DataFormatException;
 
@@ -19,21 +20,29 @@ import java.util.zip.DataFormatException;
  * An AtomicHistogram guarantees lossless recording of values into the hsitogram even when the
  * histogram is updated by mutliple threads. It is important to note though that this lossless
  * recording capability is the only thread-safe behavior provided by AtomicHistogram, and that it
- * is not otherwise synchronized. Specifically, AtomicHistogram provides no implicit synchronization
+ * is not otherwise synchronized. Specifically, AtomicHistogram does not support auto-resizing,
+ * does not support value shift opertions, and provides no implicit synchronization
  * that would prevent the contents of the histogram from changing during iterations, copies, or
  * addition operations on the histogram. Callers wishing to make potentially concurrent,
  * multi-threaded updates that would safely work in the presence of queries, copies, or additions
  * of histogram objects should either take care to externally synchronize and/or order their access,
- * or use the {@link org.HdrHistogram.SynchronizedHistogram} variant.
+ * use the {@link org.HdrHistogram.SynchronizedHistogram} variant, or (recommended) use the
+ * {@link org.HdrHistogram.IntervalHistogramRecorder} class, which is intended for this purpose.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
 
-public class AtomicHistogram extends AbstractHistogram {
+public class AtomicHistogram extends Histogram {
+
     static final AtomicLongFieldUpdater<AtomicHistogram> totalCountUpdater =
             AtomicLongFieldUpdater.newUpdater(AtomicHistogram.class, "totalCount");
     volatile long totalCount;
-    final AtomicLongArray counts;
+    volatile AtomicLongArray counts;
+
+    @Override
+    long getCountAtIndex(final int index) {
+        return counts.get(index);
+    }
 
     @Override
     long getCountAtNormalizedIndex(final int index) {
@@ -41,13 +50,18 @@ public class AtomicHistogram extends AbstractHistogram {
     }
 
     @Override
-    void incrementCountAtNormalizedIndex(final int index) {
-        counts.incrementAndGet(index);
+    void incrementCountAtIndex(final int index) {
+        counts.getAndIncrement(index);
     }
 
     @Override
-    void addToCountAtNormalizedIndex(final int index, final long value) {
-        counts.addAndGet(index, value);
+    void addToCountAtIndex(final int index, final long value) {
+        counts.getAndAdd(index, value);
+    }
+
+    @Override
+    void setCountAtIndex(int index, long value) {
+        counts.lazySet(index, value);
     }
 
     @Override
@@ -56,9 +70,45 @@ public class AtomicHistogram extends AbstractHistogram {
     }
 
     @Override
+    int getNormalizingIndexOffset() {
+        return 0;
+    }
+
+    @Override
+    void setNormalizingIndexOffset(int normalizingIndexOffset) {
+        if (normalizingIndexOffset != 0) {
+            throw new IllegalStateException(
+                    "AtomicHostogram does not support non-zero normalizing index settings." +
+                            " Use ConcurrentHistogram Instead.");
+        }
+    }
+
+    @Override
+    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+        throw new IllegalStateException(
+                "AtomicHostogram does not support Shifting operations." +
+                        " Use ConcurrentHistogram Instead.");
+    }
+
+    @Override
+    void resize(long newHighestTrackableValue) {
+        throw new IllegalStateException(
+                "AtomicHostogram does not support resizing operations." +
+                        " Use ConcurrentHistogram Instead.");
+    }
+
+    @Override
+    public void setAutoResize(boolean autoResize) {
+        throw new IllegalStateException(
+                "AtomicHostogram does not support AutoResize operation." +
+                        " Use ConcurrentHistogram Instead.");
+    }
+
+    @Override
     void clearCounts() {
-        for (int i = 0; i < counts.length(); i++)
+        for (int i = 0; i < counts.length(); i++) {
             counts.lazySet(i, 0);
+        }
         totalCountUpdater.set(this, 0);
     }
 
@@ -107,9 +157,9 @@ public class AtomicHistogram extends AbstractHistogram {
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public AtomicHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         this(1, highestTrackableValue, numberOfSignificantValueDigits);
@@ -123,13 +173,13 @@ public class AtomicHistogram extends AbstractHistogram {
      * proper value for lowestDiscernibleValue would be 1000.
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
-     *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
-     *                             power of 2.
+     *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
+     *                               down to nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public AtomicHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);

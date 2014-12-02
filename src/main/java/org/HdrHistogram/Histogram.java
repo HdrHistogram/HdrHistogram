@@ -11,12 +11,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram</h3>
  * <p>
- * Histogram supports the recording and analyzing sampled data value counts across a configurable integer value
+ * {@link Histogram} supports the recording and analyzing sampled data value counts across a configurable integer value
  * range with configurable value precision within the range. Value precision is expressed as the number of significant
  * digits in the value recording, and provides control over value quantization behavior across the value range and the
  * subsequent value resolution at any given level.
@@ -33,12 +34,23 @@ import java.util.zip.DataFormatException;
  * {@link IntCountsHistogram} and {@link ShortCountsHistogram} implementations of
  * {@link org.HdrHistogram.AbstractHistogram}.
  * <p>
+ * Auto-resizing: When constructed with no specified value range range (or when auto-resize is turned on with {@link
+ * Histogram#setAutoResize}) a {@link Histogram} will auto-resize its dynamic range to include recorded values as
+ * they are encountered. Note that recording calls that cause auto-resizing may take longer to execute, as resizing
+ * incurrs allocation and copying of internal data structures.
+ * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
 
 public class Histogram extends AbstractHistogram {
     long totalCount;
-    final long[] counts;
+    long[] counts;
+    int normalizingIndexOffset;
+
+    @Override
+    long getCountAtIndex(final int index) {
+        return counts[normalizeIndex(index, normalizingIndexOffset)];
+    }
 
     @Override
     long getCountAtNormalizedIndex(final int index) {
@@ -46,18 +58,38 @@ public class Histogram extends AbstractHistogram {
     }
 
     @Override
-    void incrementCountAtNormalizedIndex(final int index) {
-        counts[index]++;
+    void incrementCountAtIndex(final int index) {
+        counts[normalizeIndex(index, normalizingIndexOffset)]++;
     }
 
     @Override
-    void addToCountAtNormalizedIndex(final int index, final long value) {
-        counts[index] += value;
+    void addToCountAtIndex(final int index, final long value) {
+        counts[normalizeIndex(index, normalizingIndexOffset)] += value;
+    }
+
+    @Override
+    void setCountAtIndex(int index, long value) {
+        counts[normalizeIndex(index, normalizingIndexOffset)] = value;
     }
 
     @Override
     void setCountAtNormalizedIndex(int index, long value) {
         counts[index] = value;
+    }
+
+    @Override
+    int getNormalizingIndexOffset() {
+        return normalizingIndexOffset;
+    }
+
+    @Override
+    void setNormalizingIndexOffset(int normalizingIndexOffset) {
+        this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+    @Override
+    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+        nonConcurrentNormalizingIndexShift(offsetToAdd, lowestHalfBucketPopulated);
     }
 
     @Override
@@ -105,15 +137,46 @@ public class Histogram extends AbstractHistogram {
         return (512 + (8 * counts.length));
     }
 
+    @Override
+    void resize(long newHighestTrackableValue) {
+        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset);
+
+        establishSize(newHighestTrackableValue);
+
+        int countsDelta = countsArrayLength - counts.length;
+
+        counts = Arrays.copyOf(counts, countsArrayLength);
+
+        if (oldNormalizedZeroIndex != 0) {
+            // We need to shift the stuff from the zero index and up to the end of the array:
+            int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
+            int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
+            System.arraycopy(counts, oldNormalizedZeroIndex, counts, newNormalizedZeroIndex, lengthToCopy);
+        }
+    }
+
+    /**
+     * Construct an auto-resizing histogram with a lowest discernible value of 1 and an auto-adjusting
+     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     */
+    public Histogram(final int numberOfSignificantValueDigits) {
+        this(1, 2, numberOfSignificantValueDigits);
+        setAutoResize(true);
+    }
+
     /**
      * Construct a Histogram given the Highest value to be tracked and a number of significant decimal digits. The
      * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
      *                                       integer that is {@literal >=} 2.
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public Histogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         this(1, highestTrackableValue, numberOfSignificantValueDigits);
@@ -131,9 +194,9 @@ public class Histogram extends AbstractHistogram {
      *                                       internally rounded down to nearest power of 2.
      * @param highestTrackableValue          The highest value to be tracked by the histogram. Must be a positive
      *                                       integer that is {@literal >=} (2 * lowestDiscernibleValue).
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public Histogram(final long lowestDiscernibleValue, final long highestTrackableValue,
                      final int numberOfSignificantValueDigits) {

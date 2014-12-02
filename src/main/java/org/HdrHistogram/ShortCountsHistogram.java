@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
 /**
@@ -21,7 +22,13 @@ import java.util.zip.DataFormatException;
 
 public class ShortCountsHistogram extends AbstractHistogram {
     long totalCount;
-    final short[] counts;
+    short[] counts;
+    int normalizingIndexOffset;
+
+    @Override
+    long getCountAtIndex(final int index) {
+        return counts[normalizeIndex(index, normalizingIndexOffset)];
+    }
 
     @Override
     long getCountAtNormalizedIndex(final int index) {
@@ -29,18 +36,20 @@ public class ShortCountsHistogram extends AbstractHistogram {
     }
 
     @Override
-    void incrementCountAtNormalizedIndex(final int index) {
-        short currentCount = counts[index];
+    void incrementCountAtIndex(final int index) {
+        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset);
+        short currentCount = counts[normalizedIndex];
         short newCount = (short) (currentCount + 1);
         if (newCount < 0) {
             throw new IllegalStateException("would overflow short integer count");
         }
-        counts[index] = newCount;
+        counts[normalizedIndex] = newCount;
     }
 
     @Override
-    void addToCountAtNormalizedIndex(final int index, final long value) {
-        short currentCount = counts[index];
+    void addToCountAtIndex(final int index, final long value) {
+        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset);
+        short currentCount = counts[normalizedIndex];
         if ((value < 0) || (value > Short.MAX_VALUE)) {
             throw new IllegalArgumentException("would overflow short integer count");
         }
@@ -48,7 +57,12 @@ public class ShortCountsHistogram extends AbstractHistogram {
         if (newCount < 0) {
             throw new IllegalStateException("would overflow short integer count");
         }
-        counts[index] = newCount;
+        counts[normalizedIndex] = newCount;
+    }
+
+    @Override
+    void setCountAtIndex(int index, long value) {
+        setCountAtNormalizedIndex(normalizeIndex(index, normalizingIndexOffset), value);
     }
 
     @Override
@@ -57,6 +71,21 @@ public class ShortCountsHistogram extends AbstractHistogram {
             throw new IllegalArgumentException("would overflow short integer count");
         }
         counts[index] = (short) value;
+    }
+
+    @Override
+    int getNormalizingIndexOffset() {
+        return normalizingIndexOffset;
+    }
+
+    @Override
+    void setNormalizingIndexOffset(int normalizingIndexOffset) {
+        this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+    @Override
+    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+        nonConcurrentNormalizingIndexShift(offsetToAdd, lowestHalfBucketPopulated);
     }
 
     @Override
@@ -103,35 +132,66 @@ public class ShortCountsHistogram extends AbstractHistogram {
         return (512 + (2 * counts.length));
     }
 
+    @Override
+    void resize(long newHighestTrackableValue) {
+        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset);
+
+        establishSize(newHighestTrackableValue);
+
+        int countsDelta = countsArrayLength - counts.length;
+
+        counts = Arrays.copyOf(counts, countsArrayLength);
+
+        if (oldNormalizedZeroIndex != 0) {
+            // We need to shift the stuff from the zero index and up to the end of the array:
+            int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
+            int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
+            System.arraycopy(counts, oldNormalizedZeroIndex, counts, newNormalizedZeroIndex, lengthToCopy);
+        }
+    }
+
     /**
-     * Construct a ShortHistogram given the Highest value to be tracked and a number of significant decimal digits. The
+     * Construct an auto-resizing ShortCountsHistogram with a lowest discernible value of 1 and an auto-adjusting
+     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     */
+    public ShortCountsHistogram(final int numberOfSignificantValueDigits) {
+        this(1, 2, numberOfSignificantValueDigits);
+        setAutoResize(true);
+    }
+    
+    /**
+     * Construct a ShortCountsHistogram given the Highest value to be tracked and a number of significant decimal digits. The
      * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public ShortCountsHistogram(final long highestTrackableValue, final int numberOfSignificantValueDigits) {
         this(1, highestTrackableValue, numberOfSignificantValueDigits);
     }
 
     /**
-     * Construct a ShortHistogram given the Lowest and Highest values to be tracked and a number of significant
+     * Construct a ShortCountsHistogram given the Lowest and Highest values to be tracked and a number of significant
      * decimal digits. Providing a lowestDiscernibleValue is useful is situations where the units used
      * for the histogram's values are much smaller that the minimal accuracy required. E.g. when tracking
      * time values stated in nanosecond units, where the minimal accuracy required is a microsecond, the
      * proper value for lowestDiscernibleValue would be 1000.
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
-     *                             Must be a positive integer that is {@literal >=} 1. May be internally rounded down to nearest
-     *                             power of 2.
+     *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
+     *                               down to nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
-     * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
-     *                                       maintain value resolution and separation. Must be a non-negative
-     *                                       integer between 0 and 5.
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public ShortCountsHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
                                 final int numberOfSignificantValueDigits) {
