@@ -40,6 +40,7 @@ public class HistogramEncodingTest {
         IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
         Histogram histogram = new Histogram(highestTrackableValue, 3);
         AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, 3);
+        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 3);
         SynchronizedHistogram synchronizedHistogram = new SynchronizedHistogram(highestTrackableValue, 3);
         DoubleHistogram doubleHistogram = new DoubleHistogram(highestTrackableValue * 1000, 3);
 
@@ -48,6 +49,7 @@ public class HistogramEncodingTest {
             intCountsHistogram.recordValueWithExpectedInterval(2000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
             histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
             atomicHistogram.recordValueWithExpectedInterval(4000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            concurrentHistogram.recordValueWithExpectedInterval(4000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
             synchronizedHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
             doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
             doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
@@ -112,6 +114,21 @@ public class HistogramEncodingTest {
 
         AtomicHistogram atomicHistogram3 = AtomicHistogram.decodeFromCompressedByteBuffer(targetCompressedBuffer, 0);
         Assert.assertEquals(atomicHistogram, atomicHistogram3);
+
+        System.out.println("\nTesting encoding of a ConcurrentHistogram:");
+        targetBuffer = ByteBuffer.allocate(concurrentHistogram.getNeededByteBufferCapacity());
+        concurrentHistogram.encodeIntoByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+
+        ConcurrentHistogram concurrentHistogram2 = ConcurrentHistogram.decodeFromByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(concurrentHistogram, concurrentHistogram2);
+
+        targetCompressedBuffer = ByteBuffer.allocate(concurrentHistogram.getNeededByteBufferCapacity());
+        concurrentHistogram.encodeIntoCompressedByteBuffer(targetCompressedBuffer);
+        targetCompressedBuffer.rewind();
+
+        ConcurrentHistogram concurrentHistogram3 = ConcurrentHistogram.decodeFromCompressedByteBuffer(targetCompressedBuffer, 0);
+        Assert.assertEquals(concurrentHistogram, concurrentHistogram3);
 
         System.out.println("\nTesting encoding of a SynchronizedHistogram:");
         targetBuffer = ByteBuffer.allocate(synchronizedHistogram.getNeededByteBufferCapacity());

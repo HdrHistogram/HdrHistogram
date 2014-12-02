@@ -121,10 +121,6 @@ public class HistogramTest {
         histogram.recordValue(100000000);
         histogram.recordValue(20000000);
         histogram.recordValue(30000000);
-        System.out.println("***!!!*** highest equiv(20000000) = " + histogram.highestEquivalentValue(20000000) +
-                ", lowest = " + histogram.lowestEquivalentValue(20000000));
-        System.out.println("***!!!*** max = " + histogram.getMaxValue() +
-                ", lowest equiv = " + histogram.lowestEquivalentValue(histogram.getMaxValue()));
         Assert.assertTrue(histogram.valuesAreEquivalent(20000000, histogram.getValueAtPercentile(50.0)));
         Assert.assertTrue(histogram.valuesAreEquivalent(30000000, histogram.getValueAtPercentile(83.33)));
         Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(83.34)));
@@ -509,6 +505,14 @@ public class HistogramTest {
 
         System.out.println("Testing copy of AtomicHistogram:");
         assertEqual(atomicHistogram, atomicHistogram.copy());
+
+        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        concurrentHistogram.recordValue(testValueLevel);
+        concurrentHistogram.recordValue(testValueLevel * 10);
+        concurrentHistogram.recordValueWithExpectedInterval(concurrentHistogram.getHighestTrackableValue() - 1, 31000);
+
+        System.out.println("Testing copy of ConcurrentHistogram:");
+        assertEqual(concurrentHistogram, concurrentHistogram.copy());
   
         SynchronizedHistogram syncHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
         syncHistogram.recordValue(testValueLevel);
@@ -552,6 +556,14 @@ public class HistogramTest {
 
         System.out.println("Testing copy of scaled AtomicHistogram:");
         assertEqual(atomicHistogram, atomicHistogram.copy());
+
+        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        concurrentHistogram.recordValue(testValueLevel);
+        concurrentHistogram.recordValue(testValueLevel * 10);
+        concurrentHistogram.recordValueWithExpectedInterval(concurrentHistogram.getHighestTrackableValue() - 1, 31000);
+
+        System.out.println("Testing copy of scaled ConcurrentHistogram:");
+        assertEqual(concurrentHistogram, concurrentHistogram.copy());
 
         SynchronizedHistogram syncHistogram = new SynchronizedHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
         syncHistogram.recordValue(testValueLevel);
@@ -626,6 +638,22 @@ public class HistogramTest {
 
         atomicHistogram.copyInto(targetAtomicHistogram);
         assertEqual(atomicHistogram, targetAtomicHistogram);
+
+
+        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        ConcurrentHistogram targetConcurrentHistogram = new ConcurrentHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        concurrentHistogram.recordValue(testValueLevel);
+        concurrentHistogram.recordValue(testValueLevel * 10);
+        concurrentHistogram.recordValueWithExpectedInterval(concurrentHistogram.getHighestTrackableValue() - 1, 31000);
+
+        System.out.println("Testing copyInto for ConcurrentHistogram:");
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
+
+        concurrentHistogram.recordValue(testValueLevel * 20);
+
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
 
 
         SynchronizedHistogram syncHistogram = new SynchronizedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
@@ -708,6 +736,22 @@ public class HistogramTest {
         System.out.println("Testing copyInto for scaled AtomicHistogram:");
         atomicHistogram.copyInto(targetAtomicHistogram);
         assertEqual(atomicHistogram, targetAtomicHistogram);
+
+
+        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        ConcurrentHistogram targetConcurrentHistogram = new ConcurrentHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);
+        concurrentHistogram.recordValue(testValueLevel);
+        concurrentHistogram.recordValue(testValueLevel * 10);
+        concurrentHistogram.recordValueWithExpectedInterval(concurrentHistogram.getHighestTrackableValue() - 1, 31000);
+
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
+
+        concurrentHistogram.recordValue(testValueLevel * 20);
+
+        System.out.println("Testing copyInto for scaled ConcurrentHistogram:");
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
 
 
         SynchronizedHistogram syncHistogram = new SynchronizedHistogram(1000, highestTrackableValue, numberOfSignificantValueDigits);

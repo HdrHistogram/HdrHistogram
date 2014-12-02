@@ -107,6 +107,7 @@ public class DoubleHistogramTest {
                 bottomValue /= 2.0;
             }
         } catch (ArrayIndexOutOfBoundsException ex) {
+            System.out.println("Bottom value at exception point = " + bottomValue);
         }
         Assert.assertEquals(1.0, bottomValue, 0.00001);
 
@@ -375,14 +376,14 @@ public class DoubleHistogramTest {
         System.out.println("Testing copy of DoubleHistogram backed by ShortHistogram:");
         assertEqual(withShortHistogram, withShortHistogram.copy());
 
-        DoubleHistogram withAtomicHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                AtomicHistogram.class);
-        withAtomicHistogram.recordValue(testValueLevel);
-        withAtomicHistogram.recordValue(testValueLevel * 10);
-        withAtomicHistogram.recordValueWithExpectedInterval(withAtomicHistogram.getCurrentHighestTrackableValue() - 1, 31000);
+        DoubleHistogram withConcurrentHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
+                ConcurrentHistogram.class);
+        withConcurrentHistogram.recordValue(testValueLevel);
+        withConcurrentHistogram.recordValue(testValueLevel * 10);
+        withConcurrentHistogram.recordValueWithExpectedInterval(withConcurrentHistogram.getCurrentHighestTrackableValue() - 1, 31000);
 
-        System.out.println("Testing copy of DoubleHistogram backed by AtomicHistogram:");
-        assertEqual(withAtomicHistogram, withAtomicHistogram.copy());
+        System.out.println("Testing copy of DoubleHistogram backed by ConcurrentHistogram:");
+        assertEqual(withConcurrentHistogram, withConcurrentHistogram.copy());
 
         DoubleHistogram withSyncHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
                 SynchronizedHistogram.class);
@@ -420,7 +421,7 @@ public class DoubleHistogramTest {
         withIntHistogram.recordValue(testValueLevel);
         withIntHistogram.recordValue(testValueLevel * 10);
         withIntHistogram.recordValueWithExpectedInterval(withIntHistogram.getCurrentHighestTrackableValue() - 1,
-                histogram.getCurrentHighestTrackableValue() / 1000);
+                withIntHistogram.getCurrentHighestTrackableValue() / 1000);
 
         System.out.println("Testing copyInto for DoubleHistogram backed by IntHistogram:");
         withIntHistogram.copyInto(targetWithIntHistogram);
@@ -439,9 +440,9 @@ public class DoubleHistogramTest {
         withShortHistogram.recordValue(testValueLevel);
         withShortHistogram.recordValue(testValueLevel * 10);
         withShortHistogram.recordValueWithExpectedInterval(withShortHistogram.getCurrentHighestTrackableValue() - 1,
-                histogram.getCurrentHighestTrackableValue() / 1000);
+                withShortHistogram.getCurrentHighestTrackableValue() / 1000);
 
-        System.out.println("Testing copyInto for DoubleHistogram backed by ShortHistogram:");
+        System.out.println("Testing copyInto for DoubleHistogram backed by a ShortHistogram:");
         withShortHistogram.copyInto(targetWithShortHistogram);
         assertEqual(withShortHistogram, targetWithShortHistogram);
 
@@ -451,23 +452,42 @@ public class DoubleHistogramTest {
         assertEqual(withShortHistogram, targetWithShortHistogram);
 
 
-        DoubleHistogram withAtomicHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                AtomicHistogram.class);
-        DoubleHistogram targetWithAtomicHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
-                AtomicHistogram.class);
-        withAtomicHistogram.recordValue(testValueLevel);
-        withAtomicHistogram.recordValue(testValueLevel * 10);
-        withAtomicHistogram.recordValueWithExpectedInterval(withAtomicHistogram.getCurrentHighestTrackableValue() - 1,
-                histogram.getCurrentHighestTrackableValue() / 1000);
+        DoubleHistogram withConcurrentHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
+                ConcurrentHistogram.class);
+        DoubleHistogram targetWithConcurrentHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
+                ConcurrentHistogram.class);
+        withConcurrentHistogram.recordValue(testValueLevel);
+        withConcurrentHistogram.recordValue(testValueLevel * 10);
+        withConcurrentHistogram.recordValueWithExpectedInterval(withConcurrentHistogram.getCurrentHighestTrackableValue() - 1,
+                withConcurrentHistogram.getCurrentHighestTrackableValue() / 1000);
 
-        System.out.println("Testing copyInto for DoubleHistogram backed by AtomicHistogram:");
-        withAtomicHistogram.copyInto(targetWithAtomicHistogram);
-        assertEqual(withAtomicHistogram, targetWithAtomicHistogram);
+        System.out.println("Testing copyInto for DoubleHistogram backed by ConcurrentHistogram:");
+        withConcurrentHistogram.copyInto(targetWithConcurrentHistogram);
+        assertEqual(withConcurrentHistogram, targetWithConcurrentHistogram);
 
-        withAtomicHistogram.recordValue(testValueLevel * 20);
+        withConcurrentHistogram.recordValue(testValueLevel * 20);
 
-        withAtomicHistogram.copyInto(targetWithAtomicHistogram);
-        assertEqual(withAtomicHistogram, targetWithAtomicHistogram);
+        withConcurrentHistogram.copyInto(targetWithConcurrentHistogram);
+        assertEqual(withConcurrentHistogram, targetWithConcurrentHistogram);
+
+
+        ConcurrentDoubleHistogram concurrentHistogram =
+                new ConcurrentDoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        ConcurrentDoubleHistogram targetConcurrentHistogram =
+                new ConcurrentDoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        concurrentHistogram.recordValue(testValueLevel);
+        concurrentHistogram.recordValue(testValueLevel * 10);
+        concurrentHistogram.recordValueWithExpectedInterval(concurrentHistogram.getCurrentHighestTrackableValue() - 1,
+                concurrentHistogram.getCurrentHighestTrackableValue() / 1000);
+
+        System.out.println("Testing copyInto for actual ConcurrentHistogram:");
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
+
+        concurrentHistogram.recordValue(testValueLevel * 20);
+
+        concurrentHistogram.copyInto(targetConcurrentHistogram);
+        assertEqual(concurrentHistogram, targetConcurrentHistogram);
 
 
         DoubleHistogram withSyncHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
@@ -477,7 +497,7 @@ public class DoubleHistogramTest {
         withSyncHistogram.recordValue(testValueLevel);
         withSyncHistogram.recordValue(testValueLevel * 10);
         withSyncHistogram.recordValueWithExpectedInterval(withSyncHistogram.getCurrentHighestTrackableValue() - 1,
-                histogram.getCurrentHighestTrackableValue() / 1000);
+                withSyncHistogram.getCurrentHighestTrackableValue() / 1000);
 
         System.out.println("Testing copyInto for DoubleHistogram backed by SynchronizedHistogram:");
         withSyncHistogram.copyInto(targetWithSyncHistogram);
@@ -487,6 +507,24 @@ public class DoubleHistogramTest {
 
         withSyncHistogram.copyInto(targetWithSyncHistogram);
         assertEqual(withSyncHistogram, targetWithSyncHistogram);
+
+        SynchronizedDoubleHistogram syncHistogram =
+                new SynchronizedDoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        SynchronizedDoubleHistogram targetSyncHistogram =
+                new SynchronizedDoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        syncHistogram.recordValue(testValueLevel);
+        syncHistogram.recordValue(testValueLevel * 10);
+        syncHistogram.recordValueWithExpectedInterval(syncHistogram.getCurrentHighestTrackableValue() - 1,
+                syncHistogram.getCurrentHighestTrackableValue() / 1000);
+
+        System.out.println("Testing copyInto for actual SynchronizedDoubleHistogram:");
+        syncHistogram.copyInto(targetSyncHistogram);
+        assertEqual(syncHistogram, targetSyncHistogram);
+
+        syncHistogram.recordValue(testValueLevel * 20);
+
+        syncHistogram.copyInto(targetSyncHistogram);
+        assertEqual(syncHistogram, targetSyncHistogram);
     }
 
     private int findContainingBinaryOrderOfMagnitude(double doubleNumber) {
