@@ -30,7 +30,7 @@ analyze the counts of observed response times ranging between 1 microsecond
 and 1 hour in magnitude, while maintaining a value resolution of 1
 microsecond up to 1 millisecond, a resolution of 1 millisecond (or better)
 up to one second, and a resolution of 1 second (or better) up to 1,000
-seconds. At it's maximum tracked value (1 hour), it would still maintain a
+seconds. At its maximum tracked value (1 hour), it would still maintain a
 resolution of 3.6 seconds (or better).
 
 The HdrHistogram package includes the Histogram implementation, which tracks
@@ -111,7 +111,7 @@ Synchronization and concurrent access
 ----------------------------------------------
 
 In the interest of keeping value recording cost to a minimum, the commonly
-used Histogram class and it's IntHistogram and ShortHistogram variants are
+used Histogram class and its IntHistogram and ShortHistogram variants are
 NOT internally synchronized, and do NOT use atomic variables. Callers
 wishing to make potentially concurrent, multi-threaded updates or queries
 against Histogram objects should either take care to externally synchronize
@@ -231,7 +231,7 @@ records covering the missing increments spread between 10msec and 100 sec.
 
 Data sets recorded with and without an expectedIntervalBetweenValueSamples
 parameter will differ only if at least one value recorded with the recordValue
-method was greater than it's associated expectedIntervalBetweenValueSamples
+method was greater than its associated expectedIntervalBetweenValueSamples
 parameter.
 Data sets recorded with an expectedIntervalBetweenValueSamples parameter will
 be identical to ones recorded without it if all values recorded via the
