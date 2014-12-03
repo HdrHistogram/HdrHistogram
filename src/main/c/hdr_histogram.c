@@ -60,12 +60,6 @@ static void counts_inc_normalised(
     h->total_count += value;
 }
 
-static void counts_set_direct(
-    struct hdr_histogram* h, int32_t index, int64_t value)
-{
-    h->counts[index] = value;
-}
-
 static int64_t counts_get_direct(struct hdr_histogram* h, int32_t index)
 {
     return h->counts[index];
