@@ -1,2 +1,0 @@
-/usr/bin/ar cr libMintPack.a  CMakeFiles/MintPack.dir/timewaster.cpp.o CMakeFiles/MintPack.dir/lwlogger.cpp.o CMakeFiles/MintPack.dir/random.cpp.o CMakeFiles/MintPack.dir/threadsynchronizer.cpp.o
-/usr/bin/ranlib libMintPack.a

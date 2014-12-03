@@ -1,2 +1,0 @@
-/usr/bin/ar cr libMintomic.a  CMakeFiles/Mintomic.dir/mintomic_gcc.c.o
-/usr/bin/ranlib libMintomic.a

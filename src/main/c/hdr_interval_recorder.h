@@ -7,15 +7,14 @@
 #ifndef HDR_INTERVAL_RECORDER_H
 #define HDR_INTERVAL_RECORDER_H 1
 
-#include <mintomic/mintomic.h>
 #include <hdr_writer_reader_phaser.h>
 
 struct hdr_interval_recorder
 {
-    mint_atomicPtr_t active;
+    void* active;
     void* inactive;
     struct hdr_writer_reader_phaser phaser;
-};
+} __attribute__((aligned (8)));
 
 int hdr_interval_recorder_init(struct hdr_interval_recorder* r)
 {
@@ -34,8 +33,7 @@ void hdr_interval_recorder_update(
 {
     int64_t val = hdr_phaser_writer_enter(&r->phaser);
 
-    void* active = mint_load_ptr_relaxed(&r->active);
-    mint_thread_fence_acquire();
+    void* active = __atomic_load_n(&r->active, __ATOMIC_SEQ_CST);
 
     update_action(active, arg);
 
@@ -51,15 +49,14 @@ void* hdr_interval_recorder_sample(struct hdr_interval_recorder* r)
     temp = r->inactive;
 
     // volatile read
-    r->inactive = mint_load_ptr_relaxed(&r->active);
-    mint_thread_fence_acquire();
+    r->inactive = __atomic_load_n(&r->active, __ATOMIC_SEQ_CST);
 
     // volatile write
-    mint_thread_fence_release();
-    mint_store_ptr_relaxed(&r->active, temp);
-    mint_thread_fence_seq_cst();
+    __atomic_store_n(&r->active, temp, __ATOMIC_SEQ_CST);
 
     hdr_phaser_flip_phase(&r->phaser, 0);
+
+    hdr_phaser_reader_unlock(&r->phaser);
 
     return r->inactive;
 }

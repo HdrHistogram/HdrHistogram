@@ -133,7 +133,7 @@ int main(int argc, char** argv)
     memset(&config, 0, sizeof(struct config_t));
     if (!handle_opts(argc, argv, &config))
     {
-        printf(USAGE);
+        printf("%s", USAGE);
         return 0;
     }
 
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
 
     if (0 != hdr_init(
         1, 24L * 60 * 60 * 1000000, 3,
-        (struct hdr_histogram**) &recorder.active._nonatomic))
+        (struct hdr_histogram**) &recorder.active))
     {
         fprintf(stderr, "%s\n", "Failed to init hdr_histogram");
         return -1;
