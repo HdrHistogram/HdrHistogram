@@ -10,8 +10,8 @@ package org.HdrHistogram;
 import java.util.Iterator;
 
 /**
- * Used for iterating through histogram values in logarithmically increasing levels. The iteration is
- * performed in steps that start at <i>valueUnitsInFirstBucket</i> and increase exponentially according to
+ * Used for iterating through {@link DoubleHistogram} values values in logarithmically increasing levels. The
+ * iteration is performed in steps that start at <i>valueUnitsInFirstBucket</i> and increase exponentially according to
  * <i>logBase</i>, terminating when all recorded histogram values are exhausted. Note that each iteration "bucket"
  * includes values up to and including the next bucket boundary value.
  */

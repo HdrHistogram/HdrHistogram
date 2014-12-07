@@ -7,16 +7,9 @@
 
 package org.HdrHistogram;
 
-import java.io.*;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
-
 /**
- * <h3>A High Dynamic Range (HDR) Histogram of recorded counts at floating point (double) values </h3>
+ * <h3>A floating point values High Dynamic Range (HDR) Histogram that supports safe concurrent recording
+ * operations.</h3>
  * <p/>
  * A {@link ConcurrentDoubleHistogram} is a variant of {@link org.HdrHistogram.DoubleHistogram} that guarantees
  * lossless recording of values into the hsitogram even when the histogram is updated by mutliple threads, and
@@ -28,7 +21,7 @@ import java.util.zip.Deflater;
  * from changing during queries, iterations, copies, or addition operations on the histogram. Callers wishing to make
  * potentially concurrent, multi-threaded updates that would safely work in the presence of queries, copies, or
  * additions of histogram objects should either take care to externally synchronize and/or order their access,
- * use the {@link SynchronizedDoubleHistogram} variant, or (recommended) use the {@link IntervalDoubleHistogramRecorder}
+ * use the {@link SynchronizedDoubleHistogram} variant, or (recommended) use the {@link DoubleRecorder}
  * class, which is intended for this purpose.
  * <p/>
  * {@link ConcurrentDoubleHistogram} supports the recording and analyzing sampled data value counts across a

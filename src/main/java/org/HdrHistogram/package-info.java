@@ -123,8 +123,8 @@
  * (usually with some non-locking variants on the fast path) and having a summary/reporting thread perform
  * histogram aggregation math across time and/or threads. When such continuous non-blocking recording operation
  * (concurrent or not) is desired even when sampling, analyzing, or reporting operations are needed, consider using
- * the {@link org.HdrHistogram.IntervalHistogramRecorder} and
- * {@link org.HdrHistogram.SingleWriterIntervalHistogramRecorder} recorder variants that were specifically designed
+ * the {@link org.HdrHistogram.Recorder} and
+ * {@link org.HdrHistogram.SingleWriterRecorder} recorder variants that were specifically designed
  * for that purpose.
  * </p>
  * <h3>Iteration</h3>
@@ -271,8 +271,8 @@
  * {@link org.HdrHistogram.DoubleLinearIterator}, {@link org.HdrHistogram.DoubleLogarithmicIterator},
  * {@link org.HdrHistogram.DoublePercentileIterator}, {@link org.HdrHistogram.DoubleRecordedValuesIterator},
  * {@link org.HdrHistogram.DoubleAllValuesIterator}). Support for interval recording is provided with
- * {@link org.HdrHistogram.IntervalDoubleHistogramRecorder} and
- * {@link org.HdrHistogram.SingleWriterIntervalDoubleHistogramRecorder}.
+ * {@link org.HdrHistogram.DoubleRecorder} and
+ * {@link org.HdrHistogram.SingleWriterDoubleRecorder}.
  * <p>
  * <p/>
  * <h4>Auto-ranging in floating point histograms</h4>

@@ -32,22 +32,22 @@ public class HistogramPerfTest {
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
-    void recordLoopWithExpectedInterval(IntervalHistogramRecorder histogram, long loopCount, long expectedInterval) {
+    void recordLoopWithExpectedInterval(Recorder histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
-    void recordLoopWithExpectedInterval(SingleWriterIntervalHistogramRecorder histogram, long loopCount, long expectedInterval) {
+    void recordLoopWithExpectedInterval(SingleWriterRecorder histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
-    void recordLoopWithExpectedInterval(IntervalDoubleHistogramRecorder histogram, long loopCount, long expectedInterval) {
+    void recordLoopWithExpectedInterval(DoubleRecorder histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
 
-    void recordLoopWithExpectedInterval(SingleWriterIntervalDoubleHistogramRecorder histogram, long loopCount, long expectedInterval) {
+    void recordLoopWithExpectedInterval(SingleWriterDoubleRecorder histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
             histogram.recordValueWithExpectedInterval(testValueLevel + (i & 0x8000), expectedInterval);
     }
@@ -104,7 +104,7 @@ public class HistogramPerfTest {
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
-    public void testRawRecordingSpeedAtExpectedInterval(String label, IntervalHistogramRecorder intervalHistogram,
+    public void testRawRecordingSpeedAtExpectedInterval(String label, Recorder intervalHistogram,
                                                         long expectedInterval, long timingLoopCount) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
@@ -135,7 +135,7 @@ public class HistogramPerfTest {
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
-    public void testRawRecordingSpeedAtExpectedInterval(String label, SingleWriterIntervalHistogramRecorder intervalHistogram,
+    public void testRawRecordingSpeedAtExpectedInterval(String label, SingleWriterRecorder intervalHistogram,
                                                         long expectedInterval, long timingLoopCount) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
@@ -166,7 +166,7 @@ public class HistogramPerfTest {
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
-    public void testRawRecordingSpeedAtExpectedInterval(String label, SingleWriterIntervalDoubleHistogramRecorder intervalHistogram,
+    public void testRawRecordingSpeedAtExpectedInterval(String label, SingleWriterDoubleRecorder intervalHistogram,
                                                         long expectedInterval, long timingLoopCount) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
@@ -197,7 +197,7 @@ public class HistogramPerfTest {
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
-    public void testRawRecordingSpeedAtExpectedInterval(String label, IntervalDoubleHistogramRecorder intervalHistogram,
+    public void testRawRecordingSpeedAtExpectedInterval(String label, DoubleRecorder intervalHistogram,
                                                         long expectedInterval, long timingLoopCount) throws Exception {
         System.out.println("\nTiming recording speed with expectedInterval = " + expectedInterval + " :");
         // Warm up:
@@ -268,16 +268,16 @@ public class HistogramPerfTest {
 
     @Test
     public void testSingleWriterIntervalRecordingSpeed() throws Exception {
-        SingleWriterIntervalHistogramRecorder histogramRecorder;
-        histogramRecorder = new SingleWriterIntervalHistogramRecorder(highestTrackableValue, numberOfSignificantValueDigits);
+        SingleWriterRecorder histogramRecorder;
+        histogramRecorder = new SingleWriterRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming SingleWriterIntervalHistogramRecorder:");
         testRawRecordingSpeedAtExpectedInterval("SingleWriterIntervalHistogramRecorder: ", histogramRecorder, 1000000000, singleWriterIntervalTimingLoopCount);
     }
 
     @Test
     public void testIntervalRecordingSpeed() throws Exception {
-        IntervalHistogramRecorder histogramRecorder;
-        histogramRecorder = new IntervalHistogramRecorder(highestTrackableValue, numberOfSignificantValueDigits);
+        Recorder histogramRecorder;
+        histogramRecorder = new Recorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming IntervalHistogramRecorder:");
         testRawRecordingSpeedAtExpectedInterval("IntervalHistogramRecorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
     }
@@ -292,16 +292,16 @@ public class HistogramPerfTest {
 
     @Test
     public void testDoubleIntervalRecordingSpeed() throws Exception {
-        IntervalDoubleHistogramRecorder histogramRecorder;
-        histogramRecorder = new IntervalDoubleHistogramRecorder(highestTrackableValue, numberOfSignificantValueDigits);
+        DoubleRecorder histogramRecorder;
+        histogramRecorder = new DoubleRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming IntervalDoubleHistogramRecorder:");
         testRawRecordingSpeedAtExpectedInterval("IntervalDoubleHistogramRecorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
     }
 
     @Test
     public void testSingleWriterDoubleIntervalRecordingSpeed() throws Exception {
-        SingleWriterIntervalDoubleHistogramRecorder histogramRecorder;
-        histogramRecorder = new SingleWriterIntervalDoubleHistogramRecorder(highestTrackableValue, numberOfSignificantValueDigits);
+        SingleWriterDoubleRecorder histogramRecorder;
+        histogramRecorder = new SingleWriterDoubleRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming SingleWriterIntervalDoubleHistogramRecorder:");
         testRawRecordingSpeedAtExpectedInterval("SingleWriterIntervalDoubleHistogramRecorder: ", histogramRecorder, 1000000000, singleWriterDoubleIntervalTimingLoopCount);
     }

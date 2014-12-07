@@ -14,15 +14,14 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
-import java.util.zip.Inflater;
 
 /**
- * >A High Dynamic Range (HDR) Histogram of recorded counts at floating point (double) values </h3>
+ * A floating point values High Dynamic Range (HDR) Histogram</h3>
  * <p/>
  * It is important to note that {@link DoubleHistogram} is not thread-safe, and does not support safe concurrent
  * recording by multiple threads. If concurrent operation is required, consider usings
  * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram}, or(recommended)
- * {@link IntervalDoubleHistogramRecorder}, which are intended for this purpose.
+ * {@link DoubleRecorder}, which are intended for this purpose.
  * <p/>
  * {@link DoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.

@@ -10,22 +10,22 @@ package org.HdrHistogram;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * {@link org.HdrHistogram.IntervalDoubleHistogramRecorder} records values, and provides stable
- * interval histograms from live recorded data without interrupting or stalling active recording
+ * Records floting point (double) values, and provides stable
+ * interval {@link DoubleHistogram} samples from live recorded data without interrupting or stalling active recording
  * of values. Each interval histogram provided contains all value counts accumulated since the
  * previous interval histogram was taken.
  * <p>
  * This pattern is commonly used in logging interval histogram information while recoding is ongoing.
  * <p>
- * {@link IntervalDoubleHistogramRecorder} supports concurrent
- * {@link IntervalDoubleHistogramRecorder#recordValue} or
- * {@link IntervalDoubleHistogramRecorder#recordValueWithExpectedInterval} calls.
+ * {@link DoubleRecorder} supports concurrent
+ * {@link DoubleRecorder#recordValue} or
+ * {@link DoubleRecorder#recordValueWithExpectedInterval} calls.
  * Recording calls are wait-free on architectures that support atomic increment operations, and
  * are lock-free on architectures that do no.
  *
  */
 
-public class IntervalDoubleHistogramRecorder {
+public class DoubleRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
@@ -35,20 +35,20 @@ public class IntervalDoubleHistogramRecorder {
     private InternalConcurrentDoubleHistogram inactiveHistogram;
 
     /**
-     * Construct an auto-resizing {@link IntervalDoubleHistogramRecorder} using a precision stated as a number
+     * Construct an auto-resizing {@link DoubleRecorder} using a precision stated as a number
      * of significant decimal digits.
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalDoubleHistogramRecorder(final int numberOfSignificantValueDigits) {
+    public DoubleRecorder(final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
     }
 
     /**
-     * Construct a {@link IntervalDoubleHistogramRecorder} dynamic range of values to cover and a number of significant
+     * Construct a {@link DoubleRecorder} dynamic range of values to cover and a number of significant
      * decimal digits.
      *
      * @param highestToLowestValueRatio specifies the dynamic range to use (as a ratio)
@@ -56,8 +56,8 @@ public class IntervalDoubleHistogramRecorder {
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public IntervalDoubleHistogramRecorder(final long highestToLowestValueRatio,
-                                           final int numberOfSignificantValueDigits) {
+    public DoubleRecorder(final long highestToLowestValueRatio,
+                          final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalConcurrentDoubleHistogram(
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalConcurrentDoubleHistogram(
@@ -108,7 +108,7 @@ public class IntervalDoubleHistogramRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()} will reset
+     * Calling {@link DoubleRecorder#getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
@@ -121,22 +121,22 @@ public class IntervalDoubleHistogramRecorder {
      * Get an interval histogram, which will include a stable, consistent view of all value counts
      * accumulated since the last interval histogram was taken.
      * <p>
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * {@link DoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)}
      * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
      * and content copying operations, and is therefore siginificantly more efficient for repeated use than
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()} and
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
+     * {@link DoubleRecorder#getIntervalHistogram()} and
+     * {@link DoubleRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
      * {@code histogramToRecycle} must
      * be either be null or an interval histogram returned by a previous call to
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * {@link DoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} or
-     * {@link IntervalDoubleHistogramRecorder#getIntervalHistogram()}.
+     * {@link DoubleRecorder#getIntervalHistogram()}.
      * <p>
      * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
      * the same interval histogram instance is recycled more than once, behavior is undefined.
      * <p>
-     * Calling {@link IntervalDoubleHistogramRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * Calling {@link DoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
      * counts for the next interval
      *
@@ -146,7 +146,7 @@ public class IntervalDoubleHistogramRecorder {
      */
     public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
         if (histogramToRecycle == null) {
-                histogramToRecycle = new InternalConcurrentDoubleHistogram(inactiveHistogram);
+            histogramToRecycle = new InternalConcurrentDoubleHistogram(inactiveHistogram);
         }
         // Verify that replacement histogram can validly be used as an inactiuve histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
@@ -164,7 +164,7 @@ public class IntervalDoubleHistogramRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@link org.HdrHistogram.IntervalDoubleHistogramRecorder#getIntervalHistogramInto}() will reset
+     * Calling {@link DoubleRecorder#getIntervalHistogramInto}() will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
@@ -216,8 +216,8 @@ public class IntervalDoubleHistogramRecorder {
         }
 
         private InternalConcurrentDoubleHistogram(long id,
-                                        long highestToLowestValueRatio,
-                                        int numberOfSignificantValueDigits) {
+                                                  long highestToLowestValueRatio,
+                                                  int numberOfSignificantValueDigits) {
             super(highestToLowestValueRatio, numberOfSignificantValueDigits);
             this.containingInstanceId = id;
         }
@@ -233,13 +233,7 @@ public class IntervalDoubleHistogramRecorder {
         if ((replacementHistogram instanceof InternalConcurrentDoubleHistogram)
                 &&
                 (((InternalConcurrentDoubleHistogram) replacementHistogram).containingInstanceId ==
-                        ((InternalConcurrentDoubleHistogram) activeHistogram).containingInstanceId)
-                &&
-                (replacementHistogram.getNumberOfSignificantValueDigits() ==
-                        activeHistogram.getNumberOfSignificantValueDigits())
-                &&
-                (activeHistogram.isAutoResize() || (replacementHistogram.getHighestToLowestValueRatio() ==
-                        activeHistogram.getHighestToLowestValueRatio()))
+                        activeHistogram.containingInstanceId)
                 ) {
             bad = false;
         }

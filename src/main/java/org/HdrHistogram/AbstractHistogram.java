@@ -53,17 +53,17 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     ByteBuffer intermediateUncompressedByteBuffer = null;
 
-    public double getIntegerToDoubleValueConversionRatio() {
+    double getIntegerToDoubleValueConversionRatio() {
         return integerToDoubleValueConversionRatio;
     }
 
-    public void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
     }
 }
 
 /**
- * <h3>A High Dynamic Range (HDR) Histogram</h3>
+ * <h3>An abstract base class for integer values High Dynamic Range (HDR) Histograms</h3>
  * <p>
  * AbstractHistogram supports the recording and analyzing sampled data value counts across a configurable integer value
  * range with configurable value precision within the range. Value precision is expressed as the number of significant

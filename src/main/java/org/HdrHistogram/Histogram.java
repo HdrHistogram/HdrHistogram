@@ -200,9 +200,7 @@ public class Histogram extends AbstractHistogram {
      */
     public Histogram(final long lowestDiscernibleValue, final long highestTrackableValue,
                      final int numberOfSignificantValueDigits) {
-        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
-        counts = new long[countsArrayLength];
-        wordSizeInBytes = 8;
+        this(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, true);
     }
 
     /**
@@ -211,8 +209,23 @@ public class Histogram extends AbstractHistogram {
      * @param source The source histogram to duplicate
      */
     public Histogram(final AbstractHistogram source) {
+        this(source, true);
+    }
+
+    Histogram(final AbstractHistogram source, boolean allocateCountsArray) {
         super(source);
-        counts = new long[countsArrayLength];
+        if (allocateCountsArray) {
+            counts = new long[countsArrayLength];
+        }
+        wordSizeInBytes = 8;
+    }
+
+    Histogram(final long lowestDiscernibleValue, final long highestTrackableValue,
+              final int numberOfSignificantValueDigits, boolean allocateCountsArray) {
+        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
+        if (allocateCountsArray) {
+            counts = new long[countsArrayLength];
+        }
         wordSizeInBytes = 8;
     }
 

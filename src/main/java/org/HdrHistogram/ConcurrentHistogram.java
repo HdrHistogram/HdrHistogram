@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.zip.DataFormatException;
 
 /**
- * <h3>A High Dynamic Range (HDR) Histogram that supports safe concurret recording operations</h3>
+ * <h3>An integer values High Dynamic Range (HDR) Histogram that supports safe concurrent recording operations.</h3>
  * A ConcurrentHistogram guarantees lossless recording of values into the hsitogram even when the
  * histogram is updated by mutliple threads, and supports auto-resize and shift operations that may
  * result from or occur concurrently with other recording operations.
@@ -27,8 +27,8 @@ import java.util.zip.DataFormatException;
  * from changing during queries, iterations, copies, or addition operations on the histogram. Callers wishing to make
  * potentially concurrent, multi-threaded updates that would safely work in the presence of queries, copies, or
  * additions of histogram objects should either take care to externally synchronize and/or order their access,
- * use the {@link SynchronizedHistogram} variant, or (recommended) use {@link IntervalHistogramRecorder} or
- * {@link SingleWriterIntervalHistogramRecorder} which are intended for this purpose.
+ * use the {@link SynchronizedHistogram} variant, or (recommended) use {@link Recorder} or
+ * {@link SingleWriterRecorder} which are intended for this purpose.
  * <p>
  * Auto-resizing: When constructed with no specified value range range (or when auto-resize is turned on with {@link
  * Histogram#setAutoResize}) a {@link Histogram} will auto-resize its dynamic range to include recorded values as
@@ -38,11 +38,12 @@ import java.util.zip.DataFormatException;
  * See package description for {@link org.HdrHistogram} for details.
  */
 
-public class ConcurrentHistogram extends AtomicHistogram {
+public class ConcurrentHistogram extends Histogram {
 
     static final AtomicLongFieldUpdater<ConcurrentHistogram> totalCountUpdater =
             AtomicLongFieldUpdater.newUpdater(ConcurrentHistogram.class, "totalCount");
     volatile long totalCount;
+
     volatile AtomicLongArrayWithNormalizingOffset activeCounts;
     volatile AtomicLongArrayWithNormalizingOffset inactiveCounts;
     WriterReaderPhaser wrp = new WriterReaderPhaser();
@@ -336,9 +337,9 @@ public class ConcurrentHistogram extends AtomicHistogram {
 
     @Override
     public ConcurrentHistogram copy() {
-      ConcurrentHistogram copy = new ConcurrentHistogram(this);
-      copy.add(this);
-      return copy;
+        ConcurrentHistogram copy = new ConcurrentHistogram(this);
+        copy.add(this);
+        return copy;
     }
 
     @Override
@@ -418,7 +419,7 @@ public class ConcurrentHistogram extends AtomicHistogram {
      */
     public ConcurrentHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
                                final int numberOfSignificantValueDigits) {
-        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
+        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, false);
         activeCounts = new AtomicLongArrayWithNormalizingOffset(countsArrayLength, 0);
         inactiveCounts = new AtomicLongArrayWithNormalizingOffset(countsArrayLength, 0);
         wordSizeInBytes = 8;
@@ -430,7 +431,7 @@ public class ConcurrentHistogram extends AtomicHistogram {
      * @param source The source histogram to duplicate
      */
     public ConcurrentHistogram(final AbstractHistogram source) {
-        super(source);
+        super(source, false);
         activeCounts = new AtomicLongArrayWithNormalizingOffset(countsArrayLength, 0);
         inactiveCounts = new AtomicLongArrayWithNormalizingOffset(countsArrayLength, 0);
         wordSizeInBytes = 8;
@@ -443,7 +444,7 @@ public class ConcurrentHistogram extends AtomicHistogram {
      * @return The newly constructed histogram
      */
     public static ConcurrentHistogram decodeFromByteBuffer(final ByteBuffer buffer,
-                                                       final long minBarForHighestTrackableValue) {
+                                                           final long minBarForHighestTrackableValue) {
         return (ConcurrentHistogram) decodeFromByteBuffer(buffer, ConcurrentHistogram.class,
                 minBarForHighestTrackableValue);
     }
@@ -456,7 +457,7 @@ public class ConcurrentHistogram extends AtomicHistogram {
      * @throws java.util.zip.DataFormatException on error parsing/decompressing the buffer
      */
     public static ConcurrentHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                 final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                                     final long minBarForHighestTrackableValue) throws DataFormatException {
         return (ConcurrentHistogram) decodeFromCompressedByteBuffer(buffer, ConcurrentHistogram.class,
                 minBarForHighestTrackableValue);
     }

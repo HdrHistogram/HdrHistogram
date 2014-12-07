@@ -10,7 +10,7 @@ package org.HdrHistogram;
 import java.util.Iterator;
 
 /**
- * Used for iterating through histogram values in linear steps. The iteration is
+ * Used for iterating through {@link DoubleHistogram} values in linear steps. The iteration is
  * performed in steps of <i>valueUnitsPerBucket</i> in size, terminating when all recorded histogram
  * values are exhausted. Note that each iteration "bucket" includes values up to and including
  * the next bucket boundary value.

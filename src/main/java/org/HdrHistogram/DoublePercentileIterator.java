@@ -10,7 +10,7 @@ package org.HdrHistogram;
 import java.util.Iterator;
 
 /**
- * Used for iterating through histogram values according to percentile levels. The iteration is
+ * Used for iterating through {@link DoubleHistogram} values values according to percentile levels. The iteration is
  * performed in steps that start at 0% and reduce their distance to 100% according to the
  * <i>percentileTicksPerHalfDistance</i> parameter, ultimately reaching 100% when all recorded histogram
  * values are exhausted.

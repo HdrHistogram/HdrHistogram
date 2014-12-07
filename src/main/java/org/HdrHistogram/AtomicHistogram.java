@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
-import java.util.Arrays;
 import java.util.concurrent.atomic.*;
 import java.util.zip.DataFormatException;
 
@@ -27,7 +26,7 @@ import java.util.zip.DataFormatException;
  * multi-threaded updates that would safely work in the presence of queries, copies, or additions
  * of histogram objects should either take care to externally synchronize and/or order their access,
  * use the {@link org.HdrHistogram.SynchronizedHistogram} variant, or (recommended) use the
- * {@link org.HdrHistogram.IntervalHistogramRecorder} class, which is intended for this purpose.
+ * {@link Recorder} class, which is intended for this purpose.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
@@ -114,9 +113,9 @@ public class AtomicHistogram extends Histogram {
 
     @Override
     public AtomicHistogram copy() {
-      AtomicHistogram copy = new AtomicHistogram(this);
-      copy.add(this);
-      return copy;
+        AtomicHistogram copy = new AtomicHistogram(this);
+        copy.add(this);
+        return copy;
     }
 
     @Override
@@ -182,7 +181,7 @@ public class AtomicHistogram extends Histogram {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public AtomicHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
-        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
+        super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, false);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
     }
@@ -193,7 +192,7 @@ public class AtomicHistogram extends Histogram {
      * @param source The source histogram to duplicate
      */
     public AtomicHistogram(final AbstractHistogram source) {
-        super(source);
+        super(source, false);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
     }

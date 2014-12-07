@@ -10,9 +10,10 @@ package org.HdrHistogram;
 import java.util.Iterator;
 
 /**
- * Used for iterating through histogram values using the finest granularity steps supported by the underlying
- * representation. The iteration steps through all possible unit value levels, regardless of whether or not
- * there were recorded values for that value level, and terminates when all recorded histogram values are exhausted.
+ * Used for iterating through {@link DoubleHistogram} values values using the finest granularity steps supported by
+ * the underlying representation. The iteration steps through all possible unit value levels, regardless of whether
+ * or not there were recorded values for that value level, and terminates when all recorded histogram values are
+ * exhausted.
  */
 public class DoubleRecordedValuesIterator implements Iterator<DoubleHistogramIterationValue> {
     private final RecordedValuesIterator integerRecordedValuesIterator;
