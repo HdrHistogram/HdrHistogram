@@ -13,6 +13,7 @@ library you intended to use.
 
 HdrHistogram
 ----------------------------------------------
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/HdrHistogram/HdrHistogram?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 HdrHistogram supports the recording and analyzing of sampled data value
 counts across a configurable integer value range with configurable value
