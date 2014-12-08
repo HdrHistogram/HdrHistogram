@@ -144,9 +144,11 @@ public class WriterReaderPhaser {
         long initialStartValue;
         // First, clear currently unused [next] phase end epoch (to proper initial value for phase):
         if (nextPhaseIsEven) {
-            evenEndEpoch = initialStartValue = 0;
+            initialStartValue = 0;
+            evenEndEpochUpdater.lazySet(this, initialStartValue);
         } else {
-            oddEndEpoch = initialStartValue = Long.MIN_VALUE;
+            initialStartValue = Long.MIN_VALUE;
+            oddEndEpochUpdater.lazySet(this, initialStartValue);
         }
 
         // Next, reset start value, indicating new phase, and retain value at flip:
