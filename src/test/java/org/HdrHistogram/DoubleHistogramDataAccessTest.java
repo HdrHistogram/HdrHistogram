@@ -458,8 +458,9 @@ public class DoubleHistogramDataAccessTest {
             latestValueAtIndex = v.getValueIteratedTo();
             index++;
         }
-        Assert.assertEquals("Count at latest value iterated to is 1",
-                1, rawHistogram.getCountAtValue(latestValueAtIndex));
+        Assert.assertEquals("index should be equal to countsArrayLength",
+                histogram.integerValuesHistogram.countsArrayLength, index);
+
 
         index = 0;
         long totalAddedCounts = 0;
@@ -478,6 +479,8 @@ public class DoubleHistogramDataAccessTest {
             totalAddedCounts += v.getCountAddedInThisIterationStep();
             index++;
         }
+        Assert.assertEquals("index should be equal to countsArrayLength",
+                histogram.integerValuesHistogram.countsArrayLength, index);
         Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
     }
 }
