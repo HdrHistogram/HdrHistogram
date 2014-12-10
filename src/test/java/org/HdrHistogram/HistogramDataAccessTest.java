@@ -11,6 +11,8 @@ package org.HdrHistogram;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 /**
  * JUnit test for {@link org.HdrHistogram.Histogram}
  */
@@ -374,7 +376,6 @@ public class HistogramDataAccessTest {
 
         index = 0;
         long totalAddedCounts = 0;
-        // Iterate data using linear buckets of 1 sec each.
         for (HistogramIterationValue v : histogram.logarithmicBucketValues(10000, 2)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
@@ -410,7 +411,6 @@ public class HistogramDataAccessTest {
 
         index = 0;
         long totalAddedCounts = 0;
-        // Iterate data using linear buckets of 1 sec each.
         for (HistogramIterationValue v : histogram.recordedValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 0) {
@@ -434,7 +434,7 @@ public class HistogramDataAccessTest {
     public void testAllValues() throws Exception {
         int index = 0;
         long latestValueAtIndex = 0;
-        // Iterate raw data by stepping through every value that ahs a count recorded:
+        // Iterate raw data by stepping through every value that has a count recorded:
         for (HistogramIterationValue v : rawHistogram.allValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 1000) {
@@ -450,13 +450,13 @@ public class HistogramDataAccessTest {
             latestValueAtIndex = v.getValueIteratedTo();
             index++;
         }
-        Assert.assertEquals("Count at latest value iterated to is 1",
-                1, rawHistogram.getCountAtValue(latestValueAtIndex));
+        Assert.assertEquals("index should be equal to countsArrayLength", histogram.countsArrayLength, index);
 
         index = 0;
         long totalAddedCounts = 0;
-        // Iterate data using linear buckets of 1 sec each.
+        HistogramIterationValue v1 = null;
         for (HistogramIterationValue v : histogram.allValues()) {
+            v1 = v;
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
             if (index == 1000) {
                 Assert.assertEquals("AllValues bucket # 0 [" +
@@ -468,8 +468,36 @@ public class HistogramDataAccessTest {
                     " is exactly the amount added since the last iteration ",
                     v.getCountAtValueIteratedTo(), v.getCountAddedInThisIterationStep());
             totalAddedCounts += v.getCountAddedInThisIterationStep();
+            Assert.assertTrue("valueFromIndex(index) should be equal to getValueIteratedTo()",
+                    histogram.valuesAreEquivalent(histogram.valueFromIndex(index), v.getValueIteratedTo()));
             index++;
         }
+        Assert.assertEquals("index should be equal to countsArrayLength", histogram.countsArrayLength, index);
         Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
+    }
+
+    @Test
+    public void testVerifyManualAllValuesDuplication() {
+        Histogram histogram1 = histogram.copy();
+
+        AbstractHistogram.AllValues values = histogram1.allValues();
+        ArrayList<Long> ranges = new ArrayList<Long>();
+        ArrayList<Long> counts = new ArrayList<Long>();
+        int index = 0;
+        for (HistogramIterationValue value : values) {
+            if (value.getCountAddedInThisIterationStep() > 0) {
+                ranges.add(value.getValueIteratedTo());
+                counts.add(value.getCountAddedInThisIterationStep());
+            }
+            index++;
+        }
+        Assert.assertEquals("index should be equal to countsArrayLength", histogram1.countsArrayLength, index);
+
+        AbstractHistogram histogram2 = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        for (int i = 0; i < ranges.size(); ++i) {
+            histogram2.recordValueWithCount(ranges.get(i), counts.get(i));
+        }
+
+        Assert.assertTrue("Histograms should be equal", histogram1.equals(histogram2));
     }
 }

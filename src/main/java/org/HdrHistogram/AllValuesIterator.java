@@ -7,6 +7,7 @@
 
 package org.HdrHistogram;
 
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 
 /**
@@ -45,5 +46,14 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
     @Override
     boolean reachedIterationLevel() {
         return (visitedIndex != currentIndex);
+    }
+
+    @Override
+    public boolean hasNext() {
+        if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
+            throw new ConcurrentModificationException();
+        }
+        // Unlike other iterators AllValuesIterator is only done when we've exusted the indecies:
+        return (currentIndex < (histogram.countsArrayLength - 1));
     }
 }

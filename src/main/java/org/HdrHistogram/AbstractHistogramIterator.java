@@ -57,6 +57,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      *
      * @return true if the iterator has more elements.
      */
+    @Override
     public boolean hasNext() {
         if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
             throw new ConcurrentModificationException();
@@ -69,6 +70,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      *
      * @return the {@link HistogramIterationValue} associated with the next element in the iteration.
      */
+    @Override
     public HistogramIterationValue next() {
         // Move through the sub buckets and buckets until we hit the next reporting level:
         while (!exhaustedSubBuckets()) {
@@ -101,6 +103,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     /**
      * Not supported. Will throw an {@link UnsupportedOperationException}.
      */
+    @Override
     public void remove() {
         throw new UnsupportedOperationException();
     }
