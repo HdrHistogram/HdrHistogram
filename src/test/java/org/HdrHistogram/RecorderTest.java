@@ -112,4 +112,11 @@ public class RecorderTest {
         doubleHistogram4.add(doubleHistogram3);
         Assert.assertEquals(doubleHistogram4, doubleHistogram2);
     }
+
+    @Test
+    public void testSimpleAutosizingRecorder() throws Exception {
+        Recorder recorder = new Recorder(3);
+        Histogram histogram = recorder.getIntervalHistogram();
+    }
+
 }

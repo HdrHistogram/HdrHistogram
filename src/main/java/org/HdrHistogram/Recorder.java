@@ -272,7 +272,7 @@ public class Recorder {
                 bad = false;
             }
         } else if (replacementHistogram instanceof InternalConcurrentHistogram) {
-            if ((activeHistogram instanceof InternalAtomicHistogram)
+            if ((activeHistogram instanceof InternalConcurrentHistogram)
                     &&
                     (((InternalConcurrentHistogram)replacementHistogram).containingInstanceId ==
                             ((InternalConcurrentHistogram)activeHistogram).containingInstanceId)
