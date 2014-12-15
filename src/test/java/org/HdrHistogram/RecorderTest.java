@@ -33,12 +33,12 @@ public class RecorderTest {
 
 
         for (int i = 0; i < 10000; i++) {
-            histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder1.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder2.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder1.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder2.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            histogram.recordValue(3000 * i);
+            recorder1.recordValue(3000 * i);
+            recorder2.recordValue(3000 * i);
+            doubleHistogram.recordValue(5000 * i);
+            doubleRecorder1.recordValue(5000 * i);
+            doubleRecorder2.recordValue(5000 * i);
             doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
             doubleRecorder1.recordValue(0.001); // Makes some internal shifts happen.
             doubleRecorder2.recordValue(0.001); // Makes some internal shifts happen.
@@ -57,15 +57,15 @@ public class RecorderTest {
         Assert.assertEquals(doubleHistogram, doubleHistogram2);
 
         for (int i = 0; i < 5000; i++) {
-            histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder1.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder2.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder1.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder2.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
-            doubleRecorder1.recordValue(0.001); // Makes some internal shifts happen.
-            doubleRecorder2.recordValue(0.001); // Makes some internal shifts happen.
+            histogram.recordValue(3000 * i);
+            recorder1.recordValue(3000 * i);
+            recorder2.recordValue(3000 * i);
+            doubleHistogram.recordValue(5000 * i);
+            doubleRecorder1.recordValue(5000 * i);
+            doubleRecorder2.recordValue(5000 * i);
+            doubleHistogram.recordValue(0.001);
+            doubleRecorder1.recordValue(0.001);
+            doubleRecorder2.recordValue(0.001);
         }
 
         Histogram histogram3 = recorder1.getIntervalHistogram();
@@ -84,15 +84,15 @@ public class RecorderTest {
         doubleRecorder2.getIntervalHistogram();
 
         for (int i = 5000; i < 10000; i++) {
-            histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder1.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            recorder2.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder1.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleRecorder2.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
-            doubleRecorder1.recordValue(0.001); // Makes some internal shifts happen.
-            doubleRecorder2.recordValue(0.001); // Makes some internal shifts happen.
+            histogram.recordValue(3000 * i);
+            recorder1.recordValue(3000 * i);
+            recorder2.recordValue(3000 * i);
+            doubleHistogram.recordValue(5000 * i);
+            doubleRecorder1.recordValue(5000 * i);
+            doubleRecorder2.recordValue(5000 * i);
+            doubleHistogram.recordValue(0.001);
+            doubleRecorder1.recordValue(0.001);
+            doubleRecorder2.recordValue(0.001);
         }
 
         Histogram histogram4 = recorder1.getIntervalHistogram();

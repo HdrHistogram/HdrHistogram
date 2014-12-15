@@ -11,7 +11,7 @@ package org.HdrHistogram;
 import org.junit.*;
 
 /**
- * JUnit test for {@link Histogram}
+ * JUnit test for {@link org.HdrHistogram.Histogram}
  */
 public class HistogramPerfTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
@@ -271,7 +271,7 @@ public class HistogramPerfTest {
         SingleWriterRecorder histogramRecorder;
         histogramRecorder = new SingleWriterRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming SingleWriterIntervalHistogramRecorder:");
-        testRawRecordingSpeedAtExpectedInterval("SingleWriterIntervalHistogramRecorder: ", histogramRecorder, 1000000000, singleWriterIntervalTimingLoopCount);
+        testRawRecordingSpeedAtExpectedInterval("SingleWriterRecorder: ", histogramRecorder, 1000000000, singleWriterIntervalTimingLoopCount);
     }
 
     @Test
@@ -279,7 +279,7 @@ public class HistogramPerfTest {
         Recorder histogramRecorder;
         histogramRecorder = new Recorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming IntervalHistogramRecorder:");
-        testRawRecordingSpeedAtExpectedInterval("IntervalHistogramRecorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
+        testRawRecordingSpeedAtExpectedInterval("Recorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
     }
 
     @Test
@@ -295,7 +295,7 @@ public class HistogramPerfTest {
         DoubleRecorder histogramRecorder;
         histogramRecorder = new DoubleRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming IntervalDoubleHistogramRecorder:");
-        testRawRecordingSpeedAtExpectedInterval("IntervalDoubleHistogramRecorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
+        testRawRecordingSpeedAtExpectedInterval("DoubleRecorder: ", histogramRecorder, 1000000000, intervalTimingLoopCount);
     }
 
     @Test
@@ -303,7 +303,7 @@ public class HistogramPerfTest {
         SingleWriterDoubleRecorder histogramRecorder;
         histogramRecorder = new SingleWriterDoubleRecorder(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming SingleWriterIntervalDoubleHistogramRecorder:");
-        testRawRecordingSpeedAtExpectedInterval("SingleWriterIntervalDoubleHistogramRecorder: ", histogramRecorder, 1000000000, singleWriterDoubleIntervalTimingLoopCount);
+        testRawRecordingSpeedAtExpectedInterval("SingleWriterDoubleRecorder: ", histogramRecorder, 1000000000, singleWriterDoubleIntervalTimingLoopCount);
     }
 
     @Test

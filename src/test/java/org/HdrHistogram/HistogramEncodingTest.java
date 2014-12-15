@@ -45,13 +45,13 @@ public class HistogramEncodingTest {
         DoubleHistogram doubleHistogram = new DoubleHistogram(highestTrackableValue * 1000, 3);
 
         for (int i = 0; i < 10000; i++) {
-            shortCountsHistogram.recordValueWithExpectedInterval(1000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            intCountsHistogram.recordValueWithExpectedInterval(2000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            histogram.recordValueWithExpectedInterval(3000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            atomicHistogram.recordValueWithExpectedInterval(4000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            concurrentHistogram.recordValueWithExpectedInterval(4000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            synchronizedHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
-            doubleHistogram.recordValueWithExpectedInterval(5000 * i /* 1 msec */, 10000 /* 10 msec expected interval */);
+            shortCountsHistogram.recordValue(1000 * i);
+            intCountsHistogram.recordValue(2000 * i);
+            histogram.recordValue(3000 * i);
+            atomicHistogram.recordValue(4000 * i);
+            concurrentHistogram.recordValue(4000 * i);
+            synchronizedHistogram.recordValue(5000 * i);
+            doubleHistogram.recordValue(5000 * i);
             doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
         }
 
