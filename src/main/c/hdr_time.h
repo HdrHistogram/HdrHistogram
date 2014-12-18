@@ -4,6 +4,8 @@
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  */
 
+#include <time.h>
+
 #ifdef __APPLE__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -20,7 +22,6 @@ void hdr_gettime(struct timespec* ts)
 }
 
 #elif __linux__
-#include <time.h>
 
 void hdr_gettime(struct timespec* t)
 {
