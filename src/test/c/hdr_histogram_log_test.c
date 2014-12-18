@@ -591,5 +591,5 @@ int hdr_histogram_log_run_tests()
 
     printf("Tests run: %d\n", tests_run);
 
-    return result.message != 0;
+    return result.message;
 }

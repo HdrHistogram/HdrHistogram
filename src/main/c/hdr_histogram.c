@@ -7,12 +7,10 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
-#include <x86intrin.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-#include <zlib.h>
 #include <errno.h>
 #include <inttypes.h>
 
@@ -665,7 +663,7 @@ bool hdr_percentile_iter_next(struct hdr_percentile_iter* percentiles)
     return true;
 }
 
-static void format_line_string(char* str, int len, int significant_figures, format_type format)
+static void format_line_string(char* str, size_t len, int significant_figures, format_type format)
 {
     const char* format_str = "%s%d%s";
 

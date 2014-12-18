@@ -10,7 +10,10 @@
 
 int main(int argc, char **argv)
 {
-    hdr_histogram_run_tests();
-    hdr_histogram_log_run_tests();
-    hdr_dbl_histogram_run_tests();
+    int result = 0;
+    result += hdr_histogram_run_tests();
+    result += hdr_histogram_log_run_tests();
+    result += hdr_dbl_histogram_run_tests();
+
+    return result;
 }

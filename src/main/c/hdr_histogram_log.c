@@ -5,6 +5,7 @@
  */
 
 #define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -12,10 +13,10 @@
 #include <string.h>
 #include <zlib.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <ctype.h>
 #include <math.h>
 #include <time.h>
+
 
 #include "hdr_histogram.h"
 #include "hdr_histogram_log.h"
@@ -39,15 +40,8 @@
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #define le64toh(x) OSSwapLittleToHostInt64(x)
 
-#elif __linux__
-
-#include <endian.h>
-
-#else
-
-#warning "Platform not supported\n"
-
 #endif
+
 
 #define FAIL_AND_CLEANUP(label, error_name, error) \
     do                      \
@@ -129,7 +123,7 @@ static const char base64_table[] =
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/', '\0'
 };
 
-static int get_base_64(uint32_t _24_bit_value, int shift)
+static char get_base_64(uint32_t _24_bit_value, int shift)
 {
     uint32_t _6_bit_value = 0x3F & (_24_bit_value >> shift);
     return base64_table[_6_bit_value];
@@ -328,7 +322,7 @@ static double int64_bits_to_double(int64_t i)
         double d;
     } x;
 
-    x.l = i;
+    x.l = (uint64_t) i;
 
     return x.d;
 }
@@ -662,7 +656,7 @@ int hdr_log_writer_init(struct hdr_log_writer* writer)
     return 0;
 }
 
-#define LOG_VERION "1.1"
+#define LOG_VERSION "1.1"
 #define LOG_MAJOR_VERSION 1
 #define LOG_MINOR_VERSION 1
 
@@ -718,7 +712,7 @@ int hdr_log_write_header(
     {
         return EIO;
     }
-    if (print_version(file, LOG_VERION) < 0)
+    if (print_version(file, LOG_VERSION) < 0)
     {
         return EIO;
     }
@@ -742,7 +736,7 @@ int hdr_log_write(
     struct hdr_histogram* histogram)
 {
     uint8_t* compressed_histogram = NULL;
-    int compressed_len = 0;
+    size_t compressed_len = 0;
     char* encoded_histogram = NULL;
     int rc = 0;
     int result = 0;
@@ -902,7 +896,7 @@ int hdr_log_read(
     int interval_max_s = 0;
     int interval_max_ms = 0;
 
-    int read = getline(&line, &line_len, file);
+    ssize_t read = getline(&line, &line_len, file);
     if (-1 == read)
     {
         if (0 == errno)
@@ -945,8 +939,8 @@ int hdr_log_read(
         FAIL_AND_CLEANUP(cleanup, result, EINVAL);
     }
 
-    int base64_len = strlen(base64_histogram);
-    int compressed_len = base64_decoded_len(base64_len);
+    size_t base64_len = strlen(base64_histogram);
+    size_t compressed_len = base64_decoded_len(base64_len);
 
     r = base64_decode(
         base64_histogram, base64_len, compressed_histogram, compressed_len);

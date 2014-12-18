@@ -38,5 +38,5 @@ int hdr_dbl_histogram_run_tests()
 
     printf("Tests run: %d\n", tests_run);
 
-    return result.message != 0;
+    return result.message;
 }

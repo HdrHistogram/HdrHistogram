@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
-
 project("hdr_histogram")
 
-#SET (CMAKE_C_COMPILER "clang")
+ENABLE_TESTING()
+
+SET (CMAKE_C_COMPILER "clang")
 
 if(UNIX)
     set(CMAKE_C_FLAGS "-Wall -std=gnu99")

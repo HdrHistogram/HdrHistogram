@@ -14,3 +14,5 @@ endif (RT_EXISTS)
 
 install(TARGETS testing DESTINATION bin)
 install(TARGETS perftest DESTINATION bin)
+
+add_test(Alltests testing)
