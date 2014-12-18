@@ -494,7 +494,13 @@ public class ConcurrentHistogram extends Histogram {
         cachedDstLongBuffer.rewind();
         try {
             wrp.readerLock();
-            for (int i = 0; i < length; i++) {
+            int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+            int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
+            int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
+            for (int i = 0; i < lengthFromZeroIndexToEnd; i++) {
+                cachedDstLongBuffer.put(activeCounts.get(zeroIndex + i) + inactiveCounts.get(zeroIndex + i));
+            }
+            for (int i = 0; i < remainingLengthFromNormalizedZeroIndex; i++) {
                 cachedDstLongBuffer.put(activeCounts.get(i) + inactiveCounts.get(i));
             }
         } finally {

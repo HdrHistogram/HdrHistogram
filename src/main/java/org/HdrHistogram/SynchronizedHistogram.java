@@ -295,6 +295,10 @@ public class SynchronizedHistogram extends Histogram {
             cachedDstLongBuffer = buffer.asLongBuffer();
         }
         cachedDstLongBuffer.rewind();
-        cachedDstLongBuffer.put(counts, 0, length);
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
+        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
+        cachedDstLongBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
+        cachedDstLongBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }

@@ -1382,21 +1382,19 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         integerValuesHistogram.fillBufferFromCountsArray(buffer, length);
     }
 
-    private static final int DHIST_encodingCookie = 0x0c72124c;
-    private static final int DHIST_V0encodingCookie = 0x0c72144c;
-    private static final int DHIST_compressedEncodingCookie = 0x0c72124d;
-    private static final int DHIST_V0compressedEncodingCookie = 0x0c72144d;
+    private static final int DHIST_encodingCookie = 0x0c72124e;
+    private static final int DHIST_compressedEncodingCookie = 0x0c72124f;
 
     static boolean isDoubleHistogramCookie(int cookie) {
         return isCompressedDoubleHistogramCookie(cookie) || isNonCompressedDoubleHistogramCookie(cookie);
     }
 
     static boolean isCompressedDoubleHistogramCookie(int cookie) {
-        return (cookie == DHIST_compressedEncodingCookie) || (cookie == DHIST_V0compressedEncodingCookie);
+        return (cookie == DHIST_compressedEncodingCookie);
     }
 
     static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
-        return (cookie == DHIST_encodingCookie) || (cookie == DHIST_V0encodingCookie);
+        return (cookie == DHIST_encodingCookie);
     }
 
     /**

@@ -262,6 +262,10 @@ public class ShortCountsHistogram extends AbstractHistogram {
             cachedDstShortBuffer = buffer.asShortBuffer();
         }
         cachedDstShortBuffer.rewind();
-        cachedDstShortBuffer.put(counts, 0, length);
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
+        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
+        cachedDstShortBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
+        cachedDstShortBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }

@@ -1819,21 +1819,21 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             case 2: {
                 ShortBuffer source = sourceBuffer.asShortBuffer();
                 for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtNormalizedIndex(i, source.get());
+                    setCountAtIndex(i, source.get());
                 }
                 break;
             }
             case 4: {
                 IntBuffer source = sourceBuffer.asIntBuffer();
                 for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtNormalizedIndex(i, source.get());
+                    setCountAtIndex(i, source.get());
                 }
                 break;
             }
             case 8: {
                 LongBuffer source = sourceBuffer.asLongBuffer();
                 for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtNormalizedIndex(i, source.get());
+                    setCountAtIndex(i, source.get());
                 }
                 break;
             }
