@@ -72,14 +72,14 @@ static void load_histograms()
         free(raw_histogram);
     }
 
-    hdr_alloc(highest_trackable_value, significant_figures, &raw_histogram);
+    hdr_init(1, highest_trackable_value, significant_figures, &raw_histogram);
 
     if (cor_histogram)
     {
         free(cor_histogram);
     }
 
-    hdr_alloc(highest_trackable_value, significant_figures, &cor_histogram);
+    hdr_init(1, highest_trackable_value, significant_figures, &cor_histogram);
 
     if (scaled_raw_histogram)
     {
@@ -119,7 +119,7 @@ static char* test_create()
 
     mu_assert("Failed to allocate hdr_histogram", r == 0);
     mu_assert("Failed to allocate hdr_histogram", h != NULL);
-    mu_assert("Size is incorrect", compare_int64(s, 1704040));
+    mu_assert("Size is incorrect", compare_int64(s, 1704064));
 
     free(h);
 
