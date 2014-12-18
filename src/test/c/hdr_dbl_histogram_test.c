@@ -19,9 +19,11 @@ char* test_construct_argument_ranges()
 {
     struct hdr_dbl_histogram* h = NULL;
 
-    mu_assert("Should of failed allocation", 0 != hdr_dbl_init(1, SIGNIFICANT_FIGURES, &h));
-    mu_assert("Should of failed allocation", 0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, 6, &h));
-    mu_assert("Should of failed allocation", 0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, -1, &h));
+    mu_assert("highest_to_lowest_value_ratio must be >= 2", 0 != hdr_dbl_init(1, SIGNIFICANT_FIGURES, &h));
+    mu_assert("significant_figures must be > 0", 0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, -1, &h));
+    mu_assert(
+            "(highest_to_lowest_value_ratio * 10^significant_figures) must be < (1L << 61)",
+            0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, 6, &h));
 
     return NULL;
 }
