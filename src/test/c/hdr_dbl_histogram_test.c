@@ -10,6 +10,8 @@
 
 #include "minunit.h"
 
+int tests_run = 0;
+
 const int64_t TRACKABLE_VALUE_RANGE_SIZE = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
 const int32_t SIGNIFICANT_FIGURES = 3;
 
@@ -20,12 +22,12 @@ char* test_construct_argument_ranges()
     mu_assert("Should of failed allocation", 0 != hdr_dbl_init(1, SIGNIFICANT_FIGURES, &h));
     mu_assert("Should of failed allocation", 0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, 6, &h));
     mu_assert("Should of failed allocation", 0 != hdr_dbl_init(TRACKABLE_VALUE_RANGE_SIZE, -1, &h));
+
+    return NULL;
 }
 
 static struct mu_result all_tests()
 {
-    tests_run = 0;
-
     mu_run_test(test_construct_argument_ranges);
 
     mu_ok;
@@ -47,4 +49,9 @@ int hdr_dbl_histogram_run_tests()
     printf("Tests run: %d\n", tests_run);
 
     return (int) result.message;
+}
+
+int main(int argc, char **argv)
+{
+    return hdr_dbl_histogram_run_tests();
 }

@@ -19,6 +19,8 @@
 #include <hdr_histogram_log.h>
 #include "minunit.h"
 
+int tests_run = 0;
+
 static bool compare_int(int a, int b)
 {
     if (a == b)
@@ -592,4 +594,9 @@ int hdr_histogram_log_run_tests()
     printf("Tests run: %d\n", tests_run);
 
     return (int) result.message;
+}
+
+int main(int argc, char **argv)
+{
+    return hdr_histogram_log_run_tests();
 }

@@ -486,3 +486,8 @@ int hdr_histogram_run_tests()
 
     return (int) result.message;
 }
+
+int main(int argc, char **argv)
+{
+    return hdr_histogram_run_tests();
+}
