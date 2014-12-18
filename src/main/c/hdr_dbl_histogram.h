@@ -8,6 +8,7 @@
 #define HDR_DBL_HISTOGRAM_H 1
 
 #include <stdint.h>
+#include "hdr_histogram.h"
 
 struct hdr_dbl_histogram
 {

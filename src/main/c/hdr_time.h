@@ -20,6 +20,7 @@ void hdr_gettime(struct timespec* ts)
 }
 
 #elif __linux__
+#include <time.h>
 
 void hdr_gettime(struct timespec* t)
 {

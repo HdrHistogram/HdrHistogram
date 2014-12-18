@@ -42,7 +42,6 @@
 
 #endif
 
-
 #define FAIL_AND_CLEANUP(label, error_name, error) \
     do                      \
     {                       \
@@ -372,7 +371,7 @@ typedef struct __attribute__((__packed__))
 int hdr_encode_compressed(
     struct hdr_histogram* h,
     uint8_t** compressed_histogram,
-    int* compressed_len)
+    size_t* compressed_len)
 {
     _encoding_flyweight_v1* encoded = NULL;
     _compression_flyweight* compressed = NULL;

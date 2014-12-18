@@ -484,23 +484,5 @@ int hdr_histogram_run_tests()
 
     printf("Tests run: %d\n", tests_run);
 
-    return result.message;
+    return (int) result.message;
 }
-
-// int main(int argc, char **argv)
-// {
-//     struct mu_result result = all_tests();
-
-//     if (result.message != 0)
-//     {
-//         printf("%s(): %s\n", result.test, result.message);
-//     }
-//     else
-//     {
-//         printf("ALL TESTS PASSED\n");
-//     }
-
-//     printf("Tests run: %d\n", tests_run);
-
-//     return result.message != 0;
-// }

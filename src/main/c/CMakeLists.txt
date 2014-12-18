@@ -1,6 +1,6 @@
 
-add_library(hdr_histogram SHARED hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c)
-add_library(hdr_histogram_static STATIC hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c)
+add_library(hdr_histogram SHARED hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c hdr_atomic_histogram.c)
+add_library(hdr_histogram_static STATIC hdr_histogram.c hdr_histogram_log.c hdr_dbl_histogram.c hdr_atomic_histogram.c)
 
 target_link_libraries(hdr_histogram m z)
 target_link_libraries(hdr_histogram_static m z)

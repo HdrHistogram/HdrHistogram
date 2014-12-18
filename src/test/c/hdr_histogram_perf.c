@@ -5,14 +5,12 @@
  */
 
 #include <stdint.h>
-#include <stdbool.h>
 #include <stdlib.h>
-#include <math.h>
 
 #include <stdio.h>
 #include <hdr_histogram.h>
+#include <hdr_atomic_histogram.h>
 #include <locale.h>
-#include <time.h>
 
 #include "hdr_time.h"
 
@@ -32,16 +30,46 @@ struct timespec diff(struct timespec start, struct timespec end)
     return temp;
 }
 
+void inc(struct hdr_histogram* h, int32_t index, int64_t value)
+{
+    h->counts[index] += value;
+    h->total_count += value;
+}
+
 int main(int argc, char **argv)
 {
     struct hdr_histogram* histogram;
     int64_t max_value = 24 * 60 * 60 * 1000000L;
-    int result = hdr_alloc(max_value, 4, &histogram);
+    int64_t min_value = 1;
+    int result = -1;
+
+    if (argc == 1)
+    {
+        result = hdr_init(min_value, max_value, 4, &histogram);
+    }
+    else if (argc == 2)
+    {
+        if (argv[1][0] == 'i')
+        {
+            printf("Using function pointer\n");
+
+            result = hdr_init(min_value, max_value, 4, &histogram);
+            histogram->_increment = inc;
+        }
+        else if (argv[1][0] == 'a')
+        {
+            printf("Using function atomic histogram\n");
+
+            result = hdr_atomic_init(min_value, max_value, 4, &histogram);
+        }
+    }
+
     if (result != 0)
     {
         fprintf(stderr, "Failed to allocate histogram: %d\n", result);
         return -1;
     }
+
 
     struct timespec t0;
     struct timespec t1;

@@ -46,21 +46,50 @@ static int32_t normalize_index(struct hdr_histogram* h, int32_t index)
     return normalized_index + adjustment;
 }
 
+static int64_t counts_get_direct(struct hdr_histogram* h, int32_t index)
+{
+    if (!h->_get)
+    {
+        return h->counts[index];
+    }
+    else
+    {
+        return h->_get(h, index);
+    }
+}
+
 static int32_t counts_get_normalised(struct hdr_histogram* h, int32_t index)
 {
-    return h->counts[normalize_index(h, index)];
+    return counts_get_direct(h, normalize_index(h, index));
 }
 
 static void counts_inc_normalised(
     struct hdr_histogram* h, int32_t index, int64_t value)
 {
-    h->counts[normalize_index(h, index)] += value;
-    h->total_count += value;
+    int32_t normalised_index = normalize_index(h, index);
+
+    if (!h->_increment)
+    {
+        h->counts[normalised_index] += value;
+        h->total_count += value;
+    }
+    else
+    {
+        h->_increment(h, normalised_index, value);
+    }
 }
 
-static int64_t counts_get_direct(struct hdr_histogram* h, int32_t index)
+static void update_min_max(struct hdr_histogram* h, int64_t value)
 {
-    return h->counts[index];
+    if (!h->_update_min_max)
+    {
+        h->min_value = (value < h->min_value && value != 0) ? value : h->min_value;
+        h->max_value = (value > h->max_value) ? value : h->max_value;
+    }
+    else
+    {
+        h->_update_min_max(h, value);
+    }
 }
 
 // ##     ## ######## #### ##       #### ######## ##    ##
@@ -173,12 +202,6 @@ static int64_t median_equivalent_value(struct hdr_histogram* h, int64_t value)
     return lowest_equivalent_value(h, value) + (size_of_equivalent_value_range(h, value) >> 1);
 }
 
-static void update_min_max(struct hdr_histogram* h, int64_t value)
-{
-    h->min_value = (value < h->min_value && value != 0) ? value : h->min_value;
-    h->max_value = (value > h->max_value) ? value : h->max_value;
-}
-
 void hdr_reset_internal_counters(struct hdr_histogram* h)
 {
     int min_non_zero_index = -1;
@@ -273,6 +296,7 @@ int hdr_init(
     }
 
     memset((void*) histogram, 0, histogram_size);
+    // memset will ensure that all of the function pointers are null.
 
     histogram->lowest_trackable_value          = lowest_trackable_value;
     histogram->highest_trackable_value         = highest_trackable_value;
