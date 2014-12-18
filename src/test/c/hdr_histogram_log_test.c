@@ -193,7 +193,7 @@ int base64_encode(
 void base64_decode_block(const char* input, uint8_t* output);
 int base64_decode(
     const char* input, size_t input_len, uint8_t* output, size_t output_len);
-int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, int* length);
+int hdr_encode_compressed(struct hdr_histogram* h, uint8_t** buffer, size_t* length);
 int hdr_decode_compressed(
     uint8_t* buffer, size_t length, struct hdr_histogram** histogram);
 
@@ -202,7 +202,7 @@ static char* test_encode_and_decode_compressed()
     load_histograms();
 
     uint8_t* buffer = NULL;
-    int len = 0;
+    size_t len = 0;
     int rc = 0;
     struct hdr_histogram* actual = NULL;
     struct hdr_histogram* expected = raw_histogram;
@@ -230,7 +230,7 @@ static char* test_encode_and_decode_compressed_large()
     struct hdr_histogram* actual = NULL;
     struct hdr_histogram* expected = NULL;
     uint8_t* buffer = NULL;
-    int len = 0;
+    size_t len = 0;
     int rc = 0;
     hdr_init(1, limit, 4, &expected);
     srand(5);
