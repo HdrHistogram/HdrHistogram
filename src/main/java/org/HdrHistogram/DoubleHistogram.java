@@ -232,7 +232,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     private void setTrackableValueRange(final double lowestValueInAutoRange, final double highestValueInAutoRange) {
         this.currentLowestValueInAutoRange = lowestValueInAutoRange;
         this.currentHighestValueLimitInAutoRange = highestValueInAutoRange;
-        this.integerToDoubleValueConversionRatio = lowestValueInAutoRange / getLowestTackingIntegerValue();
+        this.integerToDoubleValueConversionRatio = lowestValueInAutoRange / getLowestTrackingIntegerValue();
         this.doubleToIntegerValueConversionRatio= 1.0 / integerToDoubleValueConversionRatio;
         integerValuesHistogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
     }
@@ -1580,7 +1580,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return integerValueRange;
     }
 
-    private long getLowestTackingIntegerValue() {
+    private long getLowestTrackingIntegerValue() {
         return integerValuesHistogram.subBucketHalfCount;
     }
 
