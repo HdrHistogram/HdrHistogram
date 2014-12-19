@@ -8,7 +8,8 @@
 
 package org.HdrHistogram;
 
-import org.junit.Assert;
+import static org.junit.Assert.*;
+
 import org.junit.Test;
 
 import java.io.*;
@@ -23,39 +24,22 @@ public class DoubleHistogramTest {
     // static final long testValueLevel = 12340;
     static final double testValueLevel = 4.0;
 
-    @Test
-    public void testConstructionArgumentRanges() throws Exception {
-        Boolean thrown = false;
-        DoubleHistogram histogram = null;
+    @Test(expected = IllegalArgumentException.class)
+    public void testTrackableValueRangeMustBeGreaterThanTwo() throws Exception
+    {
+        new DoubleHistogram(1, numberOfSignificantValueDigits);
+    }
 
-        try {
-            // This should throw:
-            histogram = new DoubleHistogram(1, numberOfSignificantValueDigits);
-        } catch (IllegalArgumentException e) {
-            thrown = true;
-        }
-        Assert.assertTrue(thrown);
-        Assert.assertEquals(histogram, null);
+    @Test(expected = IllegalArgumentException.class)
+    public void testNumberOfSignificantValueDigitsMustBeLessThanSix() throws Exception
+    {
+        new DoubleHistogram(trackableValueRangeSize, 6);
+    }
 
-        thrown = false;
-        try {
-            // This should throw:
-            histogram = new DoubleHistogram(trackableValueRangeSize, 6);
-        } catch (IllegalArgumentException e) {
-            thrown = true;
-        }
-        Assert.assertTrue(thrown);
-        Assert.assertEquals(histogram, null);
-
-        thrown = false;
-        try {
-            // This should throw:
-            histogram = new DoubleHistogram(trackableValueRangeSize, -1);
-        } catch (IllegalArgumentException e) {
-            thrown = true;
-        }
-        Assert.assertTrue(thrown);
-        Assert.assertEquals(histogram, null);
+    @Test(expected = IllegalArgumentException.class)
+    public void testNumberOfSignificantValueDigitsMustBePositive() throws Exception
+    {
+        new DoubleHistogram(trackableValueRangeSize, -1);
     }
 
     @Test
@@ -64,19 +48,19 @@ public class DoubleHistogramTest {
         // Record 1.0, and verify that the range adjust to it:
         histogram.recordValue(Math.pow(2.0, 20));
         histogram.recordValue(1.0);
-        Assert.assertEquals(1.0, histogram.getCurrentLowestTrackableNonZeroValue(), 0.001);
-        Assert.assertEquals(trackableValueRangeSize, histogram.getHighestToLowestValueRatio(), 0.001);
-        Assert.assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits(), 0.001);
+        assertEquals(1.0, histogram.getCurrentLowestTrackableNonZeroValue(), 0.001);
+        assertEquals(trackableValueRangeSize, histogram.getHighestToLowestValueRatio());
+        assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
 
         DoubleHistogram histogram2 = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         // Record a larger value, and verify that the range adjust to it too:
         histogram2.recordValue(2048.0 * 1024.0 * 1024.0);
-        Assert.assertEquals(2048.0 * 1024.0 * 1024.0, histogram2.getCurrentLowestTrackableNonZeroValue(), 0.001);
+        assertEquals(2048.0 * 1024.0 * 1024.0, histogram2.getCurrentLowestTrackableNonZeroValue(), 0.001);
 
         DoubleHistogram histogram3 = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         // Record a value that is 1000x outside of the initially set range, which should scale us by 1/1024x:
         histogram3.recordValue(1/1000.0);
-        Assert.assertEquals(1.0/1024, histogram3.getCurrentLowestTrackableNonZeroValue(), 0.001);
+        assertEquals(1.0/1024, histogram3.getCurrentLowestTrackableNonZeroValue(), 0.001);
     }
 
     @Test
@@ -84,7 +68,7 @@ public class DoubleHistogramTest {
         // A trackableValueRangeSize histigram
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(0.0);  // Include a zero value to make sure things are handled right.
-        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
+        assertEquals(1L, histogram.getCountAtValue(0.0));
 
         double topValue = 1.0;
         try {
@@ -94,13 +78,13 @@ public class DoubleHistogramTest {
             }
         } catch (ArrayIndexOutOfBoundsException ex) {
         }
-        Assert.assertEquals((double) (1L << 33), topValue, 0.00001);
-        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
+        assertEquals(1L << 33, topValue, 0.00001);
+        assertEquals(1L, histogram.getCountAtValue(0.0));
 
         histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(0.0); // Include a zero value to make sure things are handled right.
 
-        double bottomValue = (double) (1L << 33);
+        double bottomValue = 1L << 33;
         try {
             while (true) {
                 histogram.recordValue(bottomValue);
@@ -109,19 +93,19 @@ public class DoubleHistogramTest {
         } catch (ArrayIndexOutOfBoundsException ex) {
             System.out.println("Bottom value at exception point = " + bottomValue);
         }
-        Assert.assertEquals(1.0, bottomValue, 0.00001);
+        assertEquals(1.0, bottomValue, 0.00001);
 
         long expectedRange = 1L << (findContainingBinaryOrderOfMagnitude(trackableValueRangeSize) + 1);
-        Assert.assertEquals(expectedRange, (topValue/ bottomValue), 0.00001);
-        Assert.assertEquals(1L, histogram.getCountAtValue(0.0));
+        assertEquals(expectedRange, (topValue/ bottomValue), 0.00001);
+        assertEquals(1L, histogram.getCountAtValue(0.0));
     }
 
     @Test
     public void testRecordValue() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
-        Assert.assertEquals(1L, histogram.getCountAtValue(testValueLevel));
-        Assert.assertEquals(1L, histogram.getTotalCount());
+        assertEquals(1L, histogram.getCountAtValue(testValueLevel));
+        assertEquals(1L, histogram.getTotalCount());
     }
 
     @Test(expected = ArrayIndexOutOfBoundsException.class)
@@ -140,19 +124,19 @@ public class DoubleHistogramTest {
         rawHistogram.recordValue(0);
         rawHistogram.recordValue(testValueLevel);
         // The raw data will not include corrected samples:
-        Assert.assertEquals(1L, rawHistogram.getCountAtValue(0));
-        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, rawHistogram.getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(2L, rawHistogram.getTotalCount());
+        assertEquals(1L, rawHistogram.getCountAtValue(0));
+        assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 1 )/4));
+        assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 2 )/4));
+        assertEquals(0L, rawHistogram.getCountAtValue((testValueLevel * 3 )/4));
+        assertEquals(1L, rawHistogram.getCountAtValue((testValueLevel * 4 )/4));
+        assertEquals(2L, rawHistogram.getTotalCount());
         // The data will include corrected samples:
-        Assert.assertEquals(1L, histogram.getCountAtValue(0));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 1 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 2 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 3 )/4));
-        Assert.assertEquals(1L, histogram.getCountAtValue((testValueLevel * 4 )/4));
-        Assert.assertEquals(5L, histogram.getTotalCount());
+        assertEquals(1L, histogram.getCountAtValue(0));
+        assertEquals(1L, histogram.getCountAtValue((testValueLevel * 1 )/4));
+        assertEquals(1L, histogram.getCountAtValue((testValueLevel * 2 )/4));
+        assertEquals(1L, histogram.getCountAtValue((testValueLevel * 3 )/4));
+        assertEquals(1L, histogram.getCountAtValue((testValueLevel * 4 )/4));
+        assertEquals(5L, histogram.getTotalCount());
     }
 
     @Test
@@ -160,8 +144,8 @@ public class DoubleHistogramTest {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         histogram.reset();
-        Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
-        Assert.assertEquals(0L, histogram.getTotalCount());
+        assertEquals(0L, histogram.getCountAtValue(testValueLevel));
+        assertEquals(0L, histogram.getTotalCount());
     }
 
     @Test
@@ -174,9 +158,9 @@ public class DoubleHistogramTest {
         other.recordValue(testValueLevel);
         other.recordValue(testValueLevel * 1000);
         histogram.add(other);
-        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel));
-        Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
-        Assert.assertEquals(4L, histogram.getTotalCount());
+        assertEquals(2L, histogram.getCountAtValue(testValueLevel));
+        assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
+        assertEquals(4L, histogram.getTotalCount());
 
         DoubleHistogram biggerOther = new DoubleHistogram(trackableValueRangeSize * 2, numberOfSignificantValueDigits);
         biggerOther.recordValue(testValueLevel);
@@ -184,34 +168,30 @@ public class DoubleHistogramTest {
 
         // Adding the smaller histogram to the bigger one should work:
         biggerOther.add(histogram);
-        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
-        Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
-        Assert.assertEquals(6L, biggerOther.getTotalCount());
+        assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
+        assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
+        assertEquals(6L, biggerOther.getTotalCount());
 
         // Since we are auto-sized, trying to add a larger histogram into a smaller one should work if no
         // overflowing data is there:
-        boolean thrown = false;
         try {
             // This should throw:
             histogram.add(biggerOther);
         } catch (ArrayIndexOutOfBoundsException e) {
-            thrown = true;
+            fail("Should of thown with out of bounds error");
         }
-        Assert.assertFalse(thrown);
 
         // But trying to add smaller values to a larger histogram that actually uses it's range should throw an AIOOB:
         histogram.recordValue(1.0);
         other.recordValue(1.0);
         biggerOther.recordValue(trackableValueRangeSize * 8);
 
-        thrown = false;
         try {
             // This should throw:
             biggerOther.add(histogram);
+            fail("Should of thown with out of bounds error");
         } catch (ArrayIndexOutOfBoundsException e) {
-            thrown = true;
         }
-        Assert.assertTrue(thrown);
     }
 
 
@@ -219,15 +199,15 @@ public class DoubleHistogramTest {
     public void testSizeOfEquivalentValueRange() {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
-        Assert.assertEquals("Size of equivalent range for value 1 is 1",
+        assertEquals("Size of equivalent range for value 1 is 1",
                 1.0/1024.0, histogram.sizeOfEquivalentValueRange(1), 0.001);
-        Assert.assertEquals("Size of equivalent range for value 2500 is 2",
+        assertEquals("Size of equivalent range for value 2500 is 2",
                 2, histogram.sizeOfEquivalentValueRange(2500), 0.001);
-        Assert.assertEquals("Size of equivalent range for value 8191 is 4",
+        assertEquals("Size of equivalent range for value 8191 is 4",
                 4, histogram.sizeOfEquivalentValueRange(8191), 0.001);
-        Assert.assertEquals("Size of equivalent range for value 8192 is 8",
+        assertEquals("Size of equivalent range for value 8192 is 8",
                 8, histogram.sizeOfEquivalentValueRange(8192), 0.001);
-        Assert.assertEquals("Size of equivalent range for value 10000 is 8",
+        assertEquals("Size of equivalent range for value 10000 is 8",
                 8, histogram.sizeOfEquivalentValueRange(10000), 0.001);
     }
 
@@ -235,9 +215,9 @@ public class DoubleHistogramTest {
     public void testLowestEquivalentValue() {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
-        Assert.assertEquals("The lowest equivalent value to 10007 is 10000",
+        assertEquals("The lowest equivalent value to 10007 is 10000",
                 10000, histogram.lowestEquivalentValue(10007), 0.001);
-        Assert.assertEquals("The lowest equivalent value to 10009 is 10008",
+        assertEquals("The lowest equivalent value to 10009 is 10008",
                 10008, histogram.lowestEquivalentValue(10009), 0.001);
     }
 
@@ -245,17 +225,17 @@ public class DoubleHistogramTest {
     public void testHighestEquivalentValue() {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
-        Assert.assertEquals("The highest equivalent value to 8180 is 8183",
+        assertEquals("The highest equivalent value to 8180 is 8183",
                 8183.99999, histogram.highestEquivalentValue(8180), 0.001);
-        Assert.assertEquals("The highest equivalent value to 8187 is 8191",
+        assertEquals("The highest equivalent value to 8187 is 8191",
                 8191.99999, histogram.highestEquivalentValue(8191), 0.001);
-        Assert.assertEquals("The highest equivalent value to 8193 is 8199",
+        assertEquals("The highest equivalent value to 8193 is 8199",
                 8199.99999, histogram.highestEquivalentValue(8193), 0.001);
-        Assert.assertEquals("The highest equivalent value to 9995 is 9999",
+        assertEquals("The highest equivalent value to 9995 is 9999",
                 9999.99999, histogram.highestEquivalentValue(9995), 0.001);
-        Assert.assertEquals("The highest equivalent value to 10007 is 10007",
+        assertEquals("The highest equivalent value to 10007 is 10007",
                 10007.99999, histogram.highestEquivalentValue(10007), 0.001);
-        Assert.assertEquals("The highest equivalent value to 10008 is 10015",
+        assertEquals("The highest equivalent value to 10008 is 10015",
                 10015.99999, histogram.highestEquivalentValue(10008), 0.001);
     }
 
@@ -263,22 +243,22 @@ public class DoubleHistogramTest {
     public void testMedianEquivalentValue() {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
-        Assert.assertEquals("The median equivalent value to 4 is 4",
+        assertEquals("The median equivalent value to 4 is 4",
                 4.002, histogram.medianEquivalentValue(4), 0.001);
-        Assert.assertEquals("The median equivalent value to 5 is 5",
+        assertEquals("The median equivalent value to 5 is 5",
                 5.002, histogram.medianEquivalentValue(5), 0.001);
-        Assert.assertEquals("The median equivalent value to 4000 is 4001",
+        assertEquals("The median equivalent value to 4000 is 4001",
                 4001, histogram.medianEquivalentValue(4000), 0.001);
-        Assert.assertEquals("The median equivalent value to 8000 is 8002",
+        assertEquals("The median equivalent value to 8000 is 8002",
                 8002, histogram.medianEquivalentValue(8000), 0.001);
-        Assert.assertEquals("The median equivalent value to 10007 is 10004",
+        assertEquals("The median equivalent value to 10007 is 10004",
                 10004, histogram.medianEquivalentValue(10007), 0.001);
     }
 
     @Test
     public void testNextNonEquivalentValue() {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
-        Assert.assertNotSame(null, histogram);
+        assertNotSame(null, histogram);
     }
 
     void testDoubleHistogramSerialization(DoubleHistogram histogram) throws Exception {
@@ -312,19 +292,19 @@ public class DoubleHistogramTest {
             if (in !=null) in.close();
             if (bis != null) bis.close();
         }
-        Assert.assertNotNull(newHistogram);
+        assertNotNull(newHistogram);
         assertEqual(histogram, newHistogram);
     }
 
     private void assertEqual(DoubleHistogram expectedHistogram, DoubleHistogram actualHistogram) {
-        Assert.assertEquals(expectedHistogram, actualHistogram);
-        Assert.assertEquals(
+        assertEquals(expectedHistogram, actualHistogram);
+        assertEquals(
                 expectedHistogram.getCountAtValue(testValueLevel),
                 actualHistogram.getCountAtValue(testValueLevel));
-        Assert.assertEquals(
+        assertEquals(
                 expectedHistogram.getCountAtValue(testValueLevel * 10),
                 actualHistogram.getCountAtValue(testValueLevel * 10));
-        Assert.assertEquals(
+        assertEquals(
                 expectedHistogram.getTotalCount(),
                 actualHistogram.getTotalCount());
     }
@@ -347,7 +327,7 @@ public class DoubleHistogramTest {
         withShortHistogram = new DoubleHistogram(trackableValueRangeSize, 2, ShortCountsHistogram.class);
         testDoubleHistogramSerialization(withShortHistogram);
     }
-    
+
     @Test
     public void testCopy() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
@@ -525,13 +505,6 @@ public class DoubleHistogramTest {
 
         syncHistogram.copyInto(targetSyncHistogram);
         assertEqual(syncHistogram, targetSyncHistogram);
-    }
-
-    private int findContainingBinaryOrderOfMagnitude(double doubleNumber) {
-        long longNumber = (long) Math.ceil(doubleNumber);
-        int pow2ceiling = 64 - Long.numberOfLeadingZeros(longNumber); // smallest power of 2 containing value
-        pow2ceiling = Math.min(pow2ceiling, 62);
-        return pow2ceiling;
     }
 
     private int findContainingBinaryOrderOfMagnitude(long longNumber) {
