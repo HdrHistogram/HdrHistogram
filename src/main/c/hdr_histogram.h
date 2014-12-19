@@ -337,4 +337,29 @@ void hdr_log_iter_init(
  */
 bool hdr_log_iter_next(struct hdr_log_iter* logarithmic);
 
+/**
+* Internal allocation methods, used by hdr_dbl_histogram.
+*/
+struct hdr_histogram_bucket_config
+{
+    int64_t lowest_trackable_value;
+    int64_t highest_trackable_value;
+    int64_t unit_magnitude;
+    int64_t significant_figures;
+    int32_t sub_bucket_half_count_magnitude;
+    int32_t sub_bucket_half_count;
+    int64_t sub_bucket_mask;
+    int32_t sub_bucket_count;
+    int32_t bucket_count;
+    int32_t counts_len;
+};
+
+int hdr_calculate_bucket_config(
+        int64_t lowest_trackable_value,
+        int64_t highest_trackable_value,
+        int significant_figures,
+        struct hdr_histogram_bucket_config* cfg);
+
+void hdr_init_preallocated(struct hdr_histogram* h, struct hdr_histogram_bucket_config* cfg);
+
 #endif

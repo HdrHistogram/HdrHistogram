@@ -254,66 +254,91 @@ void hdr_reset_internal_counters(struct hdr_histogram* h)
 // ##     ## ##       ##     ## ##     ## ##    ##     ##
 // ##     ## ######## ##     ##  #######  ##     ##    ##
 
-int hdr_init(
+int hdr_calculate_bucket_config(
         int64_t lowest_trackable_value,
         int64_t highest_trackable_value,
         int significant_figures,
-        struct hdr_histogram** result)
+        struct hdr_histogram_bucket_config* cfg)
 {
     if (lowest_trackable_value < 1 ||
-        significant_figures < 1 || 5 < significant_figures)
+            significant_figures < 1 || 5 < significant_figures)
     {
         return EINVAL;
     }
 
+    cfg->lowest_trackable_value = lowest_trackable_value;
+    cfg->significant_figures = significant_figures;
+    cfg->highest_trackable_value = highest_trackable_value;
+
     int64_t largest_value_with_single_unit_resolution = 2 * power(10, significant_figures);
     int32_t sub_bucket_count_magnitude                = (int32_t) ceil(log(largest_value_with_single_unit_resolution) / log(2));
-    int32_t sub_bucket_half_count_magnitude           = ((sub_bucket_count_magnitude > 1) ? sub_bucket_count_magnitude : 1) - 1;
+    cfg->sub_bucket_half_count_magnitude           = ((sub_bucket_count_magnitude > 1) ? sub_bucket_count_magnitude : 1) - 1;
 
-    int32_t unit_magnitude = (int32_t) floor(log(lowest_trackable_value) / log(2));
+    cfg->unit_magnitude = (int32_t) floor(log(lowest_trackable_value) / log(2));
 
-    int32_t sub_bucket_count      = (int32_t) pow(2, (sub_bucket_half_count_magnitude + 1));
-    int32_t sub_bucket_half_count = sub_bucket_count / 2;
-    int64_t sub_bucket_mask       = ((int64_t) sub_bucket_count - 1) << unit_magnitude;
+    cfg->sub_bucket_count      = (int32_t) pow(2, (cfg->sub_bucket_half_count_magnitude + 1));
+    cfg->sub_bucket_half_count = cfg->sub_bucket_count / 2;
+    cfg->sub_bucket_mask       = ((int64_t) cfg->sub_bucket_count - 1) << cfg->unit_magnitude;
 
     // determine exponent range needed to support the trackable value with no overflow:
-    int64_t trackable_value = (int64_t) sub_bucket_mask;
+    int64_t trackable_value = (int64_t) cfg->sub_bucket_mask;
     int32_t buckets_needed  = 1;
     while (trackable_value < highest_trackable_value)
     {
         trackable_value <<= 1;
         buckets_needed++;
     }
-    int32_t bucket_count = buckets_needed;
-    int32_t counts_len   = (bucket_count + 1) * (sub_bucket_count / 2);
+    cfg->bucket_count = buckets_needed;
+    cfg->counts_len   = (cfg->bucket_count + 1) * (cfg->sub_bucket_count / 2);
 
-    size_t histogram_size           = sizeof(struct hdr_histogram) + counts_len * sizeof(int64_t);
-    struct hdr_histogram* histogram = (struct hdr_histogram*) malloc(histogram_size);
+    return 0;
+}
+
+void hdr_init_preallocated(struct hdr_histogram* h, struct hdr_histogram_bucket_config* cfg)
+{
+    h->lowest_trackable_value          = cfg->lowest_trackable_value;
+    h->highest_trackable_value         = cfg->highest_trackable_value;
+    h->unit_magnitude                  = cfg->unit_magnitude;
+    h->significant_figures             = cfg->significant_figures;
+    h->sub_bucket_half_count_magnitude = cfg->sub_bucket_half_count_magnitude;
+    h->sub_bucket_half_count           = cfg->sub_bucket_half_count;
+    h->sub_bucket_mask                 = cfg->sub_bucket_mask;
+    h->sub_bucket_count                = cfg->sub_bucket_count;
+    h->min_value                       = INT64_MAX;
+    h->max_value                       = 0;
+    h->normalizing_index_offset        = 0;
+    h->conversion_ratio                = 1.0;
+    h->bucket_count                    = cfg->bucket_count;
+    h->counts_len                      = cfg->counts_len;
+    h->total_count                     = 0;
+}
+
+int hdr_init(
+        int64_t lowest_trackable_value,
+        int64_t highest_trackable_value,
+        int significant_figures,
+        struct hdr_histogram** result)
+{
+    struct hdr_histogram_bucket_config cfg;
+
+    int r = hdr_calculate_bucket_config(lowest_trackable_value, highest_trackable_value, significant_figures, &cfg);
+    if (r)
+    {
+        return r;
+    }
+
+    size_t histogram_size           = sizeof(struct hdr_histogram) + cfg.counts_len * sizeof(int64_t);
+    struct hdr_histogram* histogram = malloc(histogram_size);
 
     if (!histogram)
     {
         return ENOMEM;
     }
 
-    memset((void*) histogram, 0, histogram_size);
     // memset will ensure that all of the function pointers are null.
+    memset((void*) histogram, 0, histogram_size);
 
-    histogram->lowest_trackable_value          = lowest_trackable_value;
-    histogram->highest_trackable_value         = highest_trackable_value;
-    histogram->unit_magnitude                  = unit_magnitude;
-    histogram->significant_figures             = significant_figures;
-    histogram->sub_bucket_half_count_magnitude = sub_bucket_half_count_magnitude;
-    histogram->sub_bucket_half_count           = sub_bucket_half_count;
-    histogram->sub_bucket_mask                 = sub_bucket_mask;
-    histogram->sub_bucket_count                = sub_bucket_count;
-    histogram->min_value                       = INT64_MAX;
-    histogram->max_value                       = 0;
-    histogram->normalizing_index_offset        = 0;
-    histogram->conversion_ratio                = 1.0;
-    histogram->bucket_count                    = bucket_count;
-    histogram->counts_len                      = counts_len;
-    histogram->total_count                     = 0;
-
+    hdr_init_preallocated(histogram, &cfg);
     *result = histogram;
 
     return 0;
