@@ -10,18 +10,18 @@ package org.HdrHistogram;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Records floting point (double) values, and provides stable
+ * Records floating point (double) values, and provides stable
  * interval {@link DoubleHistogram} samples from live recorded data without interrupting or stalling active recording
  * of values. Each interval histogram provided contains all value counts accumulated since the
  * previous interval histogram was taken.
  * <p>
- * This pattern is commonly used in logging interval histogram information while recoding is ongoing.
+ * This pattern is commonly used in logging interval histogram information while recording is ongoing.
  * <p>
  * {@link DoubleRecorder} supports concurrent
  * {@link DoubleRecorder#recordValue} or
  * {@link DoubleRecorder#recordValueWithExpectedInterval} calls.
  * Recording calls are wait-free on architectures that support atomic increment operations, and
- * are lock-free on architectures that do no.
+ * are lock-free on architectures that do not.
  *
  */
 
@@ -86,7 +86,7 @@ public class DoubleRecorder {
      * (down to the expectedIntervalBetweenValueSamples) value records.
      * <p>
      * See related notes {@link org.HdrHistogram.DoubleHistogram#recordValueWithExpectedInterval(double, double)}
-     * for more explanations about coordinated opmissionand expetced interval correction.
+     * for more explanations about coordinated omission and expected interval correction.
      *      *
      * @param value The value to record
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
@@ -124,7 +124,7 @@ public class DoubleRecorder {
      * {@link DoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)}
      * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
-     * and content copying operations, and is therefore siginificantly more efficient for repeated use than
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
      * {@link DoubleRecorder#getIntervalHistogram()} and
      * {@link DoubleRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
      * {@code histogramToRecycle} must
@@ -148,7 +148,7 @@ public class DoubleRecorder {
         if (histogramToRecycle == null) {
             histogramToRecycle = new InternalConcurrentDoubleHistogram(inactiveHistogram);
         }
-        // Verify that replacement histogram can validly be used as an inactiuve histogram replacement:
+        // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
         try {
             recordingPhaser.readerLock();

@@ -53,7 +53,7 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
         if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
             throw new ConcurrentModificationException();
         }
-        // Unlike other iterators AllValuesIterator is only done when we've exusted the indecies:
+        // Unlike other iterators AllValuesIterator is only done when we've exhausted the indices:
         return (currentIndex < (histogram.countsArrayLength - 1));
     }
 }

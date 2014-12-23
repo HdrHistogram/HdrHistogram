@@ -133,7 +133,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         // Take on the next index:
         currentIndex++;
         currentValueAtIndex = histogram.valueFromIndex(currentIndex);
-        // Figure out the value at the next index (used by some terators):
+        // Figure out the value at the next index (used by some iterators):
         nextValueAtIndex = histogram.valueFromIndex(currentIndex + 1);
     }
 }

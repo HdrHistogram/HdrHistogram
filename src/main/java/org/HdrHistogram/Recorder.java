@@ -15,13 +15,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * histogram provided contains all value counts accumulated since the previous interval histogram
  * was taken.
  * <p>
- * This pattern is commonly used in logging interval histogram information while recoding is ongoing.
+ * This pattern is commonly used in logging interval histogram information while recording is ongoing.
  * <p>
  * {@link Recorder} supports concurrent
  * {@link Recorder#recordValue} or
  * {@link Recorder#recordValueWithExpectedInterval} calls.
  * Recording calls are wait-free on architectures that support atomic increment operations, and
- * are lock-free on architectures that do no.
+ * are lock-free on architectures that do not.
  *
  */
 
@@ -36,7 +36,7 @@ public class Recorder {
 
     /**
      * Construct an auto-resizing {@link Recorder} with a lowest discernible value of
-     * 1 and an auto-adjusting highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
@@ -109,7 +109,7 @@ public class Recorder {
      * (down to the expectedIntervalBetweenValueSamples) value records.
      * <p>
      * See related notes {@link AbstractHistogram#recordValueWithExpectedInterval(long, long)}
-     * for more explanations about coordinated opmissionand expetced interval correction.
+     * for more explanations about coordinated omission and expected interval correction.
      *      *
      * @param value The value to record
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
@@ -147,7 +147,7 @@ public class Recorder {
      * {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
      * getIntervalHistogram(histogramToRecycle)}
      * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
-     * and content copying operations, and is therefore siginificantly more efficient for repeated use than
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
      * {@link Recorder#getIntervalHistogram()} and
      * {@link Recorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
      * {@code histogramToRecycle} must
@@ -181,7 +181,7 @@ public class Recorder {
                         inactiveHistogram.getNumberOfSignificantValueDigits());
             }
         }
-        // Verify that replacement histogram can validly be used as an inactiuve histogram replacement:
+        // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
         try {
             recordingPhaser.readerLock();

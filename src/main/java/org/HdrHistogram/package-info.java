@@ -32,7 +32,7 @@
  *     NOTE: Histograms can optionally be configured to auto-resize their dynamic range as a convenience feature.
  *     When configured to auto-resize, recording operations that need to expand a histogram will auto-resize its
  *     dynamic range to include recorded values as they are encountered. Note that recording calls that cause
- *     auto-resizing may take longer to execute, and that resizing incurrs allocation and copying of internal data
+ *     auto-resizing may take longer to execute, and that resizing incurs allocation and copying of internal data
  *     structures.
  * </p>
  * <p>
@@ -279,7 +279,7 @@
  * Unlike integer value based histograms, the specific value range tracked by a {@link
  * org.HdrHistogram.DoubleHistogram} (and variants) is not specified upfront. Only the dynamic range of values
  * that the histogram can cover is (optionally) specified. E.g. When a {@link org.HdrHistogram.DoubleHistogram}
- * is created to track a dynamic range of 3600000000000 (enoygh to track values from a nanosecond to an hour),
+ * is created to track a dynamic range of 3600000000000 (enough to track values from a nanosecond to an hour),
  * values could be recorded into into it in any consistent unit of time as long as the ratio between the highest
  * and lowest non-zero values stays within the specified dynamic range, so recording in units of nanoseconds
  * (1.0 thru 3600000000000.0), milliseconds (0.000001 thru 3600000.0) seconds (0.000000001 thru 3600.0), hours

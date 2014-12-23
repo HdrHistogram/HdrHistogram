@@ -112,7 +112,7 @@ public class HistogramLogReader {
      * associated start timestamp value that falls between startTimeSec and
      * endTimeSec, or null if no such interval line is found. Note that
      * the range is assumed to be in seconds relative to the actual
-     * timstamp value found in each interval line in the log, and not
+     * timestamp value found in each interval line in the log, and not
      * in absolute time.
      *  <p>
      * Timestamps are assumed to appear in order in the log file, and as such
