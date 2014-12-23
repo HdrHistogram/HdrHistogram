@@ -187,7 +187,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Construct an auto-resizing histogram with a lowest discernible value of 1 and an auto-adjusting
-     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     * highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
      *                                       maintain value resolution and separation. Must be a non-negative
@@ -684,7 +684,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Shift recorded values to the left (the equivalent of a &lt;&lt; shift operation on all recorded values). The
-     * configured integer value range limits and value precision setting wull remain unchanged.
+     * configured integer value range limits and value precision setting will remain unchanged.
      *
      * An {@link ArrayIndexOutOfBoundsException} will be thrown if any recorded values may be lost
      * as a result of the attempted operation, reflecting an "overflow" conditions. Expect such an overflow
@@ -780,7 +780,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Shift recorded values to the right (the equivalent of a &gt;&gt; shift operation on all recorded values). The
-     * configured integer value range limits and value precision setting wull remain unchanged.
+     * configured integer value range limits and value precision setting will remain unchanged.
      * <p>
      * Shift right operations that do not underflow are reversible with a shift left operation with no loss of
      * information. An {@link ArrayIndexOutOfBoundsException} reflecting an "underflow" conditions will be thrown
@@ -1243,7 +1243,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * <i>logBase</i>, terminating when all recorded histogram values are exhausted.
      *
      * @param valueUnitsInFirstBucket The size (in value units) of the first bucket in the iteration
-     * @param logBase The multiplier by which bucket sizes will grow in eahc iteration step
+     * @param logBase The multiplier by which bucket sizes will grow in each iteration step
      * @return An {@link java.lang.Iterable}{@literal <}{@link HistogramIterationValue}{@literal >}
      * through the histogram using
      * a {@link LogarithmicIterator}
@@ -1535,7 +1535,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         o.writeDouble(integerToDoubleValueConversionRatio);
         o.writeLong(getTotalCount());
         // Max Value is added to the serialized form because establishing max via scanning is "harder" during
-        // deserialization, as the counts array is not available at the subclass desrializing level, and we don't
+        // deserialization, as the counts array is not available at the subclass deserializing level, and we don't
         // really want to have each subclass establish max on it's own...
         o.writeLong(maxValue);
         o.writeLong(minNonZeroValue);
@@ -1965,17 +1965,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             return index;
         }
         checkBounds(index);
-        int normilizedIndex = index - normalizingIndexOffset;
+        int normalizedIndex = index - normalizingIndexOffset;
         // The following is the same as an unsigned remainder operation, as long as no double wrapping happens
-        // (which shouldn't happen, as normalizatuon is never supposed to wrap, since it would have overflowed
+        // (which shouldn't happen, as normalization is never supposed to wrap, since it would have overflowed
         // or underflowed before it did). This (the + and - tests) seems to be faster than a % op with a
         // correcting if < 0...:
-        if (normilizedIndex < 0) {
-            normilizedIndex += countsArrayLength;
-        } else if (normilizedIndex >= countsArrayLength) {
-            normilizedIndex -= countsArrayLength;
+        if (normalizedIndex < 0) {
+            normalizedIndex += countsArrayLength;
+        } else if (normalizedIndex >= countsArrayLength) {
+            normalizedIndex -= countsArrayLength;
         }
-        return normilizedIndex;
+        return normalizedIndex;
     }
 
     final long valueFromIndex(final int bucketIndex, final int subBucketIndex) {

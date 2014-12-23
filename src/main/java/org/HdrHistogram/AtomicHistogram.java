@@ -16,11 +16,11 @@ import java.util.zip.DataFormatException;
 
 /**
  * <h3>A High Dynamic Range (HDR) Histogram using atomic <b><code>long</code></b> count type </h3>
- * An AtomicHistogram guarantees lossless recording of values into the hsitogram even when the
- * histogram is updated by mutliple threads. It is important to note though that this lossless
+ * An AtomicHistogram guarantees lossless recording of values into the histogram even when the
+ * histogram is updated by multiple threads. It is important to note though that this lossless
  * recording capability is the only thread-safe behavior provided by AtomicHistogram, and that it
  * is not otherwise synchronized. Specifically, AtomicHistogram does not support auto-resizing,
- * does not support value shift opertions, and provides no implicit synchronization
+ * does not support value shift operations, and provides no implicit synchronization
  * that would prevent the contents of the histogram from changing during iterations, copies, or
  * addition operations on the histogram. Callers wishing to make potentially concurrent,
  * multi-threaded updates that would safely work in the presence of queries, copies, or additions
@@ -77,7 +77,7 @@ public class AtomicHistogram extends Histogram {
     void setNormalizingIndexOffset(int normalizingIndexOffset) {
         if (normalizingIndexOffset != 0) {
             throw new IllegalStateException(
-                    "AtomicHostogram does not support non-zero normalizing index settings." +
+                    "AtomicHistogram does not support non-zero normalizing index settings." +
                             " Use ConcurrentHistogram Instead.");
         }
     }
@@ -85,21 +85,21 @@ public class AtomicHistogram extends Histogram {
     @Override
     void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
         throw new IllegalStateException(
-                "AtomicHostogram does not support Shifting operations." +
+                "AtomicHistogram does not support Shifting operations." +
                         " Use ConcurrentHistogram Instead.");
     }
 
     @Override
     void resize(long newHighestTrackableValue) {
         throw new IllegalStateException(
-                "AtomicHostogram does not support resizing operations." +
+                "AtomicHistogram does not support resizing operations." +
                         " Use ConcurrentHistogram Instead.");
     }
 
     @Override
     public void setAutoResize(boolean autoResize) {
         throw new IllegalStateException(
-                "AtomicHostogram does not support AutoResize operation." +
+                "AtomicHistogram does not support AutoResize operation." +
                         " Use ConcurrentHistogram Instead.");
     }
 

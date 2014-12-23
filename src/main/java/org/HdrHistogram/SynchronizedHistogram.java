@@ -23,7 +23,7 @@ import java.util.zip.DataFormatException;
  * histogram data) that synchronize on the {@link SynchronizedHistogram} instance can safely assume that no
  * modifications to the histogram data occur within their synchronized block.
  * <p>
- * It is important to note that synchrionization can result in blocking recoding calls. If non-blocking recoding
+ * It is important to note that synchronization can result in blocking recoding calls. If non-blocking recoding
  * operations are required, consider using {@link ConcurrentHistogram}, {@link AtomicHistogram}, or (recommended)
  * {@link Recorder} or {@link org.HdrHistogram.SingleWriterRecorder} which were intended for concurrent operations.
  * <p/>
@@ -190,7 +190,7 @@ public class SynchronizedHistogram extends Histogram {
 
     /**
      * Construct an auto-resizing SynchronizedHistogram with a lowest discernible value of 1 and an auto-adjusting
-     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     * highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution

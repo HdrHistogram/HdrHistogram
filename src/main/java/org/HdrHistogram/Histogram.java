@@ -37,7 +37,7 @@ import java.util.zip.DataFormatException;
  * Auto-resizing: When constructed with no specified value range range (or when auto-resize is turned on with {@link
  * Histogram#setAutoResize}) a {@link Histogram} will auto-resize its dynamic range to include recorded values as
  * they are encountered. Note that recording calls that cause auto-resizing may take longer to execute, as resizing
- * incurrs allocation and copying of internal data structures.
+ * incurs allocation and copying of internal data structures.
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
@@ -157,7 +157,7 @@ public class Histogram extends AbstractHistogram {
 
     /**
      * Construct an auto-resizing histogram with a lowest discernible value of 1 and an auto-adjusting
-     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     * highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution

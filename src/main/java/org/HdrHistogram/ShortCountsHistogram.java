@@ -152,7 +152,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
 
     /**
      * Construct an auto-resizing ShortCountsHistogram with a lowest discernible value of 1 and an auto-adjusting
-     * highestTrackableValue. Can auto-reize up to track values up to (Long.MAX_VALUE / 2).
+     * highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution

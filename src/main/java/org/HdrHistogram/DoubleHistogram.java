@@ -25,7 +25,7 @@ import java.util.zip.Deflater;
  * <p/>
  * {@link DoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.
- * Dynamic range is expressed as a ratio between the hightes and lowest non-zero values trackable within the histogram
+ * Dynamic range is expressed as a ratio between the highest and lowest non-zero values trackable within the histogram
  * at any given time. Value precision is expressed as the number of significant [decimal] digits in the value recording,
  * and provides control over value quantization behavior across the value range and the subsequent value resolution at
  * any given level.
@@ -33,7 +33,7 @@ import java.util.zip.Deflater;
  * Auto-ranging: Unlike integer value based histograms, the specific value range tracked by a {@link
  * DoubleHistogram} is not specified upfront. Only the dynamic range of values that the histogram can cover is
  * (optionally) specified. E.g. When a {@link DoubleHistogram} is created to track a dynamic range of
- * 3600000000000 (enoygh to track values from a nanosecond to an hour), values could be recorded into into it in any
+ * 3600000000000 (enough to track values from a nanosecond to an hour), values could be recorded into into it in any
  * consistent unit of time as long as the ratio between the highest and lowest non-zero values stays within the
  * specified dynamic range, so recording in units of nanoseconds (1.0 thru 3600000000000.0), milliseconds (0.000001
  * thru 3600000.0) seconds (0.000000001 thru 3600.0), hours (1/3.6E12 thru 1.0) will all work just as well.
@@ -41,7 +41,7 @@ import java.util.zip.Deflater;
  * Auto-resizing: When constructed with no specified dynamic range (or when auto-resize is turned on with {@link
  * DoubleHistogram#setAutoResize}) a {@link DoubleHistogram} will auto-resize its dynamic range to
  * include recorded values as they are encountered. Note that recording calls that cause auto-resizing may take
- * longer to execute, as resizing incurrs allocation and copying of internal data structures.
+ * longer to execute, as resizing incurs allocation and copying of internal data structures.
  * <p/>
  * Attempts to record non-zero values that range outside of the specified dynamic range (or exceed the limits of
  * of dynamic range when auto-resizing) may results in {@link ArrayIndexOutOfBoundsException} exceptions, either
@@ -167,7 +167,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 // We want the auto-ranging to tend towards using a value range that will result in using the
                 // lower tracked value ranges and leave the higher end empty unless the range is actually used.
                 // This is most easily done by making early recordings force-shift the lower value limit to
-                // accomodate them (forcing a force-shift for the higher values would achieve the opposite).
+                // accommodate them (forcing a force-shift for the higher values would achieve the opposite).
                 // We will therefore start with a very high value range, and let the recordings autoAdjust
                 // downwards from there:
                 initialLowestValueInAutoRange = Math.pow(2.0, 800);
@@ -395,7 +395,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         // same double values.
 
         // Initially, new range is the same as current range, to make sure we correctly recover
-        // from a shiuft failure if one happens:
+        // from a shift failure if one happens:
         double newLowestValueInAutoRange = currentLowestValueInAutoRange;
         double newHighestValueLimitInAutoRange = currentHighestValueLimitInAutoRange;
 
@@ -422,9 +422,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     // Failed to shift, try to expand size instead:
                     handleShiftValuesException(numberOfBinaryOrdersOfMagnitude, ex);
-                    // First expand the highest limit to reflect succesful size expansion:
+                    // First expand the highest limit to reflect successful size expansion:
                     newHighestValueLimitInAutoRange /= shiftMultiplier;
-                    // Succesfully expanded histogram range by numberOfBinaryOrdersOfMagnitude, but not
+                    // Successfully expanded histogram range by numberOfBinaryOrdersOfMagnitude, but not
                     // by shifting (shifting failed because there was not room to shift left into). Instead,
                     // we grew the max value without changing the value mapping. Since we were trying to
                     // shift values left to begin with, trying to shift the left again will work (we now
@@ -432,11 +432,11 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                     integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
                 }
             }
-            // Shift (or resize) was succesful. Adjust new range to reflect:
+            // Shift (or resize) was successful. Adjust new range to reflect:
             newLowestValueInAutoRange *= shiftMultiplier;
             newHighestValueLimitInAutoRange *= shiftMultiplier;
         } finally {
-            // Set the new range to either the succesfully changed one, or the original one:
+            // Set the new range to either the successfully changed one, or the original one:
             setTrackableValueRange(newLowestValueInAutoRange, newHighestValueLimitInAutoRange);
         }
     }
@@ -450,7 +450,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         // same double values.
 
         // Initially, new range is the same as current range, to make sure we correctly recover
-        // from a shiuft failure if one happens:
+        // from a shift failure if one happens:
         double newLowestValueInAutoRange = currentLowestValueInAutoRange;
         double newHighestValueLimitInAutoRange = currentHighestValueLimitInAutoRange;
 
@@ -474,13 +474,13 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 // Apply the shift:
                 try {
                     integerValuesHistogram.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
-                    // Shift was succesful. Adjust new range to reflect:
+                    // Shift was successful. Adjust new range to reflect:
                     newLowestValueInAutoRange *= shiftMultiplier;
                     newHighestValueLimitInAutoRange *= shiftMultiplier;
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     // Failed to shift, try to expand size instead:
                     handleShiftValuesException(numberOfBinaryOrdersOfMagnitude, ex);
-                    // Succesfully expanded histogram range by numberOfBinaryOrdersOfMagnitude, but not
+                    // Successfully expanded histogram range by numberOfBinaryOrdersOfMagnitude, but not
                     // by shifting (shifting failed because there was not room to shift right into). Instead,
                     // we grew the max value without changing the value mapping. Since we were trying to
                     // shift values right to begin with to make room for a larger value than we had had
@@ -492,11 +492,11 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                     newLowestValueInAutoRange /= shiftMultiplier;
                 }
             }
-            // Shift (or resize) was succesful. Adjust new range to reflect:
+            // Shift (or resize) was successful. Adjust new range to reflect:
             newLowestValueInAutoRange *= shiftMultiplier;
             newHighestValueLimitInAutoRange *= shiftMultiplier;
         } finally {
-            // Set the new range to either the succesfully changed one, or the original one:
+            // Set the new range to either the successfully changed one, or the original one:
             setTrackableValueRange(newLowestValueInAutoRange, newHighestValueLimitInAutoRange);
         }
     }
@@ -507,10 +507,10 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         }
 
         long highestTrackableValue = integerValuesHistogram.getHighestTrackableValue();
-        int highestTrackaleValueContainingOrderOfMagnitude =
+        int highestTrackableValueContainingOrderOfMagnitude =
                 findContainingBinaryOrderOfMagnitude(highestTrackableValue);
         long newHighestTrackableValue =
-                (1L << (numberOfBinaryOrdersOfMagnitude + highestTrackaleValueContainingOrderOfMagnitude)) - 1;
+                (1L << (numberOfBinaryOrdersOfMagnitude + highestTrackableValueContainingOrderOfMagnitude)) - 1;
         if (newHighestTrackableValue < highestTrackableValue) {
             throw new ArrayIndexOutOfBoundsException(
                     "cannot resize histogram covered range beyond (1L << 63) / (1L << " +
@@ -782,12 +782,12 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     /**
      * Get the current conversion ratio from interval integer value representation to double units.
      * (keep in mind that this can change because it is auto ranging). This ratio can be useful
-     * for converting integer values found in iteration, although the preffered form for accessing
+     * for converting integer values found in iteration, although the preferred form for accessing
      * iteration values would be to use the
      * {@link org.HdrHistogram.HistogramIterationValue#getDoubleValueIteratedTo() getDoubleValueIteratedTo()}
      * and
      * {@link org.HdrHistogram.HistogramIterationValue#getDoubleValueIteratedFrom() getDoubleValueIteratedFrom()}
-     * accesors to {@link org.HdrHistogram.HistogramIterationValue} iterated values.
+     * accessors to {@link org.HdrHistogram.HistogramIterationValue} iterated values.
      *
      * @return the current conversion ratio from interval integer value representation to double units.
      */
@@ -850,7 +850,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     public double highestEquivalentValue(final double value) {
         double nextNonEquivalentValue = nextNonEquivalentValue(value);
         // Theoretically, nextNonEquivalentValue - ulp(nextNonEquivalentValue) == nextNonEquivalentValue
-        // is possible (if the ulp size swicthes right at nextNonEquivalentValue), so drop by 2 ulps and
+        // is possible (if the ulp size switches right at nextNonEquivalentValue), so drop by 2 ulps and
         // increment back up to closest within-ulp value.
         double highestEquivalentValue = nextNonEquivalentValue - (2 * Math.ulp(nextNonEquivalentValue));
         while (highestEquivalentValue + Math.ulp(highestEquivalentValue) < nextNonEquivalentValue) {
@@ -1110,7 +1110,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * <i>logBase</i>, terminating when all recorded histogram values are exhausted.
      *
      * @param valueUnitsInFirstBucket The size (in value units) of the first bucket in the iteration
-     * @param logBase The multiplier by which bucket sizes will grow in eahc iteration step
+     * @param logBase The multiplier by which bucket sizes will grow in each iteration step
      * @return An {@link java.lang.Iterable}{@literal <}{@link DoubleHistogramIterationValue}{@literal >}
      * through the histogram using
      * a {@link DoubleLogarithmicIterator}
@@ -1557,7 +1557,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     private long deriveInternalHighestToLowestValueRatio(final long externalHighestToLowestValueRatio) {
         // Internal dynamic range needs to be 1 order of magnitude larger than the containing order of magnitude.
         // e.g. the dynamic range that covers [0.9, 2.1) is 2.33x, which on it's own would require 4x range to
-        // cover the contained order of mangintude. But (if 1.0 was a bucket boundary, for example, the range
+        // cover the contained order of magnitude. But (if 1.0 was a bucket boundary, for example, the range
         // will actually need to cover [0.5..1.0) [1.0..2.0) [2.0..4.0), mapping to an 8x internal dynamic range.
         long internalHighestToLowestValueRatio =
                 1L << (findContainingBinaryOrderOfMagnitude(externalHighestToLowestValueRatio) + 1);
@@ -1609,7 +1609,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         // to infinity (e.g. 1024.0 * (Double.MAX_VALUE / 1024.0) == Infinity). So lets makes sure the
         // highestAllowedValueEver cap is a couple of bindary orders of magnitude away from MAX_VALUE:
 
-        // Choose a highestAllowedValueEver that is a nice powe of 2 multiple of 1.0 :
+        // Choose a highestAllowedValueEver that is a nice power of 2 multiple of 1.0 :
         double value = 1.0;
         while (value < Double.MAX_VALUE / 4.0) {
             value *= 2;
