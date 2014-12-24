@@ -555,8 +555,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public void add(final AbstractHistogram otherHistogram) throws ArrayIndexOutOfBoundsException {
         long highestRecordableValue = highestEquivalentValue(valueFromIndex(countsArrayLength - 1));
         if (highestRecordableValue < otherHistogram.getMaxValue()) {
-            throw new ArrayIndexOutOfBoundsException(
-                    "The other histogram includes values that do not fit in this histogram's range.");
+            if (!isAutoResize()) {
+                throw new ArrayIndexOutOfBoundsException(
+                        "The other histogram includes values that do not fit in this histogram's range.");
+            }
+            resize(otherHistogram.getMaxValue());
         }
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
@@ -597,8 +600,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
         long highestRecordableValue = valueFromIndex(countsArrayLength - 1);
         if (highestRecordableValue < otherHistogram.getMaxValue()) {
-            throw new ArrayIndexOutOfBoundsException(
-                    "The other histogram includes values that do not fit in this histogram's range.");
+            if (!isAutoResize()) {
+                throw new ArrayIndexOutOfBoundsException(
+                        "The other histogram includes values that do not fit in this histogram's range.");
+            }
+            resize(otherHistogram.getMaxValue());
         }
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&

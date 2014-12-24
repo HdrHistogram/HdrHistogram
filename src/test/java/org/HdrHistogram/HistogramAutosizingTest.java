@@ -134,4 +134,34 @@ public class HistogramAutosizingTest {
         }
     }
 
+    @Test
+    public void testAutoSizingAdd() throws Exception {
+        Histogram histogram1 = new Histogram(2);
+        Histogram histogram2 = new Histogram(2);
+
+        histogram1.recordValue(1000L);
+        histogram1.recordValue(1000000000L);
+
+        histogram2.add(histogram1);
+
+        Assert.assertTrue("Max should be equivalent to 1000000000L",
+                histogram2.valuesAreEquivalent(histogram2.getMaxValue(), 1000000000L)
+                );
+    }
+
+    @Test
+    public void testAutoSizingAddDouble() throws Exception {
+        DoubleHistogram histogram1 = new DoubleHistogram(2);
+        DoubleHistogram histogram2 = new DoubleHistogram(2);
+
+        histogram1.recordValue(1000L);
+        histogram1.recordValue(1000000000L);
+
+        histogram2.add(histogram1);
+
+        Assert.assertTrue("Max should be equivalent to 1000000000L",
+                histogram2.valuesAreEquivalent(histogram2.getMaxValue(), 1000000000L)
+        );
+    }
+
 }
