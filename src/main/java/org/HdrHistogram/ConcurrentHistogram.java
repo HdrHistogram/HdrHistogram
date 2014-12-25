@@ -244,15 +244,20 @@ public class ConcurrentHistogram extends Histogram {
         try {
             wrp.readerLock();
 
+            if (newHighestTrackableValue <= highestTrackableValue) {
+                // This resize need was already covered by concurrent resize op.
+                return;
+            }
+
             int oldNormalizedZeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset());
-            establishSize(newHighestTrackableValue);
-            int countsDelta = countsArrayLength - inactiveCounts.length();
+            int newArrayLength = determineArrayLengthNeeded(newHighestTrackableValue);
+            int countsDelta = newArrayLength - inactiveCounts.length();
 
             // Resize the current inactiveCounts:
             AtomicLongArray oldInactiveCounts = inactiveCounts;
             inactiveCounts =
                     new AtomicLongArrayWithNormalizingOffset(
-                            countsArrayLength,
+                            newArrayLength,
                             inactiveCounts.getNormalizingIndexOffset()
                     );
             // Copy inactive contents to newly sized inactiveCounts:
@@ -262,7 +267,7 @@ public class ConcurrentHistogram extends Histogram {
             if (oldNormalizedZeroIndex != 0) {
                 // We need to shift the stuff from the zero index and up to the end of the array:
                 int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
-                int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
+                int lengthToCopy = (newArrayLength - countsDelta) - oldNormalizedZeroIndex;
                 int src, dst;
                 for (src = oldNormalizedZeroIndex, dst =  newNormalizedZeroIndex;
                      src < oldNormalizedZeroIndex + lengthToCopy;
@@ -282,7 +287,7 @@ public class ConcurrentHistogram extends Histogram {
             oldInactiveCounts = inactiveCounts;
             inactiveCounts =
                     new AtomicLongArrayWithNormalizingOffset(
-                            countsArrayLength,
+                            newArrayLength,
                             inactiveCounts.getNormalizingIndexOffset()
                     );
             // Copy inactive contents to newly sized inactiveCounts:
@@ -292,7 +297,7 @@ public class ConcurrentHistogram extends Histogram {
             if (oldNormalizedZeroIndex != 0) {
                 // We need to shift the stuff from the zero index and up to the end of the array:
                 int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
-                int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
+                int lengthToCopy = (newArrayLength - countsDelta) - oldNormalizedZeroIndex;
                 int src, dst;
                 for (src = oldNormalizedZeroIndex, dst =  newNormalizedZeroIndex;
                      src < oldNormalizedZeroIndex + lengthToCopy;
@@ -310,6 +315,9 @@ public class ConcurrentHistogram extends Histogram {
 
             // At this point, both active and inactive have been safely resized,
             // and the switch in each was done without any writers modifying it in flight.
+
+            // We resized things. We can now make the historam establish size accordingly for future recordings:
+            establishSize(newHighestTrackableValue);
 
         } finally {
             wrp.readerUnlock();

@@ -283,14 +283,20 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     final void establishSize(long highestTrackableValue) {
+        // establish counts array length:
+        countsArrayLength = determineArrayLengthNeeded(highestTrackableValue);
+        // establish exponent range needed to support the trackable value with no overflow:
+        bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
+    }
+
+    final int determineArrayLengthNeeded(long highestTrackableValue) {
         if (highestTrackableValue < 2L * lowestDiscernibleValue) {
             throw new IllegalArgumentException("highestTrackableValue (" + highestTrackableValue +
                     ") cannot be < (2 * lowestDiscernibleValue)");
         }
-        // determine exponent range needed to support the trackable value with no overflow:
-        bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
-        //establish counts array length:
-        countsArrayLength = getLengthForNumberOfBuckets(bucketCount);
+        //determine counts array length needed:
+        int countsArrayLength = getLengthForNumberOfBuckets(getBucketsNeededToCoverValue(highestTrackableValue));
+        return countsArrayLength;
     }
 
     //

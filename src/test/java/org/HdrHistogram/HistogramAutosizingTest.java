@@ -150,6 +150,24 @@ public class HistogramAutosizingTest {
     }
 
     @Test
+    public void testAutoSizingAcrossContinuousRange() throws Exception {
+        Histogram histogram = new Histogram(2);
+
+        for (long i = 0; i < 10000000L; i++) {
+            histogram.recordValue(i);
+        }
+    }
+
+    @Test
+    public void testAutoSizingAcrossContinuousRangeConcurrent() throws Exception {
+        Histogram histogram = new ConcurrentHistogram(2);
+
+        for (long i = 0; i < 1000000L; i++) {
+            histogram.recordValue(i);
+        }
+    }
+
+    @Test
     public void testAutoSizingAddDouble() throws Exception {
         DoubleHistogram histogram1 = new DoubleHistogram(2);
         DoubleHistogram histogram2 = new DoubleHistogram(2);
