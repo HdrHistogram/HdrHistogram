@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Random;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -20,35 +21,50 @@ import java.util.concurrent.atomic.AtomicLong;
 public class ConcurrentHistogramTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000 * 1000; // e.g. for 1 hr in usec units
     volatile boolean doRun = true;
-    volatile boolean waitToRun = true;
+    volatile boolean waitToGo = true;
 
     @Test
     public void testConcurrentAutoSizedRecording() throws Exception {
-        for (int i = 0; i < 10; i++) {
-            doConcurrentRecordValues();
-        }
+        doConcurrentRecordValues();
     }
 
     public void doConcurrentRecordValues() throws Exception {
         ConcurrentHistogram histogram = new ConcurrentHistogram(2);
-        ValueRecorder valueRecorders[] = new ValueRecorder[12];
+        ValueRecorder valueRecorders[] = new ValueRecorder[24];
         doRun = true;
-        waitToRun = true;
+        waitToGo = true;
         for (int i = 0; i < valueRecorders.length; i++) {
             valueRecorders[i] = new ValueRecorder(histogram);
             valueRecorders[i].start();
         }
-        waitToRun = false;
-        Thread.sleep(50);
-        doRun = false;
-        long sumOfCounts = 0;
-        for(ValueRecorder v: valueRecorders) {
-            while (!v.done) {}
-            sumOfCounts += v.count;
+
+        long sumOfCounts;
+
+        for (int i = 0; i < 500; i++) {
+
+            // Ready:
+            sumOfCounts = 0;
+            for (ValueRecorder v : valueRecorders) {
+                v.readySem.acquire();
+                sumOfCounts += v.count;
+            }
+
+            Assert.assertEquals("totalCount must be equal to sum of counts",
+                    sumOfCounts,
+                    histogram.getTotalCount());
+
+            // Set:
+            waitToGo = true;
+            for (ValueRecorder v : valueRecorders) {
+                v.setSem.release();
+            }
+
+            Thread.sleep(1);
+
+            // Go! :
+            waitToGo = false;
         }
-        Assert.assertEquals("totalCount must be equal to sum of counts",
-                sumOfCounts,
-                histogram.getTotalCount());
+        doRun = false;
     }
 
     static AtomicLong valueRecorderId = new AtomicLong(42);
@@ -56,23 +72,35 @@ public class ConcurrentHistogramTest {
     class ValueRecorder extends Thread {
         final ConcurrentHistogram histogram;
         long count = 0;
-        volatile boolean done = false;
+        Semaphore readySem = new Semaphore(0);
+        Semaphore setSem = new Semaphore(0);
 
-        Random random = new Random(valueRecorderId.getAndIncrement());
+        long id = valueRecorderId.getAndIncrement();
+        Random random = new Random(id);
 
         ValueRecorder(ConcurrentHistogram histogram) {
             this.histogram = histogram;
         }
 
         public void run() {
-            while(waitToRun) {
-                // wait for doRun to be set.
+            try {
+                long nextValue = 0;
+                for (int i = 0; i < id; i++) {
+                    nextValue = (long) (highestTrackableValue * random.nextDouble());
+                }
+                while (doRun) {
+                    readySem.release();
+                    setSem.acquire();
+                    while (waitToGo) {
+                        // wait for doRun to be set.
+                    }
+                    histogram.resize(nextValue);
+                    histogram.recordValue(nextValue);
+                    count++;
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
-            while (doRun) {
-                histogram.recordValue((long)(highestTrackableValue * random.nextDouble()));
-                count++;
-            }
-            done = true;
         }
     }
 

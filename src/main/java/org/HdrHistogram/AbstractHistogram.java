@@ -282,11 +282,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordedValuesIterator = new RecordedValuesIterator(this);
     }
 
-    final void establishSize(long highestTrackableValue) {
+    final void establishSize(long newHighestTrackableValue) {
         // establish counts array length:
-        countsArrayLength = determineArrayLengthNeeded(highestTrackableValue);
+        countsArrayLength = determineArrayLengthNeeded(newHighestTrackableValue);
         // establish exponent range needed to support the trackable value with no overflow:
-        bucketCount = getBucketsNeededToCoverValue(highestTrackableValue);
+        bucketCount = getBucketsNeededToCoverValue(newHighestTrackableValue);
+        // establish the new highest trackable value:
+        highestTrackableValue = newHighestTrackableValue;
     }
 
     final int determineArrayLengthNeeded(long highestTrackableValue) {
