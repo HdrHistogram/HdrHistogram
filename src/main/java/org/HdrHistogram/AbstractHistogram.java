@@ -1970,7 +1970,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    int normalizeIndex(int index, int normalizingIndexOffset) {
+    int normalizeIndex(int index, int normalizingIndexOffset, int arrayLength) {
         if (normalizingIndexOffset == 0) {
             // Fastpath out of normalization. Keeps integer value histograms fast while allowing
             // others (like DoubleHistogram) to use normalization at a cost...
@@ -1983,9 +1983,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         // or underflowed before it did). This (the + and - tests) seems to be faster than a % op with a
         // correcting if < 0...:
         if (normalizedIndex < 0) {
-            normalizedIndex += countsArrayLength;
-        } else if (normalizedIndex >= countsArrayLength) {
-            normalizedIndex -= countsArrayLength;
+            normalizedIndex += arrayLength;
+        } else if (normalizedIndex >= arrayLength) {
+            normalizedIndex -= arrayLength;
         }
         return normalizedIndex;
     }

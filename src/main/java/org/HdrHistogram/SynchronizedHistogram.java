@@ -35,7 +35,7 @@ public class SynchronizedHistogram extends Histogram {
 
     @Override
     synchronized long getCountAtIndex(final int index) {
-        return counts[normalizeIndex(index, normalizingIndexOffset)];
+        return counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)];
     }
 
     @Override
@@ -45,17 +45,17 @@ public class SynchronizedHistogram extends Histogram {
 
     @Override
     synchronized void incrementCountAtIndex(final int index) {
-        counts[normalizeIndex(index, normalizingIndexOffset)]++;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)]++;
     }
 
     @Override
     synchronized void addToCountAtIndex(final int index, final long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset)] += value;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] += value;
     }
 
     @Override
     synchronized void setCountAtIndex(int index, long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset)] = value;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] = value;
     }
 
     @Override
@@ -172,7 +172,7 @@ public class SynchronizedHistogram extends Histogram {
 
     @Override
     synchronized void resize(long newHighestTrackableValue) {
-        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset);
+        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset, countsArrayLength);
 
         establishSize(newHighestTrackableValue);
 
@@ -295,7 +295,7 @@ public class SynchronizedHistogram extends Histogram {
             cachedDstLongBuffer = buffer.asLongBuffer();
         }
         cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
         int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
         int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
         cachedDstLongBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);

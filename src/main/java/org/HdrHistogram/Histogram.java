@@ -49,7 +49,7 @@ public class Histogram extends AbstractHistogram {
 
     @Override
     long getCountAtIndex(final int index) {
-        return counts[normalizeIndex(index, normalizingIndexOffset)];
+        return counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)];
     }
 
     @Override
@@ -59,17 +59,17 @@ public class Histogram extends AbstractHistogram {
 
     @Override
     void incrementCountAtIndex(final int index) {
-        counts[normalizeIndex(index, normalizingIndexOffset)]++;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)]++;
     }
 
     @Override
     void addToCountAtIndex(final int index, final long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset)] += value;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] += value;
     }
 
     @Override
     void setCountAtIndex(int index, long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset)] = value;
+        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] = value;
     }
 
     @Override
@@ -139,7 +139,7 @@ public class Histogram extends AbstractHistogram {
 
     @Override
     void resize(long newHighestTrackableValue) {
-        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset);
+        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset, countsArrayLength);
 
         establishSize(newHighestTrackableValue);
 
@@ -279,7 +279,7 @@ public class Histogram extends AbstractHistogram {
             cachedDstLongBuffer = buffer.asLongBuffer();
         }
         cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
         int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
         int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
         cachedDstLongBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);

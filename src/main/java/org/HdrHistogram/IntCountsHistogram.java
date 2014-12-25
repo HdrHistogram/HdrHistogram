@@ -27,7 +27,7 @@ public class IntCountsHistogram extends AbstractHistogram {
 
     @Override
     long getCountAtIndex(final int index) {
-        return counts[normalizeIndex(index, normalizingIndexOffset)];
+        return counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)];
     }
 
     @Override
@@ -37,7 +37,7 @@ public class IntCountsHistogram extends AbstractHistogram {
 
     @Override
     void incrementCountAtIndex(final int index) {
-        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset);
+        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset, countsArrayLength);
         int currentCount = counts[normalizedIndex];
         int newCount = currentCount + 1;
         if (newCount < 0) {
@@ -48,7 +48,7 @@ public class IntCountsHistogram extends AbstractHistogram {
 
     @Override
     void addToCountAtIndex(final int index, final long value) {
-        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset);
+        int normalizedIndex = normalizeIndex(index, normalizingIndexOffset, countsArrayLength);
 
         int currentCount = counts[normalizedIndex];
         if ((value < 0) || (value > Integer.MAX_VALUE)) {
@@ -63,7 +63,7 @@ public class IntCountsHistogram extends AbstractHistogram {
 
     @Override
     void setCountAtIndex(int index, long value) {
-        setCountAtNormalizedIndex(normalizeIndex(index, normalizingIndexOffset), value);
+        setCountAtNormalizedIndex(normalizeIndex(index, normalizingIndexOffset, countsArrayLength), value);
     }
 
     @Override
@@ -136,7 +136,7 @@ public class IntCountsHistogram extends AbstractHistogram {
 
     @Override
     void resize(long newHighestTrackableValue) {
-        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset);
+        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset, countsArrayLength);
 
         establishSize(newHighestTrackableValue);
 
@@ -264,7 +264,7 @@ public class IntCountsHistogram extends AbstractHistogram {
             cachedDstIntBuffer = buffer.asIntBuffer();
         }
         cachedDstIntBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
         int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
         int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
         cachedDstIntBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);

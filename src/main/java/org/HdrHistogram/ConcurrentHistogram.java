@@ -52,8 +52,12 @@ public class ConcurrentHistogram extends Histogram {
     long getCountAtIndex(final int index) {
         try {
             wrp.readerLock();
-            long activeCount = activeCounts.get(normalizeIndex(index, activeCounts.getNormalizingIndexOffset()));
-            long inactiveCount = inactiveCounts.get(normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset()));
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+            long activeCount = activeCounts.get(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()));
+            long inactiveCount = inactiveCounts.get(
+                    normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length()));
             return activeCount + inactiveCount;
         } finally {
             wrp.readerUnlock();
@@ -64,6 +68,8 @@ public class ConcurrentHistogram extends Histogram {
     long getCountAtNormalizedIndex(final int index) {
         try {
             wrp.readerLock();
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
             long activeCount = activeCounts.get(index);
             long inactiveCount = inactiveCounts.get(index);
             return activeCount + inactiveCount;
@@ -76,7 +82,8 @@ public class ConcurrentHistogram extends Histogram {
     void incrementCountAtIndex(final int index) {
         long criticalValue = wrp.writerCriticalSectionEnter();
         try {
-            activeCounts.incrementAndGet(normalizeIndex(index, activeCounts.getNormalizingIndexOffset()));
+            activeCounts.incrementAndGet(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()));
         } finally {
             wrp.writerCriticalSectionExit(criticalValue);
         }
@@ -86,7 +93,8 @@ public class ConcurrentHistogram extends Histogram {
     void addToCountAtIndex(final int index, final long value) {
         long criticalValue = wrp.writerCriticalSectionEnter();
         try {
-            activeCounts.addAndGet(normalizeIndex(index, activeCounts.getNormalizingIndexOffset()), value);
+            activeCounts.addAndGet(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), value);
         } finally {
             wrp.writerCriticalSectionExit(criticalValue);
         }
@@ -96,8 +104,12 @@ public class ConcurrentHistogram extends Histogram {
     void setCountAtIndex(int index, long value) {
         try {
             wrp.readerLock();
-            activeCounts.lazySet(normalizeIndex(index, activeCounts.getNormalizingIndexOffset()), value);
-            inactiveCounts.lazySet(normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset()), 0);
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+            activeCounts.lazySet(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), value);
+            inactiveCounts.lazySet(
+                    normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length()), 0);
         } finally {
             wrp.readerUnlock();
         }
@@ -107,6 +119,8 @@ public class ConcurrentHistogram extends Histogram {
     void setCountAtNormalizedIndex(int index, long value) {
         try {
             wrp.readerLock();
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
             inactiveCounts.lazySet(index, value);
             activeCounts.lazySet(index, 0);
         } finally {
@@ -131,14 +145,18 @@ public class ConcurrentHistogram extends Histogram {
             boolean lowestHalfBucketPopulated) {
         try {
             wrp.readerLock();
+
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+
             if (normalizingIndexOffset == activeCounts.getNormalizingIndexOffset()) {
                 return; // Nothing to do.
             }
 
             // Save and clear the inactive 0 value count:
-            long inactiveZeroValueCount =
-                    inactiveCounts.get(normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()));
-            inactiveCounts.lazySet(normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()), 0);
+            int zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+            long inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
+            inactiveCounts.lazySet(zeroIndex, 0);
 
             // Change the normalizingIndexOffset on the current inactiveCounts:
             inactiveCounts.setNormalizingIndexOffset(normalizingIndexOffset);
@@ -149,10 +167,8 @@ public class ConcurrentHistogram extends Histogram {
             }
 
             // Restore the inactive 0 value count:
-            inactiveCounts.lazySet(
-                    normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()),
-                    inactiveZeroValueCount
-            );
+            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+            inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
 
             // switch active and inactive:
             AtomicLongArrayWithNormalizingOffset tmp = activeCounts;
@@ -162,9 +178,9 @@ public class ConcurrentHistogram extends Histogram {
             wrp.flipPhase();
 
             // Save and clear the newly inactive 0 value count:
-            inactiveZeroValueCount =
-                    inactiveCounts.get(normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()));
-            inactiveCounts.lazySet(normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()), 0);
+            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+            inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
+            inactiveCounts.lazySet(zeroIndex, 0);
 
             // Change the normalizingIndexOffset on the newly inactiveCounts:
             inactiveCounts.setNormalizingIndexOffset(normalizingIndexOffset);
@@ -175,10 +191,8 @@ public class ConcurrentHistogram extends Histogram {
             }
 
             // Restore the newly inactive 0 value count:
-            inactiveCounts.lazySet(
-                    normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset()),
-                    inactiveZeroValueCount
-            );
+            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+            inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
 
             // switch active and inactive again:
             tmp = activeCounts;
@@ -216,7 +230,8 @@ public class ConcurrentHistogram extends Histogram {
         for (int fromIndex = 1; fromIndex < subBucketHalfCount; fromIndex++) {
             long toValue = valueFromIndex(fromIndex) << numberOfBinaryOrdersOfMagnitude;
             int toIndex = countsArrayIndex(toValue);
-            int normalizedToIndex = normalizeIndex(toIndex, inactiveCounts.getNormalizingIndexOffset());
+            int normalizedToIndex =
+                    normalizeIndex(toIndex, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
             long countAtFromIndex = inactiveCounts.get(fromIndex);
             inactiveCounts.lazySet(normalizedToIndex, countAtFromIndex);
             inactiveCounts.lazySet(fromIndex, 0);
@@ -232,7 +247,9 @@ public class ConcurrentHistogram extends Histogram {
     void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
         try {
             wrp.readerLock();
-            int newNormalizingIndexOffset = inactiveCounts.getNormalizingIndexOffset() + offsetToAdd;
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+            int newNormalizingIndexOffset = getNormalizingIndexOffset() + offsetToAdd;
             setNormalizingIndexOffset(newNormalizingIndexOffset, offsetToAdd, lowestHalfBucketPopulated);
         } finally {
             wrp.readerUnlock();
@@ -244,14 +261,19 @@ public class ConcurrentHistogram extends Histogram {
         try {
             wrp.readerLock();
 
-            if (newHighestTrackableValue <= highestTrackableValue) {
-                // This resize need was already covered by concurrent resize op.
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+
+            int newArrayLength = determineArrayLengthNeeded(newHighestTrackableValue);
+            int countsDelta = newArrayLength - countsArrayLength;
+
+            if (countsDelta <= 0) {
+                // This resize need was already covered by a concurrent resize op.
                 return;
             }
 
-            int oldNormalizedZeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset());
-            int newArrayLength = determineArrayLengthNeeded(newHighestTrackableValue);
-            int countsDelta = newArrayLength - inactiveCounts.length();
+            int oldNormalizedZeroIndex =
+                    normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
 
             // Resize the current inactiveCounts:
             AtomicLongArray oldInactiveCounts = inactiveCounts;
@@ -319,6 +341,9 @@ public class ConcurrentHistogram extends Histogram {
             // We resized things. We can now make the historam establish size accordingly for future recordings:
             establishSize(newHighestTrackableValue);
 
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+
         } finally {
             wrp.readerUnlock();
         }
@@ -333,6 +358,8 @@ public class ConcurrentHistogram extends Histogram {
     void clearCounts() {
         try {
             wrp.readerLock();
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
             for (int i = 0; i < activeCounts.length(); i++) {
                 activeCounts.lazySet(i, 0);
                 inactiveCounts.lazySet(i, 0);
@@ -502,7 +529,9 @@ public class ConcurrentHistogram extends Histogram {
         cachedDstLongBuffer.rewind();
         try {
             wrp.readerLock();
-            int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+            assert (countsArrayLength == activeCounts.length());
+            assert (countsArrayLength == inactiveCounts.length());
+            int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
             int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
             int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
             for (int i = 0; i < lengthFromZeroIndexToEnd; i++) {

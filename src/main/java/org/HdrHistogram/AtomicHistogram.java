@@ -251,7 +251,7 @@ public class AtomicHistogram extends Histogram {
             cachedDstLongBuffer = buffer.asLongBuffer();
         }
         cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset());
+        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
         int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
         int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
         for (int i = 0; i < lengthFromZeroIndexToEnd; i++) {
