@@ -55,7 +55,10 @@ public class ConcurrentHistogramTest {
 
             // Set:
             waitToGo = true;
+            histogram = new ConcurrentHistogram(2);
             for (ValueRecorder v : valueRecorders) {
+                v.histogram = histogram;
+                v.count = 0;
                 v.setSem.release();
             }
 
@@ -70,7 +73,7 @@ public class ConcurrentHistogramTest {
     static AtomicLong valueRecorderId = new AtomicLong(42);
 
     class ValueRecorder extends Thread {
-        final ConcurrentHistogram histogram;
+        ConcurrentHistogram histogram;
         long count = 0;
         Semaphore readySem = new Semaphore(0);
         Semaphore setSem = new Semaphore(0);
