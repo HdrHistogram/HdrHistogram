@@ -32,7 +32,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     // "Cold" accessed fields. Not used in the recording code path:
     long identity;
-    boolean autoResize = false;
+    volatile boolean autoResize = false;
 
     long highestTrackableValue;
     long lowestDiscernibleValue;
