@@ -1962,23 +1962,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return  (int)(value >>> (bucketIndex + unitMagnitude));
     }
 
-    long getCountAt(final int bucketIndex, final int subBucketIndex) {
-        return getCountAtIndex(countsArrayIndex(bucketIndex, subBucketIndex));
-    }
-
-    void checkBounds(int index) {
-        if ((index > countsArrayLength) || (index < 0)) {
-            throw new ArrayIndexOutOfBoundsException("index out of covered value range");
-        }
-    }
-
     int normalizeIndex(int index, int normalizingIndexOffset, int arrayLength) {
         if (normalizingIndexOffset == 0) {
             // Fastpath out of normalization. Keeps integer value histograms fast while allowing
             // others (like DoubleHistogram) to use normalization at a cost...
             return index;
         }
-        checkBounds(index);
+        if ((index > arrayLength) || (index < 0)) {
+            throw new ArrayIndexOutOfBoundsException("index out of covered value range");
+        }
         int normalizedIndex = index - normalizingIndexOffset;
         // The following is the same as an unsigned remainder operation, as long as no double wrapping happens
         // (which shouldn't happen, as normalization is never supposed to wrap, since it would have overflowed
