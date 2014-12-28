@@ -1590,8 +1590,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return getNeededByteBufferCapacity(countsArrayLength);
     }
 
-    private static int ENCODING_HEADER_SIZE = 40;
-    private static int V0_ENCODING_HEADER_SIZE = 32;
+    private static final int ENCODING_HEADER_SIZE = 40;
+    private static final int V0_ENCODING_HEADER_SIZE = 32;
 
     int getNeededByteBufferCapacity(final int relevantLength) {
         return getNeededPayloadByteBufferCapacity(relevantLength) + ENCODING_HEADER_SIZE;
@@ -1747,8 +1747,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             numberOfSignificantValueDigits = buffer.getInt();
             lowestTrackableUnitValue = buffer.getLong();
             highestTrackableValue = buffer.getLong();
-            long discardTotalCount = buffer.getLong();
-            //
+            buffer.getLong(); // Discard totalCount field in V0 header.
             payloadLength = Integer.MAX_VALUE;
             integerToDoubleValueConversionRatio = 1.0;
             normalizingIndexOffset = 0;
