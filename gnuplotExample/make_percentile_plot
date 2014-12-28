@@ -19,6 +19,8 @@ helpFlagFound=0
 SLA_NAME=
 FILES=
 OUTPUT_FILENAME=
+reading_maxvalue=0
+maxvalue=
 
 for var in $@; do
 	if [ $reading_SLA_NAME -eq 1 ]; then
@@ -27,12 +29,17 @@ for var in $@; do
 	elif [ $reading_OUTPUT_NAME -eq 1 ]; then
 		OUTPUT_FILENAME=$var
 		reading_OUTPUT_NAME=0
+	elif [ $reading_maxvalue -eq 1 ]; then
+		maxvalue="set yrange [0:$var]"
+		reading_maxvalue=0
 	elif [ $var = "-h" ]; then
 		helpFlagFound=1
 	elif [ $var = "-o" ]; then
 		reading_OUTPUT_NAME=1
 	elif [ $var = "-s" ]; then
 		reading_SLA_NAME=1
+	elif [ $var = "-m" ]; then
+		reading_maxvalue=1
 	else
 		FILES="$FILES $var"
 	fi
@@ -68,12 +75,13 @@ fi
 echo command will be:
 echo $IndividualFilePlotCommands
 echo "#plot commands" > gnuplot_input
-echo "set terminal png" >> gnuplot_input
+echo "set terminal png size 1280,720" >> gnuplot_input
 if [ $OUTPUT_FILENAME ]; then
 	echo "set output '$OUTPUT_FILENAME'" >> gnuplot_input
 fi
 echo "set logscale x" >> gnuplot_input
 echo "unset xtics" >> gnuplot_input
+echo "$maxvalue" >> gnuplot_input
 echo "set key top left" >> gnuplot_input
 echo "set style line 1 lt 1 lw 3 pt 3 linecolor rgb \"red\"" >> gnuplot_input
 echo "plot $IndividualFilePlotCommands" >> gnuplot_input
