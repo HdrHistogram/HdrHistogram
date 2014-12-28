@@ -188,9 +188,11 @@ public class HistogramLogProcessor extends Thread {
             if (intervalHistogram instanceof DoubleHistogram) {
                 accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
                 accumulatedDoubleHistogram.reset();
+                accumulatedDoubleHistogram.setAutoResize(true);
             } else {
                 accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
                 accumulatedRegularHistogram.reset();
+                accumulatedRegularHistogram.setAutoResize(true);
             }
         }
 
