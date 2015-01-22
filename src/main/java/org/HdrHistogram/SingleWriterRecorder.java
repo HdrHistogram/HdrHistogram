@@ -43,6 +43,7 @@ public class SingleWriterRecorder {
     public SingleWriterRecorder(final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
     /**
@@ -84,6 +85,7 @@ public class SingleWriterRecorder {
                 instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalHistogram(
                 instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
     /**

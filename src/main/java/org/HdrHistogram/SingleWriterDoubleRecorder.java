@@ -43,6 +43,7 @@ public class SingleWriterDoubleRecorder {
     public SingleWriterDoubleRecorder(final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
     /**
@@ -60,6 +61,7 @@ public class SingleWriterDoubleRecorder {
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
         inactiveHistogram = new InternalDoubleHistogram(
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
     /**
