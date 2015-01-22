@@ -43,8 +43,8 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
     int countsArrayLength;
     int wordSizeInBytes;
 
-    long startTimeStampMsec;
-    long endTimeStampMsec;
+    long startTimeStampMsec = Long.MAX_VALUE;
+    long endTimeStampMsec = 0;
 
     double integerToDoubleValueConversionRatio = 1.0;
 
@@ -555,6 +555,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Add the contents of another histogram to this one.
+     * <p>
+     * As part of adding the contents, the start/end timestamp range of this histogram will be
+     * extended to include the start/end timestamp range of the other histogram.
      *
      * @param otherHistogram The other histogram.
      * @throws ArrayIndexOutOfBoundsException (may throw) if values in fromHistogram's are
@@ -595,10 +598,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                 }
             }
         }
+        setStartTimeStamp(Math.min(startTimeStampMsec, otherHistogram.startTimeStampMsec));
+        setEndTimeStamp(Math.max(endTimeStampMsec, otherHistogram.endTimeStampMsec));
     }
 
     /**
      * Subtract the contents of another histogram from this one.
+     * <p>
+     * The start/end timestamps of this histogram will remain unchanged.
      *
      * @param otherHistogram The other histogram.
      * @throws ArrayIndexOutOfBoundsException (may throw) if values in otherHistogram's are higher than highestTrackableValue.
