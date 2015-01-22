@@ -44,6 +44,8 @@ public class HistogramLogWriter {
 
     private ByteBuffer targetBuffer;
 
+    private long baseTime = 0;
+
     /**
      * Constructs a new HistogramLogWriter around a newly created file with the specified file name.
      * @param outputFileName The name of the file to create
@@ -126,15 +128,24 @@ public class HistogramLogWriter {
     }
 
     /**
-     * Output an interval histogram, using the timestamp indicated in the histogram.
+     * Output an interval histogram, using the start/end timestamp indicated in the histogram.
+     * The histogram start and end timestamps are assumed to be in msec units. Logging will be
+     * in seconds, realtive by a base time (if set via {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}).
+     * The default base time is 0.
+     * <p>
+     * By covention, histogram start/end time are generally stamped with absolute times in msec
+     * since the epoch. For logging with absolute time stamps, the base time would remain zero. For
+     * logging with relative time stamps (time since a start point), the base time should be set
+     * with {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}.
+     * <p>
      * The max value in the histogram will be reported scaled down by a default maxValueUnitRatio of
      * 1,000,000 (which is the msec : nsec ratio). Caller should use the direct form specifying
-     * maxValueUnitRatio some other ratio is needed for the max value output.
+     * maxValueUnitRatio if some other ratio is needed for the max value output.
      * @param histogram The interval histogram to log.
      */
     public void outputIntervalHistogram(final EncodableHistogram histogram) {
-        outputIntervalHistogram(histogram.getStartTimeStamp()/1000.0,
-                histogram.getEndTimeStamp()/1000.0,
+        outputIntervalHistogram((histogram.getStartTimeStamp() - baseTime)/1000.0,
+                (histogram.getEndTimeStamp() - baseTime)/1000.0,
                 histogram);
     }
 
@@ -169,5 +180,24 @@ public class HistogramLogWriter {
      */
     public void outputLogFormatVersion() {
         outputComment("[Histogram log format version " + HISTOGRAM_LOG_FORMAT_VERSION +"]");
+    }
+
+    /**
+     * Set a base time to subtract from supplied histogram start/end timestamps when
+     * logging based on histogram timestamps.
+     * Base time is expected to be in msec since the epoch, as histogram start/end times
+     * are typically stamped with absolute times in msec since the epoch.
+     * @param baseTimeMsec
+     */
+    public void setBaseTime(long baseTimeMsec) {
+        this.baseTime = baseTimeMsec;
+    }
+
+    /**
+     * return the current base time offset (see {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}).
+     * @return the current base time
+     */
+    public long getBaseTime() {
+        return baseTime;
     }
 }
