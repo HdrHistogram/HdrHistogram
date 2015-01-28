@@ -234,6 +234,8 @@ public class HistogramLogReader {
                 histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
                 histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
 
+                scanner.nextLine(); // Move to next line. Very much needed for e.g. windows CR/LF lines
+
                 return histogram;
 
             } catch (java.util.NoSuchElementException ex) {
