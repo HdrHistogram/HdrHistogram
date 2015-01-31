@@ -1074,7 +1074,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the Min value recorded in the histogram
      */
     public long getMinValue() {
-        if (getCountAtIndex(0) > 0) {
+        if ((getCountAtIndex(0) > 0) || (getTotalCount() == 0)) {
             return 0;
         }
         return getMinNonZeroValue();
@@ -1115,6 +1115,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the mean value (in value units) of the histogram data
      */
     public double getMean() {
+        if (getTotalCount() == 0) {
+            return 0.0;
+        }
         recordedValuesIterator.reset();
         double totalValue = 0;
         while (recordedValuesIterator.hasNext()) {
@@ -1131,6 +1134,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return the standard deviation (in value units) of the histogram data
      */
     public double getStdDeviation() {
+        if (getTotalCount() == 0) {
+            return 0.0;
+        }
         final double mean =  getMean();
         double geometric_deviation_total = 0.0;
         recordedValuesIterator.reset();
@@ -1188,6 +1194,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * to the given value.
      */
     public double getPercentileAtOrBelowValue(final long value) {
+        if (getTotalCount() == 0) {
+            return 100.0;
+        }
         final int targetIndex = Math.min(countsArrayIndex(value), (countsArrayLength - 1));
         long totalToCurrentIndex = 0;
         for (int i = 0; i <= targetIndex; i++) {

@@ -59,6 +59,21 @@ public class HistogramTest {
     }
 
     @Test
+    public void testEmptyHistogram() throws Exception {
+        Histogram histogram = new Histogram(3);
+        long min = histogram.getMinValue();
+        Assert.assertEquals(0, min);
+        long max = histogram.getMaxValue();
+        Assert.assertEquals(0, max);
+        double mean = histogram.getMean();
+        Assert.assertEquals(0, mean, 0.0000000000001D);
+        double stddev = histogram.getStdDeviation();
+        Assert.assertEquals(0, stddev, 0.0000000000001D);
+        double pcnt = histogram.getPercentileAtOrBelowValue(0);
+        Assert.assertEquals(100.0, pcnt, 0.0000000000001D);
+    }
+
+    @Test
     public void testConstructionArgumentGets() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals(1, histogram.getLowestDiscernibleValue());
