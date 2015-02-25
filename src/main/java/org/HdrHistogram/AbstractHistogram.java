@@ -1151,9 +1151,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Get the value at a given percentile.
-     * When the percentile is > 0.0, the value returned is the value that the given the given
+     * When the given percentile is > 0.0, the value returned is the value that the given
      * percentage of the overall recorded value entries in the histogram are either smaller than
-     * or equivalent to. When the percentile is 0.0, the value returned is the value that all value
+     * or equivalent to. When the given percentile is 0.0, the value returned is the value that all value
      * entries in the histogram are either larger than or equivalent to.
      * <p>
      * Note that two values are "equivalent" in this statement if
@@ -1553,7 +1553,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
 
-    private static final long serialVersionUID = 44L;
+    private static final long serialVersionUID = 0x1c849301;
 
     private void writeObject(final ObjectOutputStream o)
             throws IOException
@@ -1569,6 +1569,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         // really want to have each subclass establish max on it's own...
         o.writeLong(maxValue);
         o.writeLong(minNonZeroValue);
+        o.writeLong(startTimeStampMsec);
+        o.writeLong(endTimeStampMsec);
+        o.writeBoolean(autoResize);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -1581,12 +1584,19 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long indicatedTotalCount = o.readLong();
         final long indicatedMaxValue = o.readLong();
         final long indicatedMinNonZeroValue = o.readLong();
+        final long indicatedStartTimeStampMsec = o.readLong();
+        final long indicatedEndTimeStampMsec = o.readLong();
+        final boolean indicatedAutoResize = o.readBoolean();
+
         init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits,
                 integerToDoubleValueConversionRatio, normalizingIndexOffset);
         // Set internalTrackingValues (can't establish them from array yet, because it's not yet read...)
         setTotalCount(indicatedTotalCount);
         maxValue = indicatedMaxValue;
         minNonZeroValue = indicatedMinNonZeroValue;
+        startTimeStampMsec = indicatedStartTimeStampMsec;
+        endTimeStampMsec = indicatedEndTimeStampMsec;
+        autoResize = indicatedAutoResize;
     }
 
     //
