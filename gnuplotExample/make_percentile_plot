@@ -45,10 +45,14 @@ for var in $@; do
 	fi
 done
 
+message()
+{
+    echo "$@" >&2
+}
 
 if [ $helpFlagFound -eq 1 ]; then
-	echo "Usage: make_percentile_plot [-o output_file] [-s sla_file] histogram_file ..."
-	exit -1
+	message "Usage: make_percentile_plot [-o output_file] [-s sla_file] histogram_file ..."
+	exit 255
 fi
 
 echo "1.0	0.0	0%" > ./xlabels.dat
@@ -67,23 +71,25 @@ done
 
 if [ $SLA_NAME ]; then
 	IndividualFilePlotCommands="$IndividualFilePlotCommands, '$SLA_NAME' with lines ls 1"
-	echo plotting "{ " $FILES " }" with SLA $SLA_NAME
+	message plotting "{ " $FILES " }" with SLA $SLA_NAME
 else
-	echo plotting "{ " $FILES " }"
+	message plotting "{ " $FILES " }"
 fi
 
-echo command will be:
-echo $IndividualFilePlotCommands
-echo "#plot commands" > gnuplot_input
-echo "set terminal png size 1280,720" >> gnuplot_input
-if [ $OUTPUT_FILENAME ]; then
-	echo "set output '$OUTPUT_FILENAME'" >> gnuplot_input
-fi
-echo "set logscale x" >> gnuplot_input
-echo "unset xtics" >> gnuplot_input
-echo "$maxvalue" >> gnuplot_input
-echo "set key top left" >> gnuplot_input
-echo "set style line 1 lt 1 lw 3 pt 3 linecolor rgb \"red\"" >> gnuplot_input
-echo "plot $IndividualFilePlotCommands" >> gnuplot_input
-	
-cat gnuplot_input | gnuplot
+message command will be:
+message $IndividualFilePlotCommands
+
+(
+    echo "#plot commands"
+    echo "set terminal png size 1280,720"
+    if [ $OUTPUT_FILENAME ]; then
+        echo "set output '$OUTPUT_FILENAME'"
+    fi
+    echo "set logscale x"
+    echo "unset xtics"
+    echo "$maxvalue"
+    echo "set key top left"
+    echo "set style line 1 lt 1 lw 3 pt 3 linecolor rgb \"red\""
+    echo "plot $IndividualFilePlotCommands"
+) | gnuplot
+
