@@ -16,7 +16,7 @@ import java.util.zip.DataFormatException;
 
 /**
  * <h3>An integer values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
- * <p/>
+ * <p>
  * A {@link SynchronizedHistogram} is a variant of {@link Histogram} that is
  * synchronized as a whole, such that queries, copying, and addition operations are atomic with relation to
  * modification on the {@link SynchronizedHistogram}, and such that external accessors (e.g. iterations on the
@@ -26,7 +26,7 @@ import java.util.zip.DataFormatException;
  * It is important to note that synchronization can result in blocking recoding calls. If non-blocking recoding
  * operations are required, consider using {@link ConcurrentHistogram}, {@link AtomicHistogram}, or (recommended)
  * {@link Recorder} or {@link org.HdrHistogram.SingleWriterRecorder} which were intended for concurrent operations.
- * <p/>
+ * <p>
  * See package description for {@link org.HdrHistogram} and {@link org.HdrHistogram.Histogram} for more details.
  */
 

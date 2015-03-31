@@ -1151,7 +1151,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Get the value at a given percentile.
-     * When the given percentile is > 0.0, the value returned is the value that the given
+     * When the given percentile is &gt; 0.0, the value returned is the value that the given
      * percentage of the overall recorded value entries in the histogram are either smaller than
      * or equivalent to. When the given percentile is 0.0, the value returned is the value that all value
      * entries in the histogram are either larger than or equivalent to.

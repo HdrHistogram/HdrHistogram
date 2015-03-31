@@ -273,8 +273,6 @@
  * {@link org.HdrHistogram.DoubleAllValuesIterator}). Support for interval recording is provided with
  * {@link org.HdrHistogram.DoubleRecorder} and
  * {@link org.HdrHistogram.SingleWriterDoubleRecorder}.
- * <p>
- * <p/>
  * <h4>Auto-ranging in floating point histograms</h4>
  * Unlike integer value based histograms, the specific value range tracked by a {@link
  * org.HdrHistogram.DoubleHistogram} (and variants) is not specified upfront. Only the dynamic range of values
