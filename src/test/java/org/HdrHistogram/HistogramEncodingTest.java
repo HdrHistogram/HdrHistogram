@@ -194,4 +194,23 @@ public class HistogramEncodingTest {
 
         Assert.assertEquals(histogram, decodedHistogram);
     }
+
+    @Test
+    public void testResizingHistogramBetweenCompressedEncodings() throws Exception {
+        Histogram histogram = new Histogram(3);
+
+        histogram.recordValue(1);
+
+        ByteBuffer targetCompressedBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
+        histogram.encodeIntoCompressedByteBuffer(targetCompressedBuffer);
+
+        histogram.recordValue(10000);
+
+        targetCompressedBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
+        histogram.encodeIntoCompressedByteBuffer(targetCompressedBuffer);
+        targetCompressedBuffer.rewind();
+
+        Histogram histogram2 = Histogram.decodeFromCompressedByteBuffer(targetCompressedBuffer, 0);
+        Assert.assertEquals(histogram, histogram2);
+    }
 }

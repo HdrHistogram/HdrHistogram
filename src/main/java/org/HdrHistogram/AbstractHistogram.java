@@ -1695,8 +1695,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     synchronized public int encodeIntoCompressedByteBuffer(
             final ByteBuffer targetBuffer,
             final int compressionLevel) {
-        if (intermediateUncompressedByteBuffer == null) {
-            intermediateUncompressedByteBuffer = ByteBuffer.allocate(getNeededByteBufferCapacity(countsArrayLength));
+        int neededCapacity = getNeededByteBufferCapacity(countsArrayLength);
+        if (intermediateUncompressedByteBuffer == null || intermediateUncompressedByteBuffer.capacity() < neededCapacity) {
+            intermediateUncompressedByteBuffer = ByteBuffer.allocate(neededCapacity);
         }
         intermediateUncompressedByteBuffer.clear();
         final int uncompressedLength = encodeIntoByteBuffer(intermediateUncompressedByteBuffer);
