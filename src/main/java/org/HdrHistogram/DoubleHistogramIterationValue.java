@@ -50,6 +50,7 @@ public class DoubleHistogramIterationValue {
                 ", countAtValueIteratedTo:" + getCountAtValueIteratedTo() +
                 ", countAddedInThisIterationStep:" + getCountAddedInThisIterationStep() +
                 ", totalCountToThisValue:" + getTotalCountToThisValue() +
+                ", totalValueToThisValue:" + getTotalValueToThisValue() +
                 ", percentile:" + getPercentile() +
                 ", percentileLevelIteratedTo:" + getPercentileLevelIteratedTo();
     }
@@ -74,6 +75,11 @@ public class DoubleHistogramIterationValue {
 
     public long getTotalCountToThisValue() {
         return integerHistogramIterationValue.getTotalCountToThisValue();
+    }
+
+    public double getTotalValueToThisValue() {
+        return integerHistogramIterationValue.getTotalValueToThisValue() *
+                integerHistogramIterationValue.getIntegerToDoubleValueConversionRatio();
     }
 
     public double getPercentile() {

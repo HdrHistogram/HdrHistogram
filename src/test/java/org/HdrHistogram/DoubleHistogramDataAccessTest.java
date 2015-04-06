@@ -442,6 +442,8 @@ public class DoubleHistogramDataAccessTest {
     public void testAllValues() throws Exception {
         int index = 0;
         double latestValueAtIndex = 0;
+        double totalCountToThisPoint = 0;
+        double totalValueToThisPoint = 0;
         // Iterate raw data by stepping through every value that ahs a count recorded:
         for (DoubleHistogramIterationValue v : rawHistogram.allValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
@@ -456,6 +458,10 @@ public class DoubleHistogramDataAccessTest {
                         0, countAddedInThisBucket);
             }
             latestValueAtIndex = v.getValueIteratedTo();
+            totalCountToThisPoint += v.getCountAtValueIteratedTo();
+            Assert.assertEquals("total Count should match", totalCountToThisPoint, v.getTotalCountToThisValue(), 1e-8);
+            totalValueToThisPoint += v.getCountAtValueIteratedTo() * latestValueAtIndex;
+            Assert.assertEquals("total Value should match", totalValueToThisPoint, v.getTotalValueToThisValue(), 1e-8);
             index++;
         }
         Assert.assertEquals("index should be equal to countsArrayLength",

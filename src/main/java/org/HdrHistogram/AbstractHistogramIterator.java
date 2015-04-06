@@ -26,6 +26,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     long totalCountToPrevIndex;
 
     long totalCountToCurrentIndex;
+    long totalValueToCurrentIndex;
 
     long arrayTotalCount;
     long countAtThisValue;
@@ -46,6 +47,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
         this.prevValueIteratedTo = 0;
         this.totalCountToPrevIndex = 0;
         this.totalCountToCurrentIndex = 0;
+        this.totalValueToCurrentIndex = 0;
         this.countAtThisValue = 0;
         this.freshSubBucket = true;
         currentIterationValue.reset();
@@ -77,13 +79,14 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
             countAtThisValue = histogram.getCountAtIndex(currentIndex);
             if (freshSubBucket) { // Don't add unless we've incremented since last bucket...
                 totalCountToCurrentIndex += countAtThisValue;
+                totalValueToCurrentIndex += countAtThisValue * histogram.highestEquivalentValue(currentValueAtIndex);
                 freshSubBucket = false;
             }
             if (reachedIterationLevel()) {
                 long valueIteratedTo = getValueIteratedTo();
                 currentIterationValue.set(valueIteratedTo, prevValueIteratedTo, countAtThisValue,
                         (totalCountToCurrentIndex - totalCountToPrevIndex), totalCountToCurrentIndex,
-                        ((100.0 * totalCountToCurrentIndex) / arrayTotalCount),
+                        totalValueToCurrentIndex, ((100.0 * totalCountToCurrentIndex) / arrayTotalCount),
                         getPercentileIteratedTo(), integerToDoubleValueConversionRatio);
                 prevValueIteratedTo = valueIteratedTo;
                 totalCountToPrevIndex = totalCountToCurrentIndex;

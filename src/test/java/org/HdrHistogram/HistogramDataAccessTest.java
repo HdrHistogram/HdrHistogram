@@ -434,6 +434,8 @@ public class HistogramDataAccessTest {
     public void testAllValues() throws Exception {
         int index = 0;
         long latestValueAtIndex = 0;
+        long totalCountToThisPoint = 0;
+        long totalValueToThisPoint = 0;
         // Iterate raw data by stepping through every value that has a count recorded:
         for (HistogramIterationValue v : rawHistogram.allValues()) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
@@ -448,6 +450,10 @@ public class HistogramDataAccessTest {
                         0, countAddedInThisBucket);
             }
             latestValueAtIndex = v.getValueIteratedTo();
+            totalCountToThisPoint += v.getCountAtValueIteratedTo();
+            Assert.assertEquals("total Count should match", totalCountToThisPoint, v.getTotalCountToThisValue());
+            totalValueToThisPoint += v.getCountAtValueIteratedTo() * latestValueAtIndex;
+            Assert.assertEquals("total Value should match", totalValueToThisPoint, v.getTotalValueToThisValue());
             index++;
         }
         Assert.assertEquals("index should be equal to countsArrayLength", histogram.countsArrayLength, index);

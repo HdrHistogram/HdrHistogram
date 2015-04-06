@@ -39,19 +39,21 @@ public class HistogramIterationValue {
     private long countAtValueIteratedTo;
     private long countAddedInThisIterationStep;
     private long totalCountToThisValue;
+    private long totalValueToThisValue;
     private double percentile;
     private double percentileLevelIteratedTo;
     private double integerToDoubleValueConversionRatio;
 
     // Set is all-or-nothing to avoid the potential for accidental omission of some values...
     void set(final long valueIteratedTo, final long valueIteratedFrom, final long countAtValueIteratedTo,
-             final long countInThisIterationStep, final long totalCountToThisValue,
+             final long countInThisIterationStep, final long totalCountToThisValue, final long totalValueToThisValue,
              final double percentile, final double percentileLevelIteratedTo, double integerToDoubleValueConversionRatio) {
         this.valueIteratedTo = valueIteratedTo;
         this.valueIteratedFrom = valueIteratedFrom;
         this.countAtValueIteratedTo = countAtValueIteratedTo;
         this.countAddedInThisIterationStep = countInThisIterationStep;
         this.totalCountToThisValue = totalCountToThisValue;
+        this.totalValueToThisValue = totalValueToThisValue;
         this.percentile = percentile;
         this.percentileLevelIteratedTo = percentileLevelIteratedTo;
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
@@ -63,6 +65,7 @@ public class HistogramIterationValue {
         this.countAtValueIteratedTo = 0;
         this.countAddedInThisIterationStep = 0;
         this.totalCountToThisValue = 0;
+        this.totalValueToThisValue = 0;
         this.percentile = 0.0;
         this.percentileLevelIteratedTo = 0.0;
     }
@@ -76,6 +79,7 @@ public class HistogramIterationValue {
                 ", countAtValueIteratedTo:" + countAtValueIteratedTo +
                 ", countAddedInThisIterationStep:" + countAddedInThisIterationStep +
                 ", totalCountToThisValue:" + totalCountToThisValue +
+                ", totalValueToThisValue:" + totalValueToThisValue +
                 ", percentile:" + percentile +
                 ", percentileLevelIteratedTo:" + percentileLevelIteratedTo;
     }
@@ -106,6 +110,10 @@ public class HistogramIterationValue {
 
     public long getTotalCountToThisValue() {
         return totalCountToThisValue;
+    }
+
+    public long getTotalValueToThisValue() {
+        return totalValueToThisValue;
     }
 
     public double getPercentile() {
