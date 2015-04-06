@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/HdrHistogram/HdrHistogram.git</connection>
         <developerConnection>scm:git:git@github.com:HdrHistogram/HdrHistogram.git</developerConnection>
       <tag>HdrHistogram-2.0.2</tag>
-  </scm>
+    </scm>
 
 
     <issueManagement>
