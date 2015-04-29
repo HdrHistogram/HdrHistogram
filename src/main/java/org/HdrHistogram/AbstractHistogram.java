@@ -1572,6 +1572,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         o.writeLong(startTimeStampMsec);
         o.writeLong(endTimeStampMsec);
         o.writeBoolean(autoResize);
+        o.writeInt(wordSizeInBytes);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -1587,6 +1588,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long indicatedStartTimeStampMsec = o.readLong();
         final long indicatedEndTimeStampMsec = o.readLong();
         final boolean indicatedAutoResize = o.readBoolean();
+        final int indicatedWordSizeInBytes = o.readInt();
 
         init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits,
                 integerToDoubleValueConversionRatio, normalizingIndexOffset);
@@ -1597,6 +1599,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         startTimeStampMsec = indicatedStartTimeStampMsec;
         endTimeStampMsec = indicatedEndTimeStampMsec;
         autoResize = indicatedAutoResize;
+        wordSizeInBytes = indicatedWordSizeInBytes;
     }
 
     //

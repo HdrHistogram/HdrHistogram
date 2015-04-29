@@ -458,6 +458,9 @@ public class HistogramTest {
         Assert.assertEquals(
                 expectedHistogram.getTotalCount(),
                 actualHistogram.getTotalCount());
+        Assert.assertEquals(
+                expectedHistogram.getNeededByteBufferCapacity(),
+                actualHistogram.getNeededByteBufferCapacity());
         verifyMaxValue(expectedHistogram);
         verifyMaxValue(actualHistogram);
     }
