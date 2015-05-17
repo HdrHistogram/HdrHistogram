@@ -46,7 +46,7 @@ public class ConcurrentHistogram extends Histogram {
 
     volatile AtomicLongArrayWithNormalizingOffset activeCounts;
     volatile AtomicLongArrayWithNormalizingOffset inactiveCounts;
-    WriterReaderPhaser wrp = new WriterReaderPhaser();
+    transient WriterReaderPhaser wrp = new WriterReaderPhaser();
 
     @Override
     long getCountAtIndex(final int index) {
@@ -500,6 +500,7 @@ public class ConcurrentHistogram extends Histogram {
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
+        wrp = new WriterReaderPhaser();
     }
 
     @Override
