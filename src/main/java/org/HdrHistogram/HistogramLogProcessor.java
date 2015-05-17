@@ -54,6 +54,7 @@ public class HistogramLogProcessor extends Thread {
     private HistogramLogReader logReader;
 
     private static class HistogramLogProcessorConfiguration {
+        public boolean verbose = false;
         public String outputFileName = null;
         public String inputFileName = null;
 
@@ -74,6 +75,8 @@ public class HistogramLogProcessor extends Thread {
                 for (int i = 0; i < args.length; ++i) {
                     if (args[i].equals("-csv")) {
                         logFormatCsv = true;
+                    } else if (args[i].equals("-v")) {
+                        verbose = true;
                     } else if (args[i].equals("-i")) {
                         inputFileName = args[++i];
                     } else if (args[i].equals("-start")) {
@@ -107,7 +110,7 @@ public class HistogramLogProcessor extends Thread {
                 }
 
                 final String validArgs =
-                        "\"[-csv] [-i inputFileName] [-o outputFileName] " +
+                        "\"[-csv] [-v] [-i inputFileName] [-o outputFileName] " +
                                 "[-start rangeStartTimeSec] [-end rangeEndTimeSec] " +
                                 "[-outputValueUnitRatio r]";
 
@@ -115,6 +118,7 @@ public class HistogramLogProcessor extends Thread {
 
                 System.err.println(
                         " [-h]                        help\n" +
+                                " [-v]                        Provide verbose error output\n" +
                                 " [-csv]                      Use CSV format for output log files\n" +
                                 " [-i logFileName]            File name of Histogram Log to process (default is standard input)\n" +
                                 " [-o outputFileName]         File name to output to (default is standard output)\n" +
@@ -153,6 +157,7 @@ public class HistogramLogProcessor extends Thread {
         PrintStream histogramPercentileLog = System.out;
         Double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
+        int lineNumber = 0;
 
         if (config.outputFileName != null) {
             try {
@@ -267,8 +272,19 @@ public class HistogramLogProcessor extends Thread {
                 }
             }
 
+            lineNumber++;
             // Read and accumulate the next line:
-            intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+            try {
+                intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+            } catch (RuntimeException ex) {
+                System.err.println("Log file parsing error at line number " + lineNumber +
+                        ": line appears to be malformed.");
+                if (config.verbose) {
+                    throw ex;
+                } else {
+                    System.exit(1);
+                }
+            }
         }
 
         if (accumulatedDoubleHistogram != null) {
@@ -320,8 +336,9 @@ public class HistogramLogProcessor extends Thread {
      * @param args command line arguments
      */
     public static void main(final String[] args)  {
+        final HistogramLogProcessor processor;
         try {
-            final HistogramLogProcessor processor = new HistogramLogProcessor(args);
+            processor = new HistogramLogProcessor(args);
             processor.start();
         } catch (FileNotFoundException ex) {
             System.err.println("failed to open input file.");
