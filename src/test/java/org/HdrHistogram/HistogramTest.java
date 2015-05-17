@@ -10,9 +10,13 @@ package org.HdrHistogram;
 
 import org.junit.*;
 import java.io.*;
+import java.util.Random;
 import java.util.zip.Deflater;
 
 import java.io.ByteArrayOutputStream;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * JUnit test for {@link Histogram}
@@ -445,6 +449,10 @@ public class HistogramTest {
         }
         Assert.assertNotNull(newHistogram);
         assertEqual(histogram, newHistogram);
+        assertTrue(histogram.equals(newHistogram));
+        Assert.assertFalse(histogram.hashCode() == newHistogram.hashCode());
+        assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.copy().getNeededByteBufferCapacity());
+        assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.getNeededByteBufferCapacity());
     }
 
     private void assertEqual(AbstractHistogram expectedHistogram, AbstractHistogram actualHistogram) {
@@ -466,14 +474,31 @@ public class HistogramTest {
     public void testSerialization() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, 3);
         testAbstractSerialization(histogram);
+
+        Histogram atomicHistogram = new AtomicHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(atomicHistogram);
+
+        Histogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(concurrentHistogram);
+
         IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
         testAbstractSerialization(intCountsHistogram);
+
         ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 3);
         testAbstractSerialization(shortCountsHistogram);
+
         histogram = new Histogram(highestTrackableValue, 2);
         testAbstractSerialization(histogram);
+
+        atomicHistogram = new AtomicHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(atomicHistogram);
+
+        concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(concurrentHistogram);
+
         intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 2);
         testAbstractSerialization(intCountsHistogram);
+
         shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 4); // With 2 decimal points, shorts overflow here
         testAbstractSerialization(shortCountsHistogram);
     }
