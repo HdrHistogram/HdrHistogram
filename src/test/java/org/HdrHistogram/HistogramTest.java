@@ -481,6 +481,9 @@ public class HistogramTest {
         Histogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 3);
         testAbstractSerialization(concurrentHistogram);
 
+        Histogram synchronizedHistogram = new SynchronizedHistogram(highestTrackableValue, 3);
+        testAbstractSerialization(synchronizedHistogram);
+
         IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
         testAbstractSerialization(intCountsHistogram);
 
@@ -495,6 +498,9 @@ public class HistogramTest {
 
         concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 2);
         testAbstractSerialization(concurrentHistogram);
+
+        synchronizedHistogram = new SynchronizedHistogram(highestTrackableValue, 2);
+        testAbstractSerialization(synchronizedHistogram);
 
         intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 2);
         testAbstractSerialization(intCountsHistogram);
