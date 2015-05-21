@@ -93,10 +93,26 @@ public class SingleWriterRecorder {
      * @param value the value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
-    public void recordValue(long value) {
+    public void recordValue(final long value) {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
             activeHistogram.recordValue(value);
+        } finally {
+            recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
+        }
+    }
+
+    /**
+     * Record a value in the histogram (adding to the value's current count)
+     *
+     * @param value The value to be recorded
+     * @param count The number of occurrences of this value to record
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
+     */
+    public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
+        long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
+        try {
+            activeHistogram.recordValueWithCount(value, count);
         } finally {
             recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
         }
