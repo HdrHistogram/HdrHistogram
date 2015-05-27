@@ -307,7 +307,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     }
 
     private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value > currentHighestValueLimitInAutoRange)) {
+        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
             // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
             // with it on the slow path...
             autoAdjustRangeForValue(value);
