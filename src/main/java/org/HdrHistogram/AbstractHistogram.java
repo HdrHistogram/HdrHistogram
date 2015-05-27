@@ -1740,9 +1740,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private static final Class[] constructorArgsTypes = {Long.TYPE, Long.TYPE, Integer.TYPE};
 
-    static AbstractHistogram decodeFromByteBuffer(
+    static <T extends AbstractHistogram> T decodeFromByteBuffer(
             final ByteBuffer buffer,
-            final Class histogramClass,
+            final Class<T> histogramClass,
             final long minBarForHighestTrackableValue) {
         try {
             return decodeFromByteBuffer(buffer, histogramClass, minBarForHighestTrackableValue, null, null);
@@ -1751,9 +1751,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    static AbstractHistogram decodeFromByteBuffer(
+    static <T extends AbstractHistogram> T decodeFromByteBuffer(
             final ByteBuffer buffer,
-            final Class histogramClass,
+            final Class<T> histogramClass,
             final long minBarForHighestTrackableValue,
             final Inflater decompressor,
             final ByteBuffer intermediateUncompressedByteBuffer) throws DataFormatException {
@@ -1786,12 +1786,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         highestTrackableValue = Math.max(highestTrackableValue, minBarForHighestTrackableValue);
 
-        AbstractHistogram histogram;
+        T histogram;
 
         // Construct histogram:
         try {
             @SuppressWarnings("unchecked")
-            Constructor<AbstractHistogram> constructor = histogramClass.getConstructor(constructorArgsTypes);
+            Constructor<T> constructor = histogramClass.getConstructor(constructorArgsTypes);
             histogram = constructor.newInstance(lowestTrackableUnitValue, highestTrackableValue,
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
@@ -1885,9 +1885,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    static AbstractHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                            final Class histogramClass,
-                                                            final long minBarForHighestTrackableValue)
+    static <T extends AbstractHistogram> T decodeFromCompressedByteBuffer(
+            final ByteBuffer buffer,
+            final Class<T> histogramClass,
+            final long minBarForHighestTrackableValue)
             throws DataFormatException {
         int initialTargetPosition = buffer.position();
         final int cookie = buffer.getInt();
@@ -1906,7 +1907,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize);
         decompressor.inflate(headerBuffer.array());
-        AbstractHistogram histogram = decodeFromByteBuffer(
+        T histogram = decodeFromByteBuffer(
                 headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor, null);
         return histogram;
     }
