@@ -7,6 +7,15 @@
 
 package org.HdrHistogram;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+
 /**
  * <h3>A floating point values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
  * <p>
@@ -84,5 +93,373 @@ public class SynchronizedDoubleHistogram extends DoubleHistogram {
      */
     public SynchronizedDoubleHistogram(final ConcurrentDoubleHistogram source) {
         super(source);
+    }
+
+    @Override
+    public synchronized boolean isAutoResize() {
+        return super.isAutoResize();
+    }
+
+    @Override
+    public synchronized void setAutoResize(boolean autoResize) {
+        super.setAutoResize(autoResize);
+    }
+
+    @Override
+    public synchronized void recordValue(final double value) throws ArrayIndexOutOfBoundsException {
+        super.recordValue(value);
+    }
+
+    @Override
+    public synchronized void recordValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
+        super.recordValueWithCount(value, count);
+    }
+
+    @Override
+    public synchronized void recordValueWithExpectedInterval(final double value, final double expectedIntervalBetweenValueSamples)
+            throws ArrayIndexOutOfBoundsException {
+        super.recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
+    }
+
+    @Override
+    public synchronized void reset() {
+        super.reset();
+    }
+
+    @Override
+    public synchronized DoubleHistogram copy() {
+        final DoubleHistogram targetHistogram =
+                new DoubleHistogram(this);
+        integerValuesHistogram.copyInto(targetHistogram.integerValuesHistogram);
+        return targetHistogram;
+    }
+
+    @Override
+    public synchronized DoubleHistogram copyCorrectedForCoordinatedOmission(final double expectedIntervalBetweenValueSamples) {
+        final DoubleHistogram targetHistogram =
+                new DoubleHistogram(this);
+        targetHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return targetHistogram;
+    }
+
+    @Override
+    public synchronized void copyInto(final DoubleHistogram targetHistogram) {
+        // Synchronize copyInto(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (integerValuesHistogram.identity < targetHistogram.integerValuesHistogram.identity) {
+            synchronized (this) {
+                synchronized (targetHistogram) {
+                    super.copyInto(targetHistogram);
+                }
+            }
+        } else {
+            synchronized (targetHistogram) {
+                synchronized (this) {
+                    super.copyInto(targetHistogram);
+                }
+            }
+        }
+    }
+
+    @Override
+    public synchronized void copyIntoCorrectedForCoordinatedOmission(final DoubleHistogram targetHistogram,
+                                                        final double expectedIntervalBetweenValueSamples) {
+        // Synchronize copyIntoCorrectedForCoordinatedOmission(). Avoid deadlocks by synchronizing in order
+        // of construction identity count.
+        if (integerValuesHistogram.identity < targetHistogram.integerValuesHistogram.identity) {
+            synchronized (this) {
+                synchronized (targetHistogram) {
+                    super.copyIntoCorrectedForCoordinatedOmission(targetHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        } else {
+            synchronized (targetHistogram) {
+                synchronized (this) {
+                    super.copyIntoCorrectedForCoordinatedOmission(targetHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        }
+    }
+
+    @Override
+    public synchronized void add(final DoubleHistogram fromHistogram) throws ArrayIndexOutOfBoundsException {
+        // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (integerValuesHistogram.identity < fromHistogram.integerValuesHistogram.identity) {
+            synchronized (this) {
+                synchronized (fromHistogram) {
+                    super.add(fromHistogram);
+                }
+            }
+        } else {
+            synchronized (fromHistogram) {
+                synchronized (this) {
+                    super.add(fromHistogram);
+                }
+            }
+        }
+    }
+
+
+    @Override
+    public synchronized void subtract(final DoubleHistogram fromHistogram) {
+        // Synchronize subtract(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (integerValuesHistogram.identity < fromHistogram.integerValuesHistogram.identity) {
+            synchronized (this) {
+                synchronized (fromHistogram) {
+                    super.subtract(fromHistogram);
+                }
+            }
+        } else {
+            synchronized (fromHistogram) {
+                synchronized (this) {
+                    super.subtract(fromHistogram);
+                }
+            }
+        }
+    }
+
+    @Override
+    public synchronized void addWhileCorrectingForCoordinatedOmission(final DoubleHistogram fromHistogram,
+                                                         final double expectedIntervalBetweenValueSamples) {
+        // Synchronize addWhileCorrectingForCoordinatedOmission(). Avoid deadlocks by synchronizing in
+        // order of construction identity count.
+        if (integerValuesHistogram.identity < fromHistogram.integerValuesHistogram.identity) {
+            synchronized (this) {
+                synchronized (fromHistogram) {
+                    super.addWhileCorrectingForCoordinatedOmission(fromHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        } else {
+            synchronized (fromHistogram) {
+                synchronized (this) {
+                    super.addWhileCorrectingForCoordinatedOmission(fromHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        }
+    }
+
+    @Override
+    public synchronized boolean equals(final Object other) {
+        if ( this == other ) {
+            return true;
+        }
+        if (other instanceof AbstractHistogram) {
+            DoubleHistogram otherHistogram = (DoubleHistogram) other;
+            if (integerValuesHistogram.identity < otherHistogram.integerValuesHistogram.identity) {
+                synchronized (this) {
+                    synchronized (otherHistogram) {
+                        return super.equals(otherHistogram);
+                    }
+                }
+            } else {
+                synchronized (otherHistogram) {
+                    synchronized (this) {
+                        return super.equals(otherHistogram);
+                    }
+                }
+            }
+        } else {
+            synchronized (this) {
+                return super.equals(other);
+            }
+        }
+    }
+
+    @Override
+    public synchronized long getTotalCount() {
+        return super.getTotalCount();
+    }
+
+    @Override
+    public synchronized double getIntegerToDoubleValueConversionRatio() {
+        return super.getIntegerToDoubleValueConversionRatio();
+    }
+
+    @Override
+    public synchronized int getNumberOfSignificantValueDigits() {
+        return super.getNumberOfSignificantValueDigits();
+    }
+
+    @Override
+    public synchronized long getHighestToLowestValueRatio() {
+        return super.getHighestToLowestValueRatio();
+    }
+
+    @Override
+    public synchronized double sizeOfEquivalentValueRange(final double value) {
+        return super.sizeOfEquivalentValueRange(value);
+    }
+
+    @Override
+    public synchronized double lowestEquivalentValue(final double value) {
+        return super.lowestEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized double highestEquivalentValue(final double value) {
+        return super.highestEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized double medianEquivalentValue(final double value) {
+        return super.medianEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized double nextNonEquivalentValue(final double value) {
+        return super.nextNonEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized boolean valuesAreEquivalent(final double value1, final double value2) {
+        return super.valuesAreEquivalent(value1, value2);
+    }
+
+    @Override
+    public synchronized int getEstimatedFootprintInBytes() {
+        return super.getEstimatedFootprintInBytes();
+    }
+
+    @Override
+    public synchronized long getStartTimeStamp() {
+        return super.getStartTimeStamp();
+    }
+
+    @Override
+    public synchronized void setStartTimeStamp(final long timeStampMsec) {
+        super.setStartTimeStamp(timeStampMsec);
+    }
+
+    @Override
+    public synchronized long getEndTimeStamp() {
+        return super.getEndTimeStamp();
+    }
+
+    @Override
+    public synchronized void setEndTimeStamp(final long timeStampMsec) {
+        super.setEndTimeStamp(timeStampMsec);
+    }
+
+    @Override
+    public synchronized double getMinValue() {
+        return super.getMinValue();
+    }
+
+    @Override
+    public synchronized double getMaxValue() {
+        return super.getMaxValue();
+    }
+
+    @Override
+    public synchronized double getMinNonZeroValue() {
+        return super.getMinNonZeroValue();
+    }
+
+    @Override
+    public synchronized double getMaxValueAsDouble() {
+        return super.getMaxValueAsDouble();
+    }
+
+    @Override
+    public synchronized double getMean() {
+        return super.getMean();
+    }
+
+    @Override
+    public synchronized double getStdDeviation() {
+        return super.getStdDeviation();
+    }
+
+    @Override
+    public synchronized double getValueAtPercentile(final double percentile) {
+        return super.getValueAtPercentile(percentile);
+    }
+
+    @Override
+    public synchronized double getPercentileAtOrBelowValue(final double value) {
+        return super.getPercentileAtOrBelowValue(value);
+    }
+
+    @Override
+    public synchronized double getCountBetweenValues(final double lowValue, final double highValue)
+            throws ArrayIndexOutOfBoundsException {
+        return super.getCountBetweenValues(lowValue, highValue);
+    }
+
+    @Override
+    public synchronized long getCountAtValue(final double value) throws ArrayIndexOutOfBoundsException {
+        return super.getCountAtValue(value);
+    }
+
+    @Override
+    public synchronized Percentiles percentiles(final int percentileTicksPerHalfDistance) {
+        return super.percentiles(percentileTicksPerHalfDistance);
+    }
+
+    @Override
+    public synchronized LinearBucketValues linearBucketValues(final double valueUnitsPerBucket) {
+        return super.linearBucketValues(valueUnitsPerBucket);
+    }
+
+    @Override
+    public synchronized LogarithmicBucketValues logarithmicBucketValues(final double valueUnitsInFirstBucket,
+                                                           final double logBase) {
+        return super.logarithmicBucketValues(valueUnitsInFirstBucket, logBase);
+    }
+
+    @Override
+    public synchronized RecordedValues recordedValues() {
+        return super.recordedValues();
+    }
+
+    @Override
+    public synchronized AllValues allValues() {
+        return super.allValues();
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final Double outputValueUnitScalingRatio) {
+        super.outputPercentileDistribution(printStream, outputValueUnitScalingRatio);
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final int percentileTicksPerHalfDistance,
+                                             final Double outputValueUnitScalingRatio) {
+        super.outputPercentileDistribution(printStream, percentileTicksPerHalfDistance, outputValueUnitScalingRatio);
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final int percentileTicksPerHalfDistance,
+                                             final Double outputValueUnitScalingRatio,
+                                             final boolean useCsvFormat) {
+        super.outputPercentileDistribution(
+                printStream,
+                percentileTicksPerHalfDistance,
+                outputValueUnitScalingRatio,
+                useCsvFormat);
+    }
+
+    @Override
+    public synchronized int getNeededByteBufferCapacity() {
+        return super.getNeededByteBufferCapacity();
+    }
+
+    @Override
+    public synchronized int encodeIntoByteBuffer(final ByteBuffer buffer) {
+        return super.encodeIntoByteBuffer(buffer);
+    }
+
+    @Override
+    public synchronized int encodeIntoCompressedByteBuffer(
+            final ByteBuffer targetBuffer,
+            final int compressionLevel) {
+        return super.encodeIntoCompressedByteBuffer(targetBuffer, compressionLevel);
+    }
+
+    @Override
+    public synchronized int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer) {
+        return super.encodeIntoCompressedByteBuffer(targetBuffer);
     }
 }

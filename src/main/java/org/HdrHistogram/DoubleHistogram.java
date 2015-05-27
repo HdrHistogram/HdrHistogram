@@ -218,6 +218,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 source.integerValuesHistogram,
                 true);
         this.autoResize = source.autoResize;
+        setTrackableValueRange(source.currentLowestValueInAutoRange, source.currentHighestValueLimitInAutoRange);
     }
 
     private void init(final long configuredHighestToLowestValueRatio, final double lowestTrackableUnitValue,
