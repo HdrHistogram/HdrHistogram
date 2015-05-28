@@ -1796,8 +1796,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
             histogram.setNormalizingIndexOffset(normalizingIndexOffset);
-            if ((cookie != histogram.getEncodingCookie()) &&
-                    (cookie != histogram.getV0EncodingCookie())) {
+            if ((cookie != ((AbstractHistogram)histogram).getEncodingCookie()) &&
+                    (cookie != ((AbstractHistogram)histogram).getV0EncodingCookie())) {
                 throw new IllegalArgumentException(
                         "The buffer's encoded value byte size (" +
                                 getWordSizeInBytesFromCookie(cookie) +
@@ -1847,7 +1847,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
 
-        histogram.fillCountsArrayFromSourceBuffer(
+        ((AbstractHistogram)histogram).fillCountsArrayFromSourceBuffer(
                 payLoadSourceBuffer,
                 expectedCapacity / getWordSizeInBytesFromCookie(cookie),
                 getWordSizeInBytesFromCookie(cookie));
