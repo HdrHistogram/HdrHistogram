@@ -162,19 +162,13 @@ public class SingleWriterDoubleRecorder {
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
-        if (histogramToRecycle == null) {
-            histogramToRecycle = new InternalDoubleHistogram(inactiveHistogram);
-        }
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
-        try {
-            recordingPhaser.readerLock();
-            inactiveHistogram = (InternalDoubleHistogram) histogramToRecycle;
-            performIntervalSample();
-            return inactiveHistogram;
-        } finally {
-            recordingPhaser.readerUnlock();
-        }
+        inactiveHistogram = (InternalDoubleHistogram) histogramToRecycle;
+        performIntervalSample();
+        DoubleHistogram sampledHistogram = inactiveHistogram;
+        inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
+        return sampledHistogram;
     }
 
     /**
@@ -201,9 +195,15 @@ public class SingleWriterDoubleRecorder {
     }
 
     private void performIntervalSample() {
-        inactiveHistogram.reset();
         try {
             recordingPhaser.readerLock();
+
+            // Make sure we have an inactive version to flip in:
+            if (inactiveHistogram == null) {
+                inactiveHistogram = new InternalDoubleHistogram(activeHistogram);
+            }
+
+            inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
             final InternalDoubleHistogram tempHistogram = inactiveHistogram;
@@ -247,7 +247,9 @@ public class SingleWriterDoubleRecorder {
 
     void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
         boolean bad = true;
-        if ((replacementHistogram instanceof InternalDoubleHistogram)
+        if (replacementHistogram == null) {
+            bad = false;
+        } else if ((replacementHistogram instanceof InternalDoubleHistogram)
                 &&
                 (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
                         activeHistogram.containingInstanceId)

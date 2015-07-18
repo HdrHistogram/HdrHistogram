@@ -186,29 +186,13 @@ public class Recorder {
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
-        if (histogramToRecycle == null) {
-            if (inactiveHistogram instanceof InternalAtomicHistogram) {
-                histogramToRecycle = new InternalAtomicHistogram(
-                        instanceId,
-                        inactiveHistogram.getLowestDiscernibleValue(),
-                        inactiveHistogram.getHighestTrackableValue(),
-                        inactiveHistogram.getNumberOfSignificantValueDigits());
-            } else {
-                histogramToRecycle = new InternalConcurrentHistogram(
-                        instanceId,
-                        inactiveHistogram.getNumberOfSignificantValueDigits());
-            }
-        }
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
-        try {
-            recordingPhaser.readerLock();
-            inactiveHistogram = histogramToRecycle;
-            performIntervalSample();
-            return inactiveHistogram;
-        } finally {
-            recordingPhaser.readerUnlock();
-        }
+        inactiveHistogram = histogramToRecycle;
+        performIntervalSample();
+        Histogram sampledHistogram = inactiveHistogram;
+        inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
+        return sampledHistogram;
     }
 
     /**
@@ -235,9 +219,25 @@ public class Recorder {
     }
 
     private void performIntervalSample() {
-        inactiveHistogram.reset();
         try {
             recordingPhaser.readerLock();
+
+            // Make sure we have an inactive version to flip in:
+            if (inactiveHistogram == null) {
+                if (activeHistogram instanceof InternalAtomicHistogram) {
+                    inactiveHistogram = new InternalAtomicHistogram(
+                            instanceId,
+                            activeHistogram.getLowestDiscernibleValue(),
+                            activeHistogram.getHighestTrackableValue(),
+                            activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    inactiveHistogram = new InternalConcurrentHistogram(
+                            instanceId,
+                            activeHistogram.getNumberOfSignificantValueDigits());
+                }
+            }
+
+            inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
             final Histogram tempHistogram = inactiveHistogram;
@@ -281,7 +281,9 @@ public class Recorder {
 
     void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
         boolean bad = true;
-        if (replacementHistogram instanceof InternalAtomicHistogram) {
+        if (replacementHistogram == null) {
+            bad = false;
+        } else if (replacementHistogram instanceof InternalAtomicHistogram) {
             if ((activeHistogram instanceof InternalAtomicHistogram)
                     &&
                     (((InternalAtomicHistogram)replacementHistogram).containingInstanceId ==
