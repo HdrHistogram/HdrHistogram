@@ -96,7 +96,7 @@ public class DoubleHistogramTest {
         assertEquals(1.0, bottomValue, 0.00001);
 
         long expectedRange = 1L << (findContainingBinaryOrderOfMagnitude(trackableValueRangeSize) + 1);
-        assertEquals(expectedRange, (topValue/ bottomValue), 0.00001);
+        assertEquals(expectedRange, (topValue / bottomValue), 0.00001);
         assertEquals(1L, histogram.getCountAtValue(0.0));
     }
 
@@ -194,6 +194,36 @@ public class DoubleHistogramTest {
         }
     }
 
+    @Test
+    public void testAddWithAutoResize() {
+        DoubleHistogram histo1 = new DoubleHistogram(3);
+        histo1.setAutoResize(true);
+        histo1.recordValue(6.0);
+        histo1.recordValue(1.0);
+        histo1.recordValue(5.0);
+        histo1.recordValue(8.0);
+        histo1.recordValue(3.0);
+        histo1.recordValue(7.0);
+        DoubleHistogram histo2 = new DoubleHistogram(3);
+        histo2.setAutoResize(true);
+        histo2.recordValue(9.0);
+        DoubleHistogram histo3 = new DoubleHistogram(3);
+        histo3.setAutoResize(true);
+        histo3.recordValue(4.0);
+        histo3.recordValue(2.0);
+        histo3.recordValue(10.0);
+
+        DoubleHistogram merged = new DoubleHistogram(3);
+        merged.setAutoResize(true);
+        merged.add(histo1);
+        merged.add(histo2);
+        merged.add(histo3);
+
+        assertEquals(merged.getTotalCount(),
+                histo1.getTotalCount() + histo2.getTotalCount() + histo3.getTotalCount());
+        assertEquals(1.0, merged.getMinValue(), 0.01);
+        assertEquals(10.0, merged.getMaxValue(), 0.01);
+    }
 
     @Test
     public void testSizeOfEquivalentValueRange() {
