@@ -8,7 +8,6 @@ HdrHistogram.iml
 .settings
 release.properties
 pom.xml.releaseBackup
-release-pom.xml
 src/main/java/org/HdrHistogram/Version.java
 /bin
 alltests
