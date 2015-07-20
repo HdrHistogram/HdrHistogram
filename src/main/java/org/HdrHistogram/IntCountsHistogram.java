@@ -50,15 +50,12 @@ public class IntCountsHistogram extends AbstractHistogram {
     void addToCountAtIndex(final int index, final long value) {
         int normalizedIndex = normalizeIndex(index, normalizingIndexOffset, countsArrayLength);
 
-        int currentCount = counts[normalizedIndex];
-        if ((value < 0) || (value > Integer.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow short integer count");
+        long currentCount = counts[normalizedIndex];
+        long newCount = (currentCount + value);
+        if ((newCount < Integer.MIN_VALUE) || (newCount > Integer.MAX_VALUE)) {
+            throw new IllegalArgumentException("would overflow integer count");
         }
-        int newCount = (int) (currentCount + value);
-        if (newCount < 0) {
-            throw new IllegalStateException("would overflow short integer count");
-        }
-        counts[normalizedIndex] = newCount;
+        counts[normalizedIndex] = (int) newCount;
     }
 
     @Override
