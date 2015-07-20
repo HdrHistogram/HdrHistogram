@@ -512,35 +512,11 @@ public class ConcurrentHistogram extends Histogram {
         }
     }
 
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private LongBuffer cachedDstLongBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
     @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstLongBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstLongBuffer = buffer.asLongBuffer();
-        }
-        cachedDstLongBuffer.rewind();
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int wordSizeInBytes) {
         try {
             wrp.readerLock();
-            assert (countsArrayLength == activeCounts.length());
-            assert (countsArrayLength == inactiveCounts.length());
-            int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-            int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-            int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-            for (int i = 0; i < lengthFromZeroIndexToEnd; i++) {
-                cachedDstLongBuffer.put(activeCounts.get(zeroIndex + i) + inactiveCounts.get(zeroIndex + i));
-            }
-            for (int i = 0; i < remainingLengthFromNormalizedZeroIndex; i++) {
-                cachedDstLongBuffer.put(activeCounts.get(i) + inactiveCounts.get(i));
-            }
+            super.fillBufferFromCountsArray(buffer, wordSizeInBytes);
         } finally {
             wrp.readerUnlock();
         }

@@ -218,8 +218,7 @@ public class AtomicHistogram extends Histogram {
      */
     public static AtomicHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                                  final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (AtomicHistogram) decodeFromCompressedByteBuffer(buffer, AtomicHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromCompressedByteBuffer(buffer, AtomicHistogram.class, minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -232,33 +231,6 @@ public class AtomicHistogram extends Histogram {
         LongBuffer logbuffer = buffer.asLongBuffer();
         for (int i = 0; i < length; i++) {
             counts.lazySet(i, logbuffer.get());
-        }
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private LongBuffer cachedDstLongBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstLongBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstLongBuffer = buffer.asLongBuffer();
-        }
-        cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-        for (int i = 0; i < lengthFromZeroIndexToEnd; i++) {
-            cachedDstLongBuffer.put(counts.get(zeroIndex + i));
-        }
-        for (int i = 0; i < remainingLengthFromNormalizedZeroIndex; i++) {
-            cachedDstLongBuffer.put(counts.get(i));
         }
     }
 }

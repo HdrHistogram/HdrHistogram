@@ -234,8 +234,7 @@ public class IntCountsHistogram extends AbstractHistogram {
      */
     public static IntCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                               final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (IntCountsHistogram) decodeFromCompressedByteBuffer(buffer, IntCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromCompressedByteBuffer(buffer, IntCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -246,28 +245,5 @@ public class IntCountsHistogram extends AbstractHistogram {
     @Override
     synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
         buffer.asIntBuffer().get(counts, 0, length);
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private IntBuffer cachedDstIntBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstIntBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstIntBuffer = buffer.asIntBuffer();
-        }
-        cachedDstIntBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-        cachedDstIntBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
-        cachedDstIntBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }

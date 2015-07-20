@@ -282,8 +282,6 @@ public class SynchronizedHistogram extends Histogram {
         super.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
     }
 
-    // GGGGGGGGG
-
     @Override
     public boolean equals(final Object other){
         if ( this == other ) {

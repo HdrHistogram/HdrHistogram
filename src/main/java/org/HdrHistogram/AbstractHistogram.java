@@ -82,7 +82,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
  *
  */
 
-public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable{
+public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable {
 
     // "Hot" accessed fields (used in the the value recording code path) are bunched here, such
     // that they will have a good chance of ending up in the same cache line as the totalCounts and
@@ -215,7 +215,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                                       integer between 0 and 5.
      */
     protected AbstractHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
-                             final int numberOfSignificantValueDigits) {
+                                final int numberOfSignificantValueDigits) {
         // Verify argument validity
         if (lowestDiscernibleValue < 1) {
             throw new IllegalArgumentException("lowestDiscernibleValue must be >= 1");
@@ -740,7 +740,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         boolean lowestHalfBucketPopulated = (minNonZeroValueBeforeShift < subBucketHalfCount);
 
-            // Perform the shift:
+        // Perform the shift:
         shiftNormalizingIndexByOffset(shiftAmount, lowestHalfBucketPopulated);
 
         // adjust min, max:
@@ -1069,7 +1069,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
 
     /**
-     * Get the lowest recorded value level in the histogram
+     * Get the lowest recorded value level in the histogram. If the histogram has no recorded values,
+     * the value returned is undefined.
      *
      * @return the Min value recorded in the histogram
      */
@@ -1081,7 +1082,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Get the highest recorded value level in the histogram
+     * Get the highest recorded value level in the histogram. If the histogram has no recorded values,
+     * the value returned is undefined.
      *
      * @return the Max value recorded in the histogram
      */
@@ -1090,7 +1092,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * Get the lowest recorded non-zero value level in the histogram
+     * Get the lowest recorded non-zero value level in the histogram. If the histogram has no recorded values,
+     * the value returned is undefined.
      *
      * @return the lowest recorded non-zero value level in the histogram
      */
@@ -1123,7 +1126,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
             totalValue += medianEquivalentValue(iterationValue.getValueIteratedTo())
-                     * iterationValue.getCountAtValueIteratedTo();
+                    * iterationValue.getCountAtValueIteratedTo();
         }
         return (totalValue * 1.0) / getTotalCount();
     }
@@ -1632,24 +1635,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     abstract void fillCountsArrayFromBuffer(ByteBuffer buffer, int length);
 
-    abstract void fillBufferFromCountsArray(ByteBuffer buffer, int length);
-
     private static final int V0EncodingCookieBase = 0x1c849308;
     private static final int V0EcompressedEncodingCookieBase = 0x1c849309;
 
     private static final int encodingCookieBase = 0x1c849301;
     private static final int compressedEncodingCookieBase = 0x1c849302;
 
-    private int getV0EncodingCookie() {
-        return V0EncodingCookieBase + (wordSizeInBytes << 4);
-    }
-
     private int getEncodingCookie() {
-        return encodingCookieBase + (wordSizeInBytes << 4);
+        return encodingCookieBase + (determineWordSizeInBytes() << 4);
     }
 
     private int getCompressedEncodingCookie() {
-        return compressedEncodingCookieBase + (wordSizeInBytes << 4);
+        return compressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
     }
 
     private static int getCookieBase(final int cookie) {
@@ -1658,6 +1655,23 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private static int getWordSizeInBytesFromCookie(final int cookie) {
         return (cookie & 0xf0) >> 4;
+    }
+
+    private int determineWordSizeInBytes() {
+        if (wordSizeInBytes == 2) {
+            return wordSizeInBytes;
+        }
+        // Use totalCount as a quick cap on the individual subbucket count level. Note
+        // that we can do better by actually scanning the array and establishing the largest
+        // single count value, but the below is a close enough guess and doesn't require a scan.
+        long totalCount = getTotalCount();
+        if (totalCount < Short.MAX_VALUE) {
+            return 2;
+        }
+        if (totalCount < Integer.MAX_VALUE) {
+            return 4;
+        }
+        return 8;
     }
 
     /**
@@ -1674,18 +1688,16 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         int initialPosition = buffer.position();
         buffer.putInt(getEncodingCookie());
-        buffer.putInt(relevantLength * wordSizeInBytes);
+        buffer.putInt(relevantLength * determineWordSizeInBytes());
         buffer.putInt(getNormalizingIndexOffset());
         buffer.putInt(numberOfSignificantValueDigits);
         buffer.putLong(lowestDiscernibleValue);
         buffer.putLong(highestTrackableValue);
         buffer.putDouble(getIntegerToDoubleValueConversionRatio());
 
-        fillBufferFromCountsArray(buffer, relevantLength);
+        fillBufferFromCountsArray(buffer, determineWordSizeInBytes());
 
-        int bytesWritten = getNeededByteBufferCapacity(relevantLength);
-        buffer.position(initialPosition + bytesWritten);
-        return bytesWritten;
+        return buffer.position() - initialPosition;
     }
 
     /**
@@ -1703,10 +1715,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             intermediateUncompressedByteBuffer = ByteBuffer.allocate(neededCapacity);
         }
         intermediateUncompressedByteBuffer.clear();
-        final int uncompressedLength = encodeIntoByteBuffer(intermediateUncompressedByteBuffer);
-
         int initialTargetPosition = targetBuffer.position();
+
+        final int uncompressedLength = encodeIntoByteBuffer(intermediateUncompressedByteBuffer);
         targetBuffer.putInt(getCompressedEncodingCookie());
+
         targetBuffer.putInt(0); // Placeholder for compressed contents length
 
         Deflater compressor = new Deflater(compressionLevel);
@@ -1745,7 +1758,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             final Class<T> histogramClass,
             final long minBarForHighestTrackableValue) {
         try {
-            return decodeFromByteBuffer(buffer, histogramClass, minBarForHighestTrackableValue, null, null);
+            return decodeFromByteBuffer(buffer, histogramClass, minBarForHighestTrackableValue, null);
         } catch (DataFormatException ex) {
             throw new RuntimeException(ex);
         }
@@ -1755,19 +1768,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             final ByteBuffer buffer,
             final Class<T> histogramClass,
             final long minBarForHighestTrackableValue,
-            final Inflater decompressor,
-            final ByteBuffer intermediateUncompressedByteBuffer) throws DataFormatException {
+            final Inflater decompressor) throws DataFormatException {
 
         final int cookie = buffer.getInt();
-        final int payloadLength;
+        final int payloadLengthInBytes;
         final int normalizingIndexOffset;
         final int numberOfSignificantValueDigits;
         final long lowestTrackableUnitValue;
         long highestTrackableValue;
         final Double integerToDoubleValueConversionRatio;
 
-        if (getCookieBase(cookie) == encodingCookieBase) {
-            payloadLength = buffer.getInt();
+        if (getCookieBase(cookie) == encodingCookieBase){
+            payloadLengthInBytes = buffer.getInt();
             normalizingIndexOffset = buffer.getInt();
             numberOfSignificantValueDigits = buffer.getInt();
             lowestTrackableUnitValue = buffer.getLong();
@@ -1778,7 +1790,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             lowestTrackableUnitValue = buffer.getLong();
             highestTrackableValue = buffer.getLong();
             buffer.getLong(); // Discard totalCount field in V0 header.
-            payloadLength = Integer.MAX_VALUE;
+            payloadLengthInBytes = Integer.MAX_VALUE;
             integerToDoubleValueConversionRatio = 1.0;
             normalizingIndexOffset = 0;
         } else {
@@ -1796,13 +1808,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
             histogram.setNormalizingIndexOffset(normalizingIndexOffset);
-            if ((cookie != ((AbstractHistogram)histogram).getEncodingCookie()) &&
-                    (cookie != ((AbstractHistogram)histogram).getV0EncodingCookie())) {
+            if (getWordSizeInBytesFromCookie(cookie) > histogram.wordSizeInBytes) {
                 throw new IllegalArgumentException(
-                        "The buffer's encoded value byte size (" +
+                        "The buffer's encoded value word size (" +
                                 getWordSizeInBytesFromCookie(cookie) +
-                                ") does not match the Histogram's (" +
-                                histogram.wordSizeInBytes + ")");
+                                " bytes) does not fit in the Histogram's (" +
+                                histogram.wordSizeInBytes + " bytes)");
             }
         } catch (IllegalAccessException ex) {
             throw new IllegalArgumentException(ex);
@@ -1819,7 +1830,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int expectedCapacity =
                 Math.min(
                         histogram.getNeededPayloadByteBufferCapacity(histogram.countsArrayLength),
-                        payloadLength
+                        payloadLengthInBytes
                 );
 
         if (decompressor == null) {
@@ -1830,27 +1841,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             payLoadSourceBuffer = buffer;
         } else {
             // Compressed source buffer. Payload needs to be decoded from there.
-            payLoadSourceBuffer = intermediateUncompressedByteBuffer;
-            if (payLoadSourceBuffer == null) {
-                payLoadSourceBuffer = ByteBuffer.allocate(expectedCapacity);
-            } else {
-                payLoadSourceBuffer.reset();
-                if (payLoadSourceBuffer.remaining() < expectedCapacity) {
-                    throw new IllegalArgumentException("Supplied intermediate not large enough (capacity = " +
-                            payLoadSourceBuffer.capacity() + ", expected = " + expectedCapacity);
-                }
-                payLoadSourceBuffer.limit(expectedCapacity);
-            }
+            payLoadSourceBuffer = ByteBuffer.allocate(expectedCapacity);
             int decompressedByteCount = decompressor.inflate(payLoadSourceBuffer.array());
-            if ((payloadLength < Integer.MAX_VALUE) && (decompressedByteCount < payloadLength)) {
+            if ((payloadLengthInBytes != Integer.MAX_VALUE) && (decompressedByteCount < payloadLengthInBytes)) {
                 throw new IllegalArgumentException("The buffer does not contain the indicated payload amount");
             }
         }
 
-        ((AbstractHistogram)histogram).fillCountsArrayFromSourceBuffer(
+        ((AbstractHistogram) histogram).fillCountsArrayFromSourceBuffer(
                 payLoadSourceBuffer,
                 expectedCapacity / getWordSizeInBytesFromCookie(cookie),
                 getWordSizeInBytesFromCookie(cookie));
+
 
         histogram.establishInternalTackingValues();
 
@@ -1859,29 +1861,55 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private void fillCountsArrayFromSourceBuffer(ByteBuffer sourceBuffer, int lengthInWords, int wordSizeInBytes) {
         switch (wordSizeInBytes) {
-            case 2: {
-                ShortBuffer source = sourceBuffer.asShortBuffer();
-                for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtIndex(i, source.get());
-                }
-                break;
+        case 2:
+            ShortBuffer shortSource = sourceBuffer.asShortBuffer();
+            for (int i = 0; i < lengthInWords; i++) {
+                setCountAtIndex(i, shortSource.get());
             }
-            case 4: {
-                IntBuffer source = sourceBuffer.asIntBuffer();
-                for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtIndex(i, source.get());
-                }
-                break;
+            break;
+
+        case 4:
+            IntBuffer intSource = sourceBuffer.asIntBuffer();
+            for (int i = 0; i < lengthInWords; i++) {
+                setCountAtIndex(i, intSource.get());
             }
-            case 8: {
-                LongBuffer source = sourceBuffer.asLongBuffer();
-                for (int i = 0; i < lengthInWords; i++) {
-                    setCountAtIndex(i, source.get());
-                }
-                break;
+            break;
+
+        case 8:
+            LongBuffer longSource = sourceBuffer.asLongBuffer();
+            for (int i = 0; i < lengthInWords; i++) {
+                setCountAtIndex(i, longSource.get());
             }
-            default:
-                throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
+            break;
+
+        default:
+            throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
+        }
+    }
+
+    synchronized void fillBufferFromCountsArray(ByteBuffer buffer, int wordSizeInBytes) {
+        final int countsLimit = countsArrayIndex(maxValue) + 1;
+        switch (wordSizeInBytes) {
+        case 2:
+            for (int i = 0; i < countsLimit; i++) {
+                buffer.putShort((short)getCountAtIndex(i));
+            }
+            break;
+
+        case 4:
+            for (int i = 0; i < countsLimit; i++) {
+                buffer.putInt((int) getCountAtIndex(i));
+            }
+            break;
+
+        case 8:
+            for (int i = 0; i < countsLimit; i++) {
+                buffer.putLong(getCountAtIndex(i));
+            }
+            break;
+
+        default:
+            throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
         }
     }
 
@@ -1908,7 +1936,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize);
         decompressor.inflate(headerBuffer.array());
         T histogram = decodeFromByteBuffer(
-                headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor, null);
+                headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor);
         return histogram;
     }
 

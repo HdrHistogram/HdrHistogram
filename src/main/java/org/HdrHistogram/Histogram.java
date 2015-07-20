@@ -249,8 +249,7 @@ public class Histogram extends AbstractHistogram {
      */
     public static Histogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                            final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (Histogram) decodeFromCompressedByteBuffer(buffer, Histogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromCompressedByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -261,28 +260,5 @@ public class Histogram extends AbstractHistogram {
     @Override
     synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
         buffer.asLongBuffer().get(counts, 0, length);
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private LongBuffer cachedDstLongBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstLongBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstLongBuffer = buffer.asLongBuffer();
-        }
-        cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-        cachedDstLongBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
-        cachedDstLongBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }
