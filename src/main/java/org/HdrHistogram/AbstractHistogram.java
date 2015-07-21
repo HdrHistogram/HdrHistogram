@@ -1728,15 +1728,26 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         compressor.setInput(intermediateUncompressedByteBuffer.array(), 0, uncompressedLength);
         compressor.finish();
 
-        byte[] targetArray = targetBuffer.array();
+        byte[] targetArray;
+
+        if (targetBuffer.hasArray()) {
+            targetArray = targetBuffer.array();
+        } else {
+            targetArray = new byte[targetBuffer.capacity()];
+        }
+
         int compressedTargetOffset = initialTargetPosition + 8;
         int compressedDataLength =
-                compressor.deflate(
-                        targetArray,
-                        compressedTargetOffset,
-                        targetArray.length - compressedTargetOffset
-                );
+            compressor.deflate(
+                targetArray,
+                compressedTargetOffset,
+                targetArray.length - compressedTargetOffset
+            );
         compressor.end();
+
+        if (targetBuffer.isDirect()) {
+            targetBuffer.put(targetArray, compressedTargetOffset, compressedDataLength);
+        }
 
         targetBuffer.putInt(initialTargetPosition + 4, compressedDataLength); // Record the compressed length
         int bytesWritten = compressedDataLength + 8;
@@ -1933,7 +1944,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         final int lengthOfCompressedContents = buffer.getInt();
         final Inflater decompressor = new Inflater();
-        decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
+
+        if (buffer.hasArray()) {
+            decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
+        } else {
+            byte[] compressedContents = new byte[lengthOfCompressedContents];
+            buffer.get(compressedContents);
+            decompressor.setInput(compressedContents);
+        }
 
         final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize).order(BIG_ENDIAN);
         decompressor.inflate(headerBuffer.array());
