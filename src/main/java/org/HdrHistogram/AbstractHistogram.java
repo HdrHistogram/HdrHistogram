@@ -19,6 +19,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import static java.nio.ByteOrder.BIG_ENDIAN;
+
 /**
  * This non-public AbstractHistogramBase super-class separation is meant to bunch "cold" fields
  * separately from "hot" fields, in an attempt to force the JVM to place the (hot) fields
@@ -994,15 +996,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return lowestEquivalentValue(value) + sizeOfEquivalentValueRange(value);
     }
 
-    /**
-     * Determine if two values are equivalent with the histogram's resolution.
-     * Where "equivalent" means that value samples recorded for any two
-     * equivalent values are counted in a common total count.
-     *
-     * @param value1 first value to compare
-     * @param value2 second value to compare
-     * @return True if values are equivalent with the histogram's resolution.
-     */
+/**
+ * Determine if two values are equivalent with the histogram's resolution.
+ * Where "equivalent" means that value samples recorded for any two
+ * equivalent values are counted in a common total count.
+ *
+ * @param value1 first value to compare
+ * @param value2 second value to compare
+ * @return True if values are equivalent with the histogram's resolution.
+ */
     public boolean valuesAreEquivalent(final long value1, final long value2) {
         return (lowestEquivalentValue(value1) == lowestEquivalentValue(value2));
     }
@@ -1712,7 +1714,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             final int compressionLevel) {
         int neededCapacity = getNeededByteBufferCapacity(countsArrayLength);
         if (intermediateUncompressedByteBuffer == null || intermediateUncompressedByteBuffer.capacity() < neededCapacity) {
-            intermediateUncompressedByteBuffer = ByteBuffer.allocate(neededCapacity);
+            intermediateUncompressedByteBuffer = ByteBuffer.allocate(neededCapacity).order(BIG_ENDIAN);
         }
         intermediateUncompressedByteBuffer.clear();
         int initialTargetPosition = targetBuffer.position();
@@ -1841,7 +1843,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             payLoadSourceBuffer = buffer;
         } else {
             // Compressed source buffer. Payload needs to be decoded from there.
-            payLoadSourceBuffer = ByteBuffer.allocate(expectedCapacity);
+            payLoadSourceBuffer = ByteBuffer.allocate(expectedCapacity).order(BIG_ENDIAN);
             int decompressedByteCount = decompressor.inflate(payLoadSourceBuffer.array());
             if ((payloadLengthInBytes != Integer.MAX_VALUE) && (decompressedByteCount < payloadLengthInBytes)) {
                 throw new IllegalArgumentException("The buffer does not contain the indicated payload amount");
@@ -1933,7 +1935,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final Inflater decompressor = new Inflater();
         decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
 
-        final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize);
+        final ByteBuffer headerBuffer = ByteBuffer.allocate(headerSize).order(BIG_ENDIAN);
         decompressor.inflate(headerBuffer.array());
         T histogram = decodeFromByteBuffer(
                 headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor);
