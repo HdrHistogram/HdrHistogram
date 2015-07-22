@@ -10,7 +10,10 @@ package org.HdrHistogram;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.nio.*;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
@@ -54,6 +57,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
     RecordedValuesIterator recordedValuesIterator;
 
     ByteBuffer intermediateUncompressedByteBuffer = null;
+    byte[] intermediateUncompressedByteArray = null;
 
     double getIntegerToDoubleValueConversionRatio() {
         return integerToDoubleValueConversionRatio;
@@ -1733,7 +1737,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (targetBuffer.hasArray()) {
             targetArray = targetBuffer.array();
         } else {
-            targetArray = new byte[targetBuffer.capacity()];
+            if (intermediateUncompressedByteArray == null ||
+                intermediateUncompressedByteArray.length < targetBuffer.capacity()) {
+                intermediateUncompressedByteArray = new byte[targetBuffer.capacity()];
+            }
+            targetArray = intermediateUncompressedByteArray;
         }
 
         int compressedTargetOffset = initialTargetPosition + 8;

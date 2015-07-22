@@ -57,9 +57,7 @@ public class HistogramEncodingTest {
     }
 
     @DataPoints
-    public static BufferAllocator[] allocators() {
-        return new BufferAllocator[] { BufferAllocator.DIRECT, BufferAllocator.HEAP };
-    }
+    public static BufferAllocator[] ALLOCATORS = new BufferAllocator[] { BufferAllocator.DIRECT, BufferAllocator.HEAP };
 
     @Theory
     public void testHistogramEncoding(BufferAllocator allocator) throws Exception {
