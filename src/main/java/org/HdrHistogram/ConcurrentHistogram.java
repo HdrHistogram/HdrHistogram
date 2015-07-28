@@ -296,6 +296,9 @@ public class ConcurrentHistogram extends Histogram {
                      src++, dst++) {
                     inactiveCounts.lazySet(dst, oldInactiveCounts.get(src));
                 }
+                for (dst = oldNormalizedZeroIndex; dst < newNormalizedZeroIndex; dst++) {
+                    inactiveCounts.lazySet(dst, 0);
+                }
             }
 
             // switch active and inactive:
@@ -325,6 +328,9 @@ public class ConcurrentHistogram extends Histogram {
                      src < oldNormalizedZeroIndex + lengthToCopy;
                      src++, dst++) {
                     inactiveCounts.lazySet(dst, oldInactiveCounts.get(src));
+                }
+                for (dst = oldNormalizedZeroIndex; dst < newNormalizedZeroIndex; dst++) {
+                    inactiveCounts.lazySet(dst, 0);
                 }
             }
 
