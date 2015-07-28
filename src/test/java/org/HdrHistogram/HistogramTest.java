@@ -826,4 +826,17 @@ public class HistogramTest {
         computedMaxValue = (computedMaxValue == 0) ? 0 : histogram.highestEquivalentValue(computedMaxValue);
         Assert.assertEquals(computedMaxValue, histogram.getMaxValue());
     }
+
+    @Test
+    public void testResize() {
+      DoubleHistogram h = new DoubleHistogram(2);
+      h.setAutoResize(true);
+      h.recordValue(0);
+      h.recordValue(5);
+      h.recordValue(1);
+      h.recordValue(8);
+      h.recordValue(9);
+
+      Assert.assertEquals(9.0, h.getValueAtPercentile(100), 0.1d);
+    }
 }
