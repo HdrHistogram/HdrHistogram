@@ -152,6 +152,7 @@ public class Histogram extends AbstractHistogram {
             int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
             int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
             System.arraycopy(counts, oldNormalizedZeroIndex, counts, newNormalizedZeroIndex, lengthToCopy);
+            Arrays.fill(counts, oldNormalizedZeroIndex, newNormalizedZeroIndex, 0);
         }
     }
 
