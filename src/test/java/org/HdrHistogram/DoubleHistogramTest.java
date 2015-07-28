@@ -10,6 +10,7 @@ package org.HdrHistogram;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.*;
@@ -541,5 +542,25 @@ public class DoubleHistogramTest {
         int pow2ceiling = 64 - Long.numberOfLeadingZeros(longNumber); // smallest power of 2 containing value
         pow2ceiling = Math.min(pow2ceiling, 62);
         return pow2ceiling;
+    }
+
+    private void genericResizeTest(DoubleHistogram h) {
+        h.recordValue(0);
+        h.recordValue(5);
+        h.recordValue(1);
+        h.recordValue(8);
+        h.recordValue(9);
+
+        Assert.assertEquals(9.0, h.getValueAtPercentile(100), 0.1d);
+    }
+
+    @Test
+    public void testResize() {
+        // Verify resize behvaior for various underlying internal integer histogram implementations:
+        genericResizeTest(new DoubleHistogram(2));
+        genericResizeTest(new DoubleHistogram(2, IntCountsHistogram.class));
+        genericResizeTest(new DoubleHistogram(2, ShortCountsHistogram.class));
+        genericResizeTest(new DoubleHistogram(2, ConcurrentHistogram.class));
+        genericResizeTest(new DoubleHistogram(2, SynchronizedHistogram.class));
     }
 }
