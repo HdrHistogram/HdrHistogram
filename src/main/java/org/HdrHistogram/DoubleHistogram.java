@@ -79,6 +79,26 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     }
 
     /**
+     * Construct a new auto-resizing DoubleHistogram using a precision stated as a number
+     * of significant decimal digits.
+     *
+     * The {@link org.HdrHistogram.DoubleHistogram} will use the specified AbstractHistogram subclass
+     * for tracking internal counts (e.g. {@link org.HdrHistogram.Histogram},
+     * {@link org.HdrHistogram.ConcurrentHistogram}, {@link org.HdrHistogram.SynchronizedHistogram},
+     * {@link org.HdrHistogram.IntCountsHistogram}, {@link org.HdrHistogram.ShortCountsHistogram}).
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param internalCountsHistogramClass The class to use for internal counts tracking
+     */
+    public DoubleHistogram(final int numberOfSignificantValueDigits,
+                           final Class<? extends AbstractHistogram> internalCountsHistogramClass) {
+        this(2, numberOfSignificantValueDigits, internalCountsHistogramClass, null);
+        setAutoResize(true);
+    }
+
+    /**
      * Construct a new DoubleHistogram with the specified dynamic range (provided in
      * {@code highestToLowestValueRatio}) and using a precision stated as a number of significant
      * decimal digits.
