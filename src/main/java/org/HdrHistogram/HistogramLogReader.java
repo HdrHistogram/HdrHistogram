@@ -57,6 +57,9 @@ public class HistogramLogReader {
 
     private final Scanner scanner;
     private double startTimeSec = 0.0;
+    private boolean observedStartTime = false;
+    private double baseTimeSec = 0.0;
+    private boolean observedBaseTime = false;
 
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
@@ -131,8 +134,8 @@ public class HistogramLogReader {
      *                   range, in seconds.
      * @return a histogram, or a null if no appropriate interval found
      */
-    public EncodableHistogram nextIntervalHistogram(final Double startTimeSec,
-                                  final Double endTimeSec) {
+    public EncodableHistogram nextIntervalHistogram(final double startTimeSec,
+                                  final double endTimeSec) {
         return nextIntervalHistogram(startTimeSec, endTimeSec, false);
     }
 
@@ -165,8 +168,8 @@ public class HistogramLogReader {
      *                           time range, in seconds.
      * @return A histogram, or a null if no appropriate interval found
      */
-    public EncodableHistogram nextAbsoluteIntervalHistogram(final Double absoluteStartTimeSec,
-                                                     final Double absoluteEndTimeSec) {
+    public EncodableHistogram nextAbsoluteIntervalHistogram(final double absoluteStartTimeSec,
+                                                     final double absoluteEndTimeSec) {
         return nextIntervalHistogram(absoluteStartTimeSec, absoluteEndTimeSec, true);
     }
 
@@ -182,16 +185,24 @@ public class HistogramLogReader {
         return nextIntervalHistogram(0.0, Long.MAX_VALUE * 1.0, true);
     }
 
-    private EncodableHistogram nextIntervalHistogram(final Double rangeStartTimeSec,
-                                            final Double rangeEndTimeSec, boolean absolute) {
+    private EncodableHistogram nextIntervalHistogram(final double rangeStartTimeSec,
+                                            final double rangeEndTimeSec, boolean absolute) {
         while (scanner.hasNextLine()) {
             try {
                 if (scanner.hasNext("\\#.*")) {
-                    // comment line
+                    // comment line.
+                    // Look for explicit start time or base time notes in comments:
                     if (scanner.hasNext("#\\[StartTime:")) {
                         scanner.next("#\\[StartTime:");
                         if (scanner.hasNextDouble()) {
                             startTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
+                            observedStartTime = true;
+                        }
+                    } else if (scanner.hasNext("#\\[BaseTime:")) {
+                        scanner.next("#\\[BaseTime:");
+                        if (scanner.hasNextDouble()) {
+                            baseTimeSec = scanner.nextDouble(); // base time represented as seconds since epoch
+                            observedBaseTime = true;
                         }
                     }
                     scanner.nextLine();
@@ -206,12 +217,30 @@ public class HistogramLogReader {
 
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
-                final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp start is expect to be in seconds
-                final double absoluteStartTimeStampSec = getStartTimeSec() + offsetStartTimeStampSec;
+                final double logTimeStampInSec = scanner.nextDouble(); // Timestamp is expected to be in seconds
+
+                if (!observedStartTime) {
+                    // No explicit start time noted. Use 1st observed time:
+                    startTimeSec = logTimeStampInSec;
+                    observedStartTime = true;
+                }
+                if (!observedBaseTime) {
+                    // No explicit base time noted. Deduce from 1st observed time (compared to start time):
+                    if (logTimeStampInSec < startTimeSec) {
+                        // Timestamps in log are not absolute
+                        baseTimeSec = startTimeSec;
+                    } else {
+                        // Timestamps are absolute
+                        baseTimeSec = 0.0;
+                    }
+                    observedBaseTime = true;
+                }
+
+                final double absoluteStartTimeStampSec = logTimeStampInSec + baseTimeSec;
+                final double offsetStartTimeStampSec = absoluteStartTimeStampSec - startTimeSec;
 
                 final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
-                final double offsetEndTimeStampSec = offsetStartTimeStampSec + intervalLengthSec;
-                final double absoluteEndTimeStampSec = getStartTimeSec() + offsetEndTimeStampSec;
+                final double absoluteEndTimeStampSec = absoluteStartTimeStampSec + intervalLengthSec;
 
                 final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
 
