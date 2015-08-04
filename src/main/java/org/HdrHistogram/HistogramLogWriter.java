@@ -153,7 +153,7 @@ public class HistogramLogWriter {
     }
 
     /**
-     * Log a start time in the log.
+     * Log a start time in the log. After logging a start time, all following histogram start times wi.
      * @param startTimeMsec time (in milliseconds) since the absolute start time (the epoch)
      */
     public void outputStartTime(final long startTimeMsec) {
@@ -193,6 +193,9 @@ public class HistogramLogWriter {
      * @param baseTimeMsec
      */
     public void setBaseTime(long baseTimeMsec) {
+        log.format(Locale.US, "#[BaseTime: %.3f (seconds since epoch), %s]\n",
+        		baseTimeMsec/1000.0,
+                (new Date(baseTimeMsec)).toString());
         this.baseTime = baseTimeMsec;
     }
 
