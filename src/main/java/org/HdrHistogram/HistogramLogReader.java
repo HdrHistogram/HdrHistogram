@@ -57,6 +57,8 @@ public class HistogramLogReader {
 
     private final Scanner scanner;
     private double startTimeSec = 0.0;
+	private double baseTimeSec = 0.0;
+	private double firstObservedTs = 0.0;
 
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
@@ -131,8 +133,8 @@ public class HistogramLogReader {
      *                   range, in seconds.
      * @return a histogram, or a null if no appropriate interval found
      */
-    public EncodableHistogram nextIntervalHistogram(final Double startTimeSec,
-                                  final Double endTimeSec) {
+    public EncodableHistogram nextIntervalHistogram(final double startTimeSec,
+                                  final double endTimeSec) {
         return nextIntervalHistogram(startTimeSec, endTimeSec, false);
     }
 
@@ -165,8 +167,8 @@ public class HistogramLogReader {
      *                           time range, in seconds.
      * @return A histogram, or a null if no appropriate interval found
      */
-    public EncodableHistogram nextAbsoluteIntervalHistogram(final Double absoluteStartTimeSec,
-                                                     final Double absoluteEndTimeSec) {
+    public EncodableHistogram nextAbsoluteIntervalHistogram(final double absoluteStartTimeSec,
+                                                     final double absoluteEndTimeSec) {
         return nextIntervalHistogram(absoluteStartTimeSec, absoluteEndTimeSec, true);
     }
 
@@ -182,16 +184,16 @@ public class HistogramLogReader {
         return nextIntervalHistogram(0.0, Long.MAX_VALUE * 1.0, true);
     }
 
-    private EncodableHistogram nextIntervalHistogram(final Double rangeStartTimeSec,
-                                            final Double rangeEndTimeSec, boolean absolute) {
+    private EncodableHistogram nextIntervalHistogram(final double rangeStartTimeSec,
+                                            final double rangeEndTimeSec, boolean absolute) {
         while (scanner.hasNextLine()) {
             try {
                 if (scanner.hasNext("\\#.*")) {
                     // comment line
-                    if (scanner.hasNext("#\\[StartTime:")) {
-                        scanner.next("#\\[StartTime:");
+                    if (scanner.hasNext("#\\[BaseTime:")) {
+                        scanner.next("#\\[BaseTime:");
                         if (scanner.hasNextDouble()) {
-                            startTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
+                            baseTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
                         }
                     }
                     scanner.nextLine();
@@ -203,17 +205,28 @@ public class HistogramLogReader {
                     scanner.nextLine();
                     continue;
                 }
-
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
                 final double offsetStartTimeStampSec = scanner.nextDouble(); // Timestamp start is expect to be in seconds
-                final double absoluteStartTimeStampSec = getStartTimeSec() + offsetStartTimeStampSec;
+                if (baseTimeSec == 0.0 && firstObservedTs == 0.0) {
+                	firstObservedTs = offsetStartTimeStampSec;
+                }
+                final double absoluteStartTimeStampSec = baseTimeSec + offsetStartTimeStampSec;
 
                 final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
                 final double offsetEndTimeStampSec = offsetStartTimeStampSec + intervalLengthSec;
-                final double absoluteEndTimeStampSec = getStartTimeSec() + offsetEndTimeStampSec;
+                final double absoluteEndTimeStampSec = baseTimeSec + offsetEndTimeStampSec;
 
-                final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
+                double startTimeStampToCheckRangeOn;
+                if (absolute) {
+                	startTimeStampToCheckRangeOn = absoluteStartTimeStampSec;
+                }
+                else if (baseTimeSec != 0.0) {
+                	startTimeStampToCheckRangeOn = offsetStartTimeStampSec;
+                }
+                else {
+                	startTimeStampToCheckRangeOn = absoluteStartTimeStampSec - firstObservedTs;
+                }
 
                 if (startTimeStampToCheckRangeOn < rangeStartTimeSec) {
                     scanner.nextLine();
