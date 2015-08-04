@@ -202,7 +202,7 @@ Corrected vs. Raw value recording calls
 In order to support a common use case needed when histogram values are used
 to track response time distribution, Histogram provides for the recording
 of corrected histogram value by supporting a `recordValueWithExpectedInterval()`
-variant is provided. This value rexording form is useful in [common latency
+variant is provided. This value recording form is useful in [common latency
 measurement] scenarios where response times may exceed the expected interval
 between issuing requests, leading to "dropped" response time measurements
 that would typically correlate with "bad" results.
