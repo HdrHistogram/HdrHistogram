@@ -93,10 +93,26 @@ public class SingleWriterRecorder {
      * @param value the value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
-    public void recordValue(long value) {
+    public void recordValue(final long value) {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
             activeHistogram.recordValue(value);
+        } finally {
+            recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
+        }
+    }
+
+    /**
+     * Record a value in the histogram (adding to the value's current count)
+     *
+     * @param value The value to be recorded
+     * @param count The number of occurrences of this value to record
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
+     */
+    public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
+        long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
+        try {
+            activeHistogram.recordValueWithCount(value, count);
         } finally {
             recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
         }
@@ -169,19 +185,13 @@ public class SingleWriterRecorder {
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
-        if (histogramToRecycle == null) {
-            histogramToRecycle = new InternalHistogram(inactiveHistogram);
-        }
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle);
-        try {
-            recordingPhaser.readerLock();
-            inactiveHistogram = (InternalHistogram) histogramToRecycle;
-            performIntervalSample();
-            return inactiveHistogram;
-        } finally {
-            recordingPhaser.readerUnlock();
-        }
+        inactiveHistogram = (InternalHistogram) histogramToRecycle;
+        performIntervalSample();
+        Histogram sampledHistogram = inactiveHistogram;
+        inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
+        return sampledHistogram;
     }
 
     /**
@@ -208,9 +218,15 @@ public class SingleWriterRecorder {
     }
 
     private void performIntervalSample() {
-        inactiveHistogram.reset();
         try {
             recordingPhaser.readerLock();
+
+            // Make sure we have an inactive version to flip in:
+            if (inactiveHistogram == null) {
+                inactiveHistogram = new InternalHistogram(activeHistogram);
+            }
+
+            inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
             final InternalHistogram tempHistogram = inactiveHistogram;
@@ -255,7 +271,9 @@ public class SingleWriterRecorder {
 
     void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
         boolean bad = true;
-        if ((replacementHistogram instanceof InternalHistogram)
+        if (replacementHistogram == null) {
+            bad = false;
+        } else if ((replacementHistogram instanceof InternalHistogram)
                 &&
                 (((InternalHistogram) replacementHistogram).containingInstanceId ==
                         activeHistogram.containingInstanceId)

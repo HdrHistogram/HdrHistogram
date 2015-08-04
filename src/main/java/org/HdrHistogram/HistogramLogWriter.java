@@ -6,10 +6,13 @@ import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 import java.util.zip.Deflater;
+
+import static java.nio.ByteOrder.BIG_ENDIAN;
 
 
 /**
@@ -95,7 +98,7 @@ public class HistogramLogWriter {
                                         final EncodableHistogram histogram,
                                         final double maxValueUnitRatio) {
         if ((targetBuffer == null) || targetBuffer.capacity() < histogram.getNeededByteBufferCapacity()) {
-            targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
+            targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity()).order(BIG_ENDIAN);
         }
         targetBuffer.clear();
 

@@ -9,14 +9,19 @@ package org.HdrHistogram;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Locale;
 import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
 
 /**
  * <h3>An integer values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
- * <p/>
+ * <p>
  * A {@link SynchronizedHistogram} is a variant of {@link Histogram} that is
  * synchronized as a whole, such that queries, copying, and addition operations are atomic with relation to
  * modification on the {@link SynchronizedHistogram}, and such that external accessors (e.g. iterations on the
@@ -26,167 +31,12 @@ import java.util.zip.DataFormatException;
  * It is important to note that synchronization can result in blocking recoding calls. If non-blocking recoding
  * operations are required, consider using {@link ConcurrentHistogram}, {@link AtomicHistogram}, or (recommended)
  * {@link Recorder} or {@link org.HdrHistogram.SingleWriterRecorder} which were intended for concurrent operations.
- * <p/>
+ * <p>
  * See package description for {@link org.HdrHistogram} and {@link org.HdrHistogram.Histogram} for more details.
  */
 
 
 public class SynchronizedHistogram extends Histogram {
-
-    @Override
-    synchronized long getCountAtIndex(final int index) {
-        return counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)];
-    }
-
-    @Override
-    synchronized long getCountAtNormalizedIndex(final int index) {
-        return counts[index];
-    }
-
-    @Override
-    synchronized void incrementCountAtIndex(final int index) {
-        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)]++;
-    }
-
-    @Override
-    synchronized void addToCountAtIndex(final int index, final long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] += value;
-    }
-
-    @Override
-    synchronized void setCountAtIndex(int index, long value) {
-        counts[normalizeIndex(index, normalizingIndexOffset, countsArrayLength)] = value;
-    }
-
-    @Override
-    synchronized void setCountAtNormalizedIndex(int index, long value) {
-        counts[index] = value;
-    }
-
-    @Override
-    synchronized int getNormalizingIndexOffset() {
-        return normalizingIndexOffset;
-    }
-
-    @Override
-    synchronized void setNormalizingIndexOffset(int normalizingIndexOffset) {
-        this.normalizingIndexOffset = normalizingIndexOffset;
-    }
-
-    @Override
-    synchronized void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
-        nonConcurrentNormalizingIndexShift(offsetToAdd, lowestHalfBucketPopulated);
-    }
-
-    @Override
-    synchronized void clearCounts() {
-            java.util.Arrays.fill(counts, 0);
-            totalCount = 0;
-    }
-
-    @Override
-    public void add(final AbstractHistogram otherHistogram) {
-        // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
-        if (identity < otherHistogram.identity) {
-            synchronized (this) {
-                synchronized (otherHistogram) {
-                    super.add(otherHistogram);
-                }
-            }
-        } else {
-            synchronized (otherHistogram) {
-                synchronized (this) {
-                    super.add(otherHistogram);
-                }
-            }
-        }
-    }
-
-    @Override
-    public synchronized void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude) {
-        super.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
-    }
-
-    @Override
-    public synchronized void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude) {
-        super.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
-    }
-
-    @Override
-    public SynchronizedHistogram copy() {
-        SynchronizedHistogram copy;
-        synchronized (this) {
-            copy = new SynchronizedHistogram(this);
-        }
-        copy.add(this);
-        return copy;
-    }
-
-    @Override
-    public SynchronizedHistogram copyCorrectedForCoordinatedOmission(final long expectedIntervalBetweenValueSamples) {
-        synchronized (this) {
-            SynchronizedHistogram toHistogram = new SynchronizedHistogram(this);
-            toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
-            return toHistogram;
-        }
-    }
-
-    @Override
-    public long getTotalCount() {
-        return totalCount;
-    }
-
-    @Override
-    synchronized void setTotalCount(final long totalCount) {
-           this.totalCount = totalCount;
-    }
-
-    @Override
-    synchronized void incrementTotalCount() {
-            totalCount++;
-    }
-
-    @Override
-    synchronized void addToTotalCount(long value) {
-            totalCount += value;
-    }
-
-    @Override
-    synchronized void updatedMaxValue(long maxValue) {
-        if (maxValue > getMaxValue()) {
-            super.updatedMaxValue(maxValue);
-        }
-    }
-
-    @Override
-    synchronized void updateMinNonZeroValue(long minNonZeroValue) {
-        if (minNonZeroValue < getMinNonZeroValue()) {
-            super.updateMinNonZeroValue(minNonZeroValue);
-        }
-    }
-
-    @Override
-    synchronized int _getEstimatedFootprintInBytes() {
-        return (512 + (8 * counts.length));
-    }
-
-    @Override
-    synchronized void resize(long newHighestTrackableValue) {
-        int oldNormalizedZeroIndex = normalizeIndex(0, normalizingIndexOffset, countsArrayLength);
-
-        establishSize(newHighestTrackableValue);
-
-        int countsDelta = countsArrayLength - counts.length;
-
-        counts = Arrays.copyOf(counts, countsArrayLength);
-
-        if (oldNormalizedZeroIndex != 0) {
-            // We need to shift the stuff from the zero index and up to the end of the array:
-            int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
-            int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
-            System.arraycopy(counts, oldNormalizedZeroIndex, counts, newNormalizedZeroIndex, lengthToCopy);
-        }
-    }
 
     /**
      * Construct an auto-resizing SynchronizedHistogram with a lowest discernible value of 1 and an auto-adjusting
@@ -252,8 +102,7 @@ public class SynchronizedHistogram extends Histogram {
      */
     public static SynchronizedHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                              final long minBarForHighestTrackableValue) {
-        return (SynchronizedHistogram) decodeFromByteBuffer(buffer, SynchronizedHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, SynchronizedHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -265,40 +114,392 @@ public class SynchronizedHistogram extends Histogram {
      */
     public static SynchronizedHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                                        final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (SynchronizedHistogram) decodeFromCompressedByteBuffer(buffer, SynchronizedHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromCompressedByteBuffer(buffer, SynchronizedHistogram.class, minBarForHighestTrackableValue);
+    }
+
+    @Override
+    public synchronized long getTotalCount() {
+        return super.getTotalCount();
+    }
+
+    @Override
+    public synchronized boolean isAutoResize() {
+        return super.isAutoResize();
+    }
+
+    @Override
+    public synchronized void setAutoResize(boolean autoResize) {
+        super.setAutoResize(autoResize);
+    }
+
+    @Override
+    public synchronized void recordValue(final long value) throws ArrayIndexOutOfBoundsException {
+        super.recordValue(value);
+    }
+
+    @Override
+    public synchronized void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
+        super.recordValueWithCount(value, count);
+    }
+
+    @Override
+    public synchronized void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
+            throws ArrayIndexOutOfBoundsException {
+        super.recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
+    }
+
+    /**
+     * @deprecated
+     */
+    @Override
+    public synchronized void recordValue(final long value, final long expectedIntervalBetweenValueSamples)
+            throws ArrayIndexOutOfBoundsException {
+        super.recordValue(value, expectedIntervalBetweenValueSamples);
+    }
+
+    @Override
+    public synchronized void reset() {
+        super.reset();
+    }
+
+    @Override
+    public synchronized SynchronizedHistogram copy() {
+        SynchronizedHistogram toHistogram = new SynchronizedHistogram(this);
+        toHistogram.add(this);
+        return toHistogram;
+    }
+
+    @Override
+    public synchronized SynchronizedHistogram copyCorrectedForCoordinatedOmission(
+            final long expectedIntervalBetweenValueSamples) {
+        SynchronizedHistogram toHistogram = new SynchronizedHistogram(this);
+        toHistogram.addWhileCorrectingForCoordinatedOmission(this, expectedIntervalBetweenValueSamples);
+        return toHistogram;
+    }
+
+
+    @Override
+    public void copyInto(final AbstractHistogram targetHistogram) {
+        // Synchronize copyInto(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (identity < targetHistogram.identity) {
+            synchronized (this) {
+                synchronized (targetHistogram) {
+                    super.copyInto(targetHistogram);
+                }
+            }
+        } else {
+            synchronized (targetHistogram) {
+                synchronized (this) {
+                    super.copyInto(targetHistogram);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void copyIntoCorrectedForCoordinatedOmission(final AbstractHistogram targetHistogram,
+                                                        final long expectedIntervalBetweenValueSamples) {
+        // Synchronize copyIntoCorrectedForCoordinatedOmission(). Avoid deadlocks by synchronizing in order
+        // of construction identity count.
+        if (identity < targetHistogram.identity) {
+            synchronized (this) {
+                synchronized (targetHistogram) {
+                    super.copyIntoCorrectedForCoordinatedOmission(targetHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        } else {
+            synchronized (targetHistogram) {
+                synchronized (this) {
+                    super.copyIntoCorrectedForCoordinatedOmission(targetHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void add(final AbstractHistogram otherHistogram) {
+        // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (identity < otherHistogram.identity) {
+            synchronized (this) {
+                synchronized (otherHistogram) {
+                    super.add(otherHistogram);
+                }
+            }
+        } else {
+            synchronized (otherHistogram) {
+                synchronized (this) {
+                    super.add(otherHistogram);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void subtract(final AbstractHistogram otherHistogram)
+            throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
+        // Synchronize subtract(). Avoid deadlocks by synchronizing in order of construction identity count.
+        if (identity < otherHistogram.identity) {
+            synchronized (this) {
+                synchronized (otherHistogram) {
+                    super.subtract(otherHistogram);
+                }
+            }
+        } else {
+            synchronized (otherHistogram) {
+                synchronized (this) {
+                    super.subtract(otherHistogram);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram,
+                                                         final long expectedIntervalBetweenValueSamples) {
+        // Synchronize addWhileCorrectingForCoordinatedOmission(). Avoid deadlocks by synchronizing in
+        // order of construction identity count.
+        if (identity < fromHistogram.identity) {
+            synchronized (this) {
+                synchronized (fromHistogram) {
+                    super.addWhileCorrectingForCoordinatedOmission(fromHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        } else {
+            synchronized (fromHistogram) {
+                synchronized (this) {
+                    super.addWhileCorrectingForCoordinatedOmission(fromHistogram, expectedIntervalBetweenValueSamples);
+                }
+            }
+        }
+    }
+    @Override
+    public synchronized void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude) {
+        super.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
+    }
+
+    @Override
+    public synchronized void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude) {
+        super.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
+    }
+
+    @Override
+    public boolean equals(final Object other){
+        if ( this == other ) {
+            return true;
+        }
+        if (other instanceof AbstractHistogram) {
+            AbstractHistogram otherHistogram = (AbstractHistogram) other;
+            if (identity < otherHistogram.identity) {
+                synchronized (this) {
+                    synchronized (otherHistogram) {
+                        return super.equals(otherHistogram);
+                    }
+                }
+            } else {
+                synchronized (otherHistogram) {
+                    synchronized (this) {
+                        return super.equals(otherHistogram);
+                    }
+                }
+            }
+        } else {
+            synchronized (this) {
+                return super.equals(other);
+            }
+        }
+    }
+
+    @Override
+    public synchronized long getLowestDiscernibleValue() {
+        return super.getLowestDiscernibleValue();
+    }
+
+    @Override
+    public synchronized long getHighestTrackableValue() {
+        return super.getHighestTrackableValue();
+    }
+
+    @Override
+    public synchronized int getNumberOfSignificantValueDigits() {
+        return super.getNumberOfSignificantValueDigits();
+    }
+
+    @Override
+    public synchronized long sizeOfEquivalentValueRange(final long value) {
+        return super.sizeOfEquivalentValueRange(value);
+    }
+
+    @Override
+    public synchronized long lowestEquivalentValue(final long value) {
+        return super.lowestEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized long highestEquivalentValue(final long value) {
+        return super.highestEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized long medianEquivalentValue(final long value) {
+        return super.medianEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized long nextNonEquivalentValue(final long value) {
+        return super.nextNonEquivalentValue(value);
+    }
+
+    @Override
+    public synchronized boolean valuesAreEquivalent(final long value1, final long value2) {
+        return super.valuesAreEquivalent(value1, value2);
+    }
+
+    @Override
+    public synchronized int getEstimatedFootprintInBytes() {
+        return super.getEstimatedFootprintInBytes();
+    }
+
+    @Override
+    public synchronized long getStartTimeStamp() {
+        return super.getStartTimeStamp();
+    }
+
+    @Override
+    public synchronized void setStartTimeStamp(final long timeStampMsec) {
+        super.setStartTimeStamp(timeStampMsec);
+    }
+
+    @Override
+    public synchronized long getEndTimeStamp() {
+        return super.getEndTimeStamp();
+    }
+
+    @Override
+    public synchronized void setEndTimeStamp(final long timeStampMsec) {
+        super.setEndTimeStamp(timeStampMsec);
+    }
+
+    @Override
+    public synchronized long getMinValue() {
+        return super.getMinValue();
+    }
+
+    @Override
+    public synchronized long getMaxValue() {
+        return super.getMaxValue();
+    }
+
+    @Override
+    public synchronized long getMinNonZeroValue() {
+        return super.getMinNonZeroValue();
+    }
+
+    @Override
+    public synchronized double getMaxValueAsDouble() {
+        return super.getMaxValueAsDouble();
+    }
+
+    @Override
+    public synchronized double getMean() {
+        return super.getMean();
+    }
+
+    @Override
+    public synchronized double getStdDeviation() {
+        return super.getStdDeviation();
+    }
+
+    @Override
+    public synchronized long getValueAtPercentile(final double percentile) {
+        return super.getValueAtPercentile(percentile);
+    }
+
+    @Override
+    public synchronized double getPercentileAtOrBelowValue(final long value) {
+        return super.getPercentileAtOrBelowValue(value);
+    }
+
+    @Override
+    public synchronized long getCountBetweenValues(final long lowValue, final long highValue) throws ArrayIndexOutOfBoundsException {
+        return super.getCountBetweenValues(lowValue, highValue);
+    }
+
+    @Override
+    public synchronized long getCountAtValue(final long value) throws ArrayIndexOutOfBoundsException {
+        return super.getCountAtValue(value);
+    }
+
+    @Override
+    public synchronized Percentiles percentiles(final int percentileTicksPerHalfDistance) {
+        return super.percentiles(percentileTicksPerHalfDistance);
+    }
+
+    @Override
+    public synchronized LinearBucketValues linearBucketValues(final long valueUnitsPerBucket) {
+        return super.linearBucketValues(valueUnitsPerBucket);
+    }
+
+    @Override
+    public synchronized LogarithmicBucketValues logarithmicBucketValues(final long valueUnitsInFirstBucket, final double logBase) {
+        return super.logarithmicBucketValues(valueUnitsInFirstBucket, logBase);
+    }
+
+    @Override
+    public synchronized RecordedValues recordedValues() {
+        return super.recordedValues();
+    }
+
+    @Override
+    public synchronized AllValues allValues() {
+        return super.allValues();
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final Double outputValueUnitScalingRatio) {
+        super.outputPercentileDistribution(printStream, outputValueUnitScalingRatio);
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final int percentileTicksPerHalfDistance,
+                                             final Double outputValueUnitScalingRatio) {
+        super.outputPercentileDistribution(printStream, percentileTicksPerHalfDistance, outputValueUnitScalingRatio);
+    }
+
+    @Override
+    public synchronized void outputPercentileDistribution(final PrintStream printStream,
+                                             final int percentileTicksPerHalfDistance,
+                                             final Double outputValueUnitScalingRatio,
+                                             final boolean useCsvFormat) {
+        super.outputPercentileDistribution(printStream, percentileTicksPerHalfDistance, outputValueUnitScalingRatio, useCsvFormat);
+    }
+
+    @Override
+    public synchronized int getNeededByteBufferCapacity() {
+        return super.getNeededByteBufferCapacity();
+    }
+
+
+    @Override
+    public synchronized int encodeIntoByteBuffer(final ByteBuffer buffer) {
+        return super.encodeIntoByteBuffer(buffer);
+    }
+
+    @Override
+    public synchronized int encodeIntoCompressedByteBuffer(
+            final ByteBuffer targetBuffer,
+            final int compressionLevel) {
+        return super.encodeIntoCompressedByteBuffer(targetBuffer, compressionLevel);
+    }
+
+    @Override
+    public synchronized int encodeIntoCompressedByteBuffer(final ByteBuffer targetBuffer) {
+        return super.encodeIntoCompressedByteBuffer(targetBuffer);
     }
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
-    }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asLongBuffer().get(counts, 0, length);
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private LongBuffer cachedDstLongBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstLongBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstLongBuffer = buffer.asLongBuffer();
-        }
-        cachedDstLongBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-        cachedDstLongBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
-        cachedDstLongBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }

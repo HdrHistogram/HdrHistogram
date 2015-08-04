@@ -16,20 +16,20 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 
 /**
- * A floating point values High Dynamic Range (HDR) Histogram</h3>
- * <p/>
+ * <h3>A floating point values High Dynamic Range (HDR) Histogram</h3>
+ * <p>
  * It is important to note that {@link DoubleHistogram} is not thread-safe, and does not support safe concurrent
  * recording by multiple threads. If concurrent operation is required, consider usings
  * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram}, or(recommended)
  * {@link DoubleRecorder}, which are intended for this purpose.
- * <p/>
+ * <p>
  * {@link DoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.
  * Dynamic range is expressed as a ratio between the highest and lowest non-zero values trackable within the histogram
  * at any given time. Value precision is expressed as the number of significant [decimal] digits in the value recording,
  * and provides control over value quantization behavior across the value range and the subsequent value resolution at
  * any given level.
- * <p/>
+ * <p>
  * Auto-ranging: Unlike integer value based histograms, the specific value range tracked by a {@link
  * DoubleHistogram} is not specified upfront. Only the dynamic range of values that the histogram can cover is
  * (optionally) specified. E.g. When a {@link DoubleHistogram} is created to track a dynamic range of
@@ -37,17 +37,17 @@ import java.util.zip.Deflater;
  * consistent unit of time as long as the ratio between the highest and lowest non-zero values stays within the
  * specified dynamic range, so recording in units of nanoseconds (1.0 thru 3600000000000.0), milliseconds (0.000001
  * thru 3600000.0) seconds (0.000000001 thru 3600.0), hours (1/3.6E12 thru 1.0) will all work just as well.
- * <p/>
+ * <p>
  * Auto-resizing: When constructed with no specified dynamic range (or when auto-resize is turned on with {@link
  * DoubleHistogram#setAutoResize}) a {@link DoubleHistogram} will auto-resize its dynamic range to
  * include recorded values as they are encountered. Note that recording calls that cause auto-resizing may take
  * longer to execute, as resizing incurs allocation and copying of internal data structures.
- * <p/>
+ * <p>
  * Attempts to record non-zero values that range outside of the specified dynamic range (or exceed the limits of
  * of dynamic range when auto-resizing) may results in {@link ArrayIndexOutOfBoundsException} exceptions, either
  * due to overflow or underflow conditions. These exceptions will only be thrown if recording the value would have
  * resulted in discarding or losing the required value precision of values already recorded in the histogram.
- * <p/>
+ * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
 public class DoubleHistogram extends EncodableHistogram implements Serializable {
@@ -75,6 +75,26 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      */
     public DoubleHistogram(final int numberOfSignificantValueDigits) {
         this(2, numberOfSignificantValueDigits, Histogram.class, null);
+        setAutoResize(true);
+    }
+
+    /**
+     * Construct a new auto-resizing DoubleHistogram using a precision stated as a number
+     * of significant decimal digits.
+     *
+     * The {@link org.HdrHistogram.DoubleHistogram} will use the specified AbstractHistogram subclass
+     * for tracking internal counts (e.g. {@link org.HdrHistogram.Histogram},
+     * {@link org.HdrHistogram.ConcurrentHistogram}, {@link org.HdrHistogram.SynchronizedHistogram},
+     * {@link org.HdrHistogram.IntCountsHistogram}, {@link org.HdrHistogram.ShortCountsHistogram}).
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param internalCountsHistogramClass The class to use for internal counts tracking
+     */
+    public DoubleHistogram(final int numberOfSignificantValueDigits,
+                           final Class<? extends AbstractHistogram> internalCountsHistogramClass) {
+        this(2, numberOfSignificantValueDigits, internalCountsHistogramClass, null);
         setAutoResize(true);
     }
 
@@ -218,6 +238,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                 source.integerValuesHistogram,
                 true);
         this.autoResize = source.autoResize;
+        setTrackableValueRange(source.currentLowestValueInAutoRange, source.currentHighestValueLimitInAutoRange);
     }
 
     private void init(final long configuredHighestToLowestValueRatio, final double lowestTrackableUnitValue,
@@ -307,7 +328,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     }
 
     private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value > currentHighestValueLimitInAutoRange)) {
+        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
             // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
             // with it on the slow path...
             autoAdjustRangeForValue(value);
@@ -1012,7 +1033,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
 
     /**
      * Get the value at a given percentile.
-     * When the percentile is > 0.0, the value returned is the value that the given the given
+     * When the percentile is &gt; 0.0, the value returned is the value that the given the given
      * percentage of the overall recorded value entries in the histogram are either smaller than
      * or equivalent to. When the percentile is 0.0, the value returned is the value that all value
      * entries in the histogram are either larger than or equivalent to.

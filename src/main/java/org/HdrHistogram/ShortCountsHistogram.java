@@ -49,15 +49,12 @@ public class ShortCountsHistogram extends AbstractHistogram {
     @Override
     void addToCountAtIndex(final int index, final long value) {
         int normalizedIndex = normalizeIndex(index, normalizingIndexOffset, countsArrayLength);
-        short currentCount = counts[normalizedIndex];
-        if ((value < 0) || (value > Short.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow short integer count");
+        long currentCount = counts[normalizedIndex];
+        long newCount = (currentCount + value);
+        if ((newCount < Short.MIN_VALUE) || (newCount > Short.MAX_VALUE)) {
+            throw new IllegalArgumentException("would overflow integer count");
         }
-        short newCount = (short) (currentCount + value);
-        if (newCount < 0) {
-            throw new IllegalStateException("would overflow short integer count");
-        }
-        counts[normalizedIndex] = newCount;
+        counts[normalizedIndex] = (short) newCount;
     }
 
     @Override
@@ -147,6 +144,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
             int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
             int lengthToCopy = (countsArrayLength - countsDelta) - oldNormalizedZeroIndex;
             System.arraycopy(counts, oldNormalizedZeroIndex, counts, newNormalizedZeroIndex, lengthToCopy);
+            Arrays.fill(counts, oldNormalizedZeroIndex, newNormalizedZeroIndex, (short) 0);
         }
     }
 
@@ -232,8 +230,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
      */
     public static ShortCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
                                                                 final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (ShortCountsHistogram) decodeFromCompressedByteBuffer(buffer, ShortCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromCompressedByteBuffer(buffer, ShortCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)
@@ -244,28 +241,5 @@ public class ShortCountsHistogram extends AbstractHistogram {
     @Override
     synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
         buffer.asShortBuffer().get(counts, 0, length);
-    }
-
-    // We try to cache the LongBuffer used in output cases, as repeated
-    // output form the same histogram using the same buffer is likely:
-    private ShortBuffer cachedDstShortBuffer = null;
-    private ByteBuffer cachedDstByteBuffer = null;
-    private int cachedDstByteBufferPosition = 0;
-
-    @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        if ((cachedDstShortBuffer == null) ||
-                (buffer != cachedDstByteBuffer) ||
-                (buffer.position() != cachedDstByteBufferPosition)) {
-            cachedDstByteBuffer = buffer;
-            cachedDstByteBufferPosition = buffer.position();
-            cachedDstShortBuffer = buffer.asShortBuffer();
-        }
-        cachedDstShortBuffer.rewind();
-        int zeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
-        int lengthFromZeroIndexToEnd = Math.min(length, (countsArrayLength - zeroIndex));
-        int remainingLengthFromNormalizedZeroIndex = length - lengthFromZeroIndexToEnd;
-        cachedDstShortBuffer.put(counts, zeroIndex, lengthFromZeroIndexToEnd);
-        cachedDstShortBuffer.put(counts, 0, remainingLengthFromNormalizedZeroIndex);
     }
 }
