@@ -158,8 +158,18 @@ public class HistogramLogWriter {
      */
     public void outputStartTime(final long startTimeMsec) {
         log.format(Locale.US, "#[StartTime: %.3f (seconds since epoch), %s]\n",
-                startTimeMsec/1000.0,
+                startTimeMsec / 1000.0,
                 (new Date(startTimeMsec)).toString());
+    }
+
+
+    /**
+     * Log a base time in the log.
+     * @param baseTimeMsec time (in milliseconds) since the absolute start time (the epoch)
+     */
+    public void outputBaseTime(final long baseTimeMsec) {
+        log.format(Locale.US, "#[BaseTime: %.3f (seconds since epoch)]\n",
+                baseTimeMsec/1000.0);
     }
 
     /**
