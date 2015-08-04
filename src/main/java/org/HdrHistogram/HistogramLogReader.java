@@ -196,6 +196,12 @@ public class HistogramLogReader {
                             baseTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
                         }
                     }
+                    else if (scanner.hasNext("#\\[StartTime:")) {
+                        scanner.next("#\\[StartTime:");
+                        if (scanner.hasNextDouble()) {
+                            startTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
+                        }
+                    }
                     scanner.nextLine();
                     continue;
                 }
