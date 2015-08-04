@@ -148,6 +148,24 @@ public class HistogramLogProcessor extends Thread {
                 startTime, (new Date((long) (startTime * 1000))).toString());
     }
 
+    int lineNumber = 0;
+
+    private EncodableHistogram getIntervalHistogram() {
+        EncodableHistogram histogram = null;
+        try {
+            histogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+        } catch (RuntimeException ex) {
+            System.err.println("Log file parsing error at line number " + lineNumber +
+                    ": line appears to be malformed.");
+            if (config.verbose) {
+                throw ex;
+            } else {
+                System.exit(1);
+            }
+        }
+        lineNumber++;
+        return histogram;
+    }
     /**
      * Run the log processor with the currently provided arguments.
      */
@@ -157,7 +175,6 @@ public class HistogramLogProcessor extends Thread {
         PrintStream histogramPercentileLog = System.out;
         Double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
-        int lineNumber = 0;
         try {
             if (config.outputFileName != null) {
                 try {
@@ -183,7 +200,7 @@ public class HistogramLogProcessor extends Thread {
             }
 
 
-            EncodableHistogram intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+            EncodableHistogram intervalHistogram = getIntervalHistogram();
 
 
             Histogram accumulatedRegularHistogram = null;
@@ -273,19 +290,7 @@ public class HistogramLogProcessor extends Thread {
                     }
                 }
 
-                lineNumber++;
-                // Read and accumulate the next line:
-                try {
-                    intervalHistogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
-                } catch (RuntimeException ex) {
-                    System.err.println("Log file parsing error at line number " + lineNumber +
-                            ": line appears to be malformed.");
-                    if (config.verbose) {
-                        throw ex;
-                    } else {
-                        System.exit(1);
-                    }
-                }
+                intervalHistogram = getIntervalHistogram();
             }
 
             if (accumulatedDoubleHistogram != null) {
