@@ -226,8 +226,9 @@ public class HistogramLogReader {
                 }
                 if (!observedBaseTime) {
                     // No explicit base time noted. Deduce from 1st observed time (compared to start time):
-                    if (logTimeStampInSec < startTimeSec) {
-                        // Timestamps in log are not absolute
+                    if (logTimeStampInSec < startTimeSec - (365 * 24 * 3600.0)) {
+                        // Criteria Note: if log timestamp is more than a year in the past (compared to
+                        // StartTime), we assume that timestamps in the log are not absolute
                         baseTimeSec = startTimeSec;
                     } else {
                         // Timestamps are absolute
