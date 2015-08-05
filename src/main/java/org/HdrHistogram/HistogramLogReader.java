@@ -60,34 +60,61 @@ public class HistogramLogReader {
     private boolean observedStartTime = false;
     private double baseTimeSec = 0.0;
     private boolean observedBaseTime = false;
-
+    private final boolean forceTsAbsolute;
+    /**
+     * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
+     * @param inputFileName The name of the file to read from
+     * @param forceTsAbsolute Force reader to treat TS as absolute
+     * @throws java.io.FileNotFoundException when unable to find inputFileName
+     */
+    public HistogramLogReader(final String inputFileName, final boolean forceTsAbsolute) throws FileNotFoundException {
+    	this.forceTsAbsolute = forceTsAbsolute;
+        scanner = new Scanner(new File(inputFileName));
+        initScanner();
+    }
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
      * @param inputFileName The name of the file to read from
      * @throws java.io.FileNotFoundException when unable to find inputFileName
      */
     public HistogramLogReader(final String inputFileName) throws FileNotFoundException {
-        scanner = new Scanner(new File(inputFileName));
+        this(inputFileName, false);
+    }
+    /**
+     * Constructs a new HistogramLogReader that produces intervals read from the specified InputStream.
+     * @param inputStream The InputStream to read from
+     * @param forceTsAbsolute Force reader to treat TS as absolute
+     */
+    public HistogramLogReader(final InputStream inputStream, final boolean forceTsAbsolute) {
+    	this.forceTsAbsolute = forceTsAbsolute;
+        scanner = new Scanner(inputStream);
         initScanner();
     }
-
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified InputStream.
      * @param inputStream The InputStream to read from
      */
     public HistogramLogReader(final InputStream inputStream) {
-        scanner = new Scanner(inputStream);
+    	this(inputStream, false);
+    }
+    /**
+     * Constructs a new HistogramLogReader that produces intervals read from the specified file.
+     * @param inputFile The File to read from
+     * @param forceTsAbsolute Force reader to treat TS as absolute
+     * @throws java.io.FileNotFoundException when unable to find inputFile
+     */
+    public HistogramLogReader(final File inputFile, final boolean forceTsAbsolute) throws FileNotFoundException {
+    	this.forceTsAbsolute = forceTsAbsolute;
+        scanner = new Scanner(inputFile);
         initScanner();
     }
-
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file.
      * @param inputFile The File to read from
      * @throws java.io.FileNotFoundException when unable to find inputFile
      */
     public HistogramLogReader(final File inputFile) throws FileNotFoundException {
-        scanner = new Scanner(inputFile);
-        initScanner();
+    	this(inputFile, false);
     }
 
 
@@ -226,7 +253,7 @@ public class HistogramLogReader {
                 }
                 if (!observedBaseTime) {
                     // No explicit base time noted. Deduce from 1st observed time (compared to start time):
-                    if (logTimeStampInSec < startTimeSec) {
+                    if (logTimeStampInSec < startTimeSec && !forceTsAbsolute) {
                         // Timestamps in log are not absolute
                         baseTimeSec = startTimeSec;
                     } else {
