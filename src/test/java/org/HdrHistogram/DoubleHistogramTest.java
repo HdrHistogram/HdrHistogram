@@ -179,7 +179,7 @@ public class DoubleHistogramTest {
             // This should throw:
             histogram.add(biggerOther);
         } catch (ArrayIndexOutOfBoundsException e) {
-            fail("Should of thown with out of bounds error");
+            fail("Should not thow with out of bounds error");
         }
 
         // But trying to add smaller values to a larger histogram that actually uses it's range should throw an AIOOB:
@@ -190,7 +190,7 @@ public class DoubleHistogramTest {
         try {
             // This should throw:
             biggerOther.add(histogram);
-            fail("Should of thown with out of bounds error");
+            fail("Should have thown with out of bounds error");
         } catch (ArrayIndexOutOfBoundsException e) {
         }
     }
