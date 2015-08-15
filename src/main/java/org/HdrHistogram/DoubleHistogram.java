@@ -379,31 +379,41 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     }
 
     private synchronized void autoAdjustRangeForValueSlowPath(final double value) {
-        if (value < currentLowestValueInAutoRange) {
-            if (value < 0.0) {
-                throw new ArrayIndexOutOfBoundsException("Negative values cannot be recorded");
+        try {
+            if (value < currentLowestValueInAutoRange) {
+                if (value < 0.0) {
+                    throw new ArrayIndexOutOfBoundsException("Negative values cannot be recorded");
+                }
+                do {
+                    int shiftAmount =
+                            findCappedContainingBinaryOrderOfMagnitude(
+                                    Math.ceil(currentLowestValueInAutoRange / value) - 1.0);
+                    shiftCoveredRangeToTheRight(shiftAmount);
+                }
+                while (value < currentLowestValueInAutoRange);
+            } else if (value >= currentHighestValueLimitInAutoRange) {
+                if (value > highestAllowedValueEver) {
+                    throw new ArrayIndexOutOfBoundsException(
+                            "Values above " + highestAllowedValueEver + " cannot be recorded");
+                }
+                do {
+                    // If value is an exact whole multiple of currentHighestValueLimitInAutoRange, it "belongs" with
+                    // the next level up, as it crosses the limit. With floating point values, the simplest way to
+                    // make this shift on exact multiple values happen (but not for any just-smaller-than-exact-multiple
+                    // values) is to use a value that is 1 ulp bigger in computing the ratio for the shift amount:
+                    int shiftAmount =
+                            findCappedContainingBinaryOrderOfMagnitude(
+                                    Math.ceil((value + Math.ulp(value)) / currentHighestValueLimitInAutoRange) - 1.0);
+                    shiftCoveredRangeToTheLeft(shiftAmount);
+                }
+                while (value >= currentHighestValueLimitInAutoRange);
             }
-            do {
-                int shiftAmount =
-                        findCappedContainingBinaryOrderOfMagnitude(
-                                Math.ceil(currentLowestValueInAutoRange / value) - 1.0);
-                shiftCoveredRangeToTheRight(shiftAmount);
-            } while (value < currentLowestValueInAutoRange);
-        } else if (value >= currentHighestValueLimitInAutoRange) {
-            if (value > highestAllowedValueEver) {
-                throw new ArrayIndexOutOfBoundsException(
-                        "Values above " + highestAllowedValueEver + " cannot be recorded");
-            }
-            do {
-                // If value is an exact whole multiple of currentHighestValueLimitInAutoRange, it "belongs" with
-                // the next level up, as it crosses the limit. With floating point values, the simplest way to
-                // make this shift on exact multiple values happen (but not for any just-smaller-than-exact-multiple
-                // values) is to use a value that is 1 ulp bigger in computing the ratio for the shift amount:
-                int shiftAmount =
-                        findCappedContainingBinaryOrderOfMagnitude(
-                                Math.ceil((value + Math.ulp(value)) / currentHighestValueLimitInAutoRange) - 1.0);
-                shiftCoveredRangeToTheLeft(shiftAmount);
-            } while (value >= currentHighestValueLimitInAutoRange);
+        } catch (ArrayIndexOutOfBoundsException ex) {
+            throw new ArrayIndexOutOfBoundsException("The value " + value +
+                    " is out of bounds for histogram, current covered range [" +
+                    currentLowestValueInAutoRange + ", " + currentHighestValueLimitInAutoRange +
+                    ") cannot be extended any further.\n"+
+                    "Caused by: " + ex);
         }
     }
 
@@ -524,20 +534,19 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
 
     private void handleShiftValuesException(final int numberOfBinaryOrdersOfMagnitude, Exception ex) {
         if (!autoResize) {
-            throw new ArrayIndexOutOfBoundsException("value outside of histogram covered range. Caused by: " + ex);
+            throw new ArrayIndexOutOfBoundsException("Value outside of histogram covered range.\nCaused by: " + ex);
         }
 
         long highestTrackableValue = integerValuesHistogram.getHighestTrackableValue();
-        int highestTrackableValueContainingOrderOfMagnitude =
-                findContainingBinaryOrderOfMagnitude(highestTrackableValue);
-        long newHighestTrackableValue =
-                (1L << (numberOfBinaryOrdersOfMagnitude + highestTrackableValueContainingOrderOfMagnitude)) - 1;
-        if (newHighestTrackableValue < highestTrackableValue) {
+        int currentContainingOrderOfMagnitude = findContainingBinaryOrderOfMagnitude(highestTrackableValue);
+        int newContainingOrderOfMagnitude = numberOfBinaryOrdersOfMagnitude + currentContainingOrderOfMagnitude;
+        if (newContainingOrderOfMagnitude > 63) {
             throw new ArrayIndexOutOfBoundsException(
-                    "cannot resize histogram covered range beyond (1L << 63) / (1L << " +
+                    "Cannot resize histogram covered range beyond (1L << 63) / (1L << " +
                             (integerValuesHistogram.subBucketHalfCountMagnitude) + ") - 1.\n" +
-                            "Caused by:" + ex);
+                            "Caused by: " + ex);
         }
+        long newHighestTrackableValue = (1L << newContainingOrderOfMagnitude) - 1;
         integerValuesHistogram.resize(newHighestTrackableValue);
         integerValuesHistogram.highestTrackableValue = newHighestTrackableValue;
         configuredHighestToLowestValueRatio <<= numberOfBinaryOrdersOfMagnitude;
