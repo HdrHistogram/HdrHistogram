@@ -49,6 +49,16 @@ public class HistogramAutosizingTest {
         histogram2.recordValue((1L << 55) - 1);
         Assert.assertEquals(56, histogram2.integerValuesHistogram.bucketCount);
         Assert.assertEquals(7296, histogram2.integerValuesHistogram.countsArrayLength);
+
+        DoubleHistogram histogram3 = new DoubleHistogram(2);
+        histogram3.recordValue(1E50);
+        histogram3.recordValue((1L << 48) * 1E50);
+        histogram3.recordValue(((1L << 54) - 1) * 1E50);
+        Assert.assertEquals(55, histogram3.integerValuesHistogram.bucketCount);
+        Assert.assertEquals(7168, histogram3.integerValuesHistogram.countsArrayLength);
+        histogram3.recordValue(((1L << 55) - 1) * 1E50);
+        Assert.assertEquals(56, histogram3.integerValuesHistogram.bucketCount);
+        Assert.assertEquals(7296, histogram3.integerValuesHistogram.countsArrayLength);
     }
 
     @Test
