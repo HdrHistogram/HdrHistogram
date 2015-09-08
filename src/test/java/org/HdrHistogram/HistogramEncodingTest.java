@@ -190,6 +190,61 @@ public class HistogramEncodingTest {
     }
 
     @Test
+    public void testSimpleIntegerHistogramEncoding() throws Exception {
+        Histogram histogram = new Histogram(274877906943L, 3);
+        histogram.recordValue(6147);
+        histogram.recordValue(1024);
+        histogram.recordValue(0);
+
+        ByteBuffer targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
+
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        Histogram decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+
+        histogram.recordValueWithCount(100, 1L << 4); // Make total count > 2^4
+
+        targetBuffer.clear();
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+
+        histogram.recordValueWithCount(200, 1L << 16); // Make total count > 2^16
+
+        targetBuffer.clear();
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+
+        histogram.recordValueWithCount(300, 1L << 20); // Make total count > 2^20
+
+        targetBuffer.clear();
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+
+        histogram.recordValueWithCount(400, 1L << 32); // Make total count > 2^32
+
+        targetBuffer.clear();
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+
+        histogram.recordValueWithCount(500, 1L << 52); // Make total count > 2^52
+
+        targetBuffer.clear();
+        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
+        targetBuffer.rewind();
+        decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
+        Assert.assertEquals(histogram, decodedHistogram);
+    }
+
+    @Test
     public void testSimpleDoubleHistogramEncoding() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(100000000L, 3);
         histogram.recordValue(6.0);
@@ -201,22 +256,6 @@ public class HistogramEncodingTest {
         targetBuffer.rewind();
 
         DoubleHistogram decodedHistogram = DoubleHistogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
-
-        Assert.assertEquals(histogram, decodedHistogram);
-    }
-
-    @Test
-    public void testSimpleIntegerHistogramEncoding() throws Exception {
-        Histogram histogram = new Histogram(274877906943L, 3);
-        histogram.recordValue(6147);
-        histogram.recordValue(1024);
-        histogram.recordValue(0);
-
-        ByteBuffer targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
-        histogram.encodeIntoCompressedByteBuffer(targetBuffer);
-        targetBuffer.rewind();
-
-        Histogram decodedHistogram = Histogram.decodeFromCompressedByteBuffer(targetBuffer, 0);
 
         Assert.assertEquals(histogram, decodedHistogram);
     }

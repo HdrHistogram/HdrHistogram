@@ -1687,23 +1687,26 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static final int V1EncodingCookieBase = 0x1c849301;
     private static final int V1CompressedEncodingCookieBase = 0x1c849302;
 
-    private static final int encodingCookieBase = 0x1c849303;
-    private static final int compressedEncodingCookieBase = 0x1c849304;
+    private static final int V2EncodingCookieBase = 0x1c849303;
+    private static final int V2CompressedEncodingCookieBase = 0x1c849304;
+
+    private static final int encodingCookieBase = V2EncodingCookieBase;
+    private static final int compressedEncodingCookieBase = V2CompressedEncodingCookieBase;
 
     private int getEncodingCookie() {
-        int wordSize = determineWordSizeInBytes() << 4;
-        if (wordSize <= 8) {
-            return encodingCookieBase + (determineWordSizeInBytes() << 4);
+        if (useTzleenconding) {
+            return encodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
+        } else {
+            return V1EncodingCookieBase + (determineWordSizeInBytes() << 4);
         }
-        return encodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
     }
 
     private int getCompressedEncodingCookie() {
-        int wordSize = determineWordSizeInBytes() << 4;
-        if (wordSize <= 8) {
-            return compressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
+        if (useTzleenconding) {
+            return compressedEncodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
+        } else {
+            return V1CompressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
         }
-        return compressedEncodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
     }
 
     private static int getCookieBase(final int cookie) {
@@ -1711,10 +1714,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     private static int getWordSizeInBytesFromCookie(final int cookie) {
-        int sizeByte = (cookie & 0xf0) >> 4;
-        if ((sizeByte & 0x1) != 0) { // LSB indicates TLZE
+        if ((getCookieBase(cookie) == V2EncodingCookieBase) ||
+                (getCookieBase(cookie) == V2CompressedEncodingCookieBase)) {
             return 16;
         }
+        int sizeByte = (cookie & 0xf0) >> 4;
         return sizeByte & 0xe;
     }
 
