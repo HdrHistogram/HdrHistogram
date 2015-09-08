@@ -41,7 +41,7 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
  *
  */
 public class HistogramLogWriter {
-    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.1";
+    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.2";
 
     private final PrintStream log;
 

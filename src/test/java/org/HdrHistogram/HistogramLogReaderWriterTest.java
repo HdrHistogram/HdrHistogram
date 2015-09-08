@@ -31,6 +31,60 @@ public class HistogramLogReaderWriterTest {
     }
 
     @Test
+    public void jHiccupV2Log() throws Exception {
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        HistogramLogReader reader = new HistogramLogReader(readerStream);
+        int histogramCount = 0;
+        long totalCount = 0;
+        EncodableHistogram encodeableHistogram = null;
+        Histogram accumulatedHistogram = new Histogram(3);
+        while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
+            histogramCount++;
+            Assert.assertTrue("Expected integer value histogramsin log file", encodeableHistogram instanceof Histogram);
+            Histogram histogram = (Histogram) encodeableHistogram;
+            totalCount += histogram.getTotalCount();
+            accumulatedHistogram.add(histogram);
+        }
+        Assert.assertEquals(38, histogramCount);
+        Assert.assertEquals(30874, totalCount);
+        Assert.assertEquals(956825599, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
+        Assert.assertEquals(1441753532.570, reader.getStartTimeSec());
+
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        reader = new HistogramLogReader(readerStream);
+        histogramCount = 0;
+        totalCount = 0;
+        accumulatedHistogram.reset();
+        while ((encodeableHistogram = reader.nextIntervalHistogram(5, 20)) != null) {
+            histogramCount++;
+            Histogram histogram = (Histogram) encodeableHistogram;
+            totalCount += histogram.getTotalCount();
+            accumulatedHistogram.add(histogram);
+        }
+        Assert.assertEquals(14, histogramCount);
+        Assert.assertEquals(12406, totalCount);
+        Assert.assertEquals(969408511, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
+
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        reader = new HistogramLogReader(readerStream);
+        histogramCount = 0;
+        totalCount = 0;
+        accumulatedHistogram.reset();
+        while ((encodeableHistogram = reader.nextIntervalHistogram(15, 32)) != null) {
+            histogramCount++;
+            Histogram histogram = (Histogram) encodeableHistogram;
+            totalCount += histogram.getTotalCount();
+            accumulatedHistogram.add(histogram);
+        }
+        Assert.assertEquals(17, histogramCount);
+        Assert.assertEquals(13754, totalCount);
+        Assert.assertEquals(969408511, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
+    }
+
+    @Test
     public void jHiccupV1Log() throws Exception {
         InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.6.logV1.hlog");
         HistogramLogReader reader = new HistogramLogReader(readerStream);
