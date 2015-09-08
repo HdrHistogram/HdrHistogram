@@ -11,9 +11,6 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,6 +49,8 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
     long endTimeStampMsec = 0;
 
     double integerToDoubleValueConversionRatio = 1.0;
+
+    boolean useTzleenconding;
 
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
@@ -248,6 +247,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.setStartTimeStamp(source.getStartTimeStamp());
         this.setEndTimeStamp(source.getEndTimeStamp());
         this.autoResize = source.autoResize;
+        this.useTzleenconding = source.useTzleenconding;
     }
 
     @SuppressWarnings("deprecation")
@@ -286,6 +286,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
+        useTzleenconding = true;
     }
 
     final void establishSize(long newHighestTrackableValue) {
@@ -313,12 +314,44 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
 
+    /**
+     * Indicate whether or not the histogram is set to auto-resize and auto-adjust it's
+     * highestTrackableValue
+     * @return autoResize setting
+     */
     public boolean isAutoResize() {
         return autoResize;
     }
 
+    /**
+     * Control whether or not the histogram can auto-resize and auto-adjust it's
+     * highestTrackableValue
+     * @param autoResize autoResize setting
+     */
     public void setAutoResize(boolean autoResize) {
         this.autoResize = autoResize;
+    }
+
+    //
+    //
+    // TZLE Encoding control:
+    //
+    //
+
+    /**
+     * Indicate whether or not the histogram is set to use TZLE (Trainling Zero Length Encoding)
+     * @return TZLE encoding setting
+     */
+    public boolean isUseTzleEencoding() {
+        return useTzleenconding;
+    }
+
+    /**
+     * Control whether or not histogram is set to use TZLE (Trainling Zero Length Encoding)
+     * @param useTzleEncoding TZLE encoding setting
+     */
+    public void setUseTzleEncoding(boolean useTzleEncoding) {
+        this.useTzleenconding = useTzleEncoding;
     }
 
     //
@@ -1636,23 +1669,41 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getNeededPayloadByteBufferCapacity(final int relevantLength) {
+        if (useTzleenconding) {
+            return (relevantLength * 16);
+        }
+        return (relevantLength * wordSizeInBytes);
+    }
+
+    int getNeededV0PayloadByteBufferCapacity(final int relevantLength) {
         return (relevantLength * wordSizeInBytes);
     }
 
     abstract void fillCountsArrayFromBuffer(ByteBuffer buffer, int length);
 
     private static final int V0EncodingCookieBase = 0x1c849308;
-    private static final int V0EcompressedEncodingCookieBase = 0x1c849309;
+    private static final int V0CompressedEncodingCookieBase = 0x1c849309;
 
-    private static final int encodingCookieBase = 0x1c849301;
-    private static final int compressedEncodingCookieBase = 0x1c849302;
+    private static final int V1EncodingCookieBase = 0x1c849301;
+    private static final int V1CompressedEncodingCookieBase = 0x1c849302;
+
+    private static final int encodingCookieBase = 0x1c849303;
+    private static final int compressedEncodingCookieBase = 0x1c849304;
 
     private int getEncodingCookie() {
-        return encodingCookieBase + (determineWordSizeInBytes() << 4);
+        int wordSize = determineWordSizeInBytes() << 4;
+        if (wordSize <= 8) {
+            return encodingCookieBase + (determineWordSizeInBytes() << 4);
+        }
+        return encodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
     }
 
     private int getCompressedEncodingCookie() {
-        return compressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
+        int wordSize = determineWordSizeInBytes() << 4;
+        if (wordSize <= 8) {
+            return compressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
+        }
+        return compressedEncodingCookieBase | 0x10; // 16 byte wordSize indicated via TLZE Encoding
     }
 
     private static int getCookieBase(final int cookie) {
@@ -1660,22 +1711,27 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     private static int getWordSizeInBytesFromCookie(final int cookie) {
-        return (cookie & 0xf0) >> 4;
+        int sizeByte = (cookie & 0xf0) >> 4;
+        if ((sizeByte & 0x1) != 0) { // LSB indicates TLZE
+            return 16;
+        }
+        return sizeByte & 0xe;
     }
 
     private int determineWordSizeInBytes() {
-        if (wordSizeInBytes == 2) {
-            return wordSizeInBytes;
-        }
         // Use totalCount as a quick cap on the individual subbucket count level. Note
         // that we can do better by actually scanning the array and establishing the largest
         // single count value, but the below is a close enough guess and doesn't require a scan.
-        long totalCount = getTotalCount();
-        if (totalCount < Short.MAX_VALUE) {
-            return 2;
-        }
-        if (totalCount < Integer.MAX_VALUE) {
-            return 4;
+        if (useTzleenconding) {
+            return 16;
+        } else {
+            long totalCount = getTotalCount();
+            if (totalCount < Short.MAX_VALUE) {
+                return 2;
+            }
+            if (totalCount < Integer.MAX_VALUE) {
+                return 4;
+            }
         }
         return 8;
     }
@@ -1694,14 +1750,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         int initialPosition = buffer.position();
         buffer.putInt(getEncodingCookie());
-        buffer.putInt(relevantLength * determineWordSizeInBytes());
+        buffer.putInt(0); // Placeholder for payload length in bytes.
         buffer.putInt(getNormalizingIndexOffset());
         buffer.putInt(numberOfSignificantValueDigits);
         buffer.putLong(lowestDiscernibleValue);
         buffer.putLong(highestTrackableValue);
         buffer.putDouble(getIntegerToDoubleValueConversionRatio());
 
+        int payloadStartPosition = buffer.position();
         fillBufferFromCountsArray(buffer, determineWordSizeInBytes());
+        buffer.putInt(initialPosition + 4, buffer.position() - payloadStartPosition); // Record the payload length
+
 
         return buffer.position() - initialPosition;
     }
@@ -1799,7 +1858,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         long highestTrackableValue;
         final Double integerToDoubleValueConversionRatio;
 
-        if (getCookieBase(cookie) == encodingCookieBase){
+        if ((getCookieBase(cookie) == encodingCookieBase) ||
+                (getCookieBase(cookie) == V1EncodingCookieBase)) {
             payloadLengthInBytes = buffer.getInt();
             normalizingIndexOffset = buffer.getInt();
             numberOfSignificantValueDigits = buffer.getInt();
@@ -1829,13 +1889,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
             histogram.setNormalizingIndexOffset(normalizingIndexOffset);
-            if (getWordSizeInBytesFromCookie(cookie) > histogram.wordSizeInBytes) {
-                throw new IllegalArgumentException(
-                        "The buffer's encoded value word size (" +
-                                getWordSizeInBytesFromCookie(cookie) +
-                                " bytes) does not fit in the Histogram's (" +
-                                histogram.wordSizeInBytes + " bytes)");
-            }
         } catch (IllegalAccessException ex) {
             throw new IllegalArgumentException(ex);
         } catch (NoSuchMethodException ex) {
@@ -1850,7 +1903,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         final int expectedCapacity =
                 Math.min(
-                        histogram.getNeededPayloadByteBufferCapacity(histogram.countsArrayLength),
+                        histogram.getNeededV0PayloadByteBufferCapacity(histogram.countsArrayLength),
                         payloadLengthInBytes
                 );
 
@@ -1869,68 +1922,99 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
 
-        ((AbstractHistogram) histogram).fillCountsArrayFromSourceBuffer(
+        int filledLength = ((AbstractHistogram) histogram).fillCountsArrayFromSourceBuffer(
                 payLoadSourceBuffer,
-                expectedCapacity / getWordSizeInBytesFromCookie(cookie),
+                expectedCapacity,
                 getWordSizeInBytesFromCookie(cookie));
 
 
-        histogram.establishInternalTackingValues();
+        histogram.establishInternalTackingValues(filledLength);
 
         return histogram;
     }
 
-    private void fillCountsArrayFromSourceBuffer(ByteBuffer sourceBuffer, int lengthInWords, int wordSizeInBytes) {
-        switch (wordSizeInBytes) {
-        case 2:
-            ShortBuffer shortSource = sourceBuffer.asShortBuffer();
-            for (int i = 0; i < lengthInWords; i++) {
-                setCountAtIndex(i, shortSource.get());
-            }
-            break;
-
-        case 4:
-            IntBuffer intSource = sourceBuffer.asIntBuffer();
-            for (int i = 0; i < lengthInWords; i++) {
-                setCountAtIndex(i, intSource.get());
-            }
-            break;
-
-        case 8:
-            LongBuffer longSource = sourceBuffer.asLongBuffer();
-            for (int i = 0; i < lengthInWords; i++) {
-                setCountAtIndex(i, longSource.get());
-            }
-            break;
-
-        default:
-            throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
+    private int fillCountsArrayFromSourceBuffer(ByteBuffer sourceBuffer, int lengthInBytes, int wordSizeInBytes) {
+        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) && (wordSizeInBytes != 8) && (wordSizeInBytes != 16)) {
+            throw new IllegalArgumentException("word size must be 2, 4, 8, or 16 bytes");
         }
+        final long maxAllowableCountInHistigram =
+                ((this.wordSizeInBytes == 2) ? Short.MAX_VALUE :
+                        ((this.wordSizeInBytes == 4) ? Integer.MAX_VALUE : Long.MAX_VALUE)
+                );
+
+        int dstIndex = 0;
+        int endPosition = sourceBuffer.position() + lengthInBytes;
+        while (sourceBuffer.position() < endPosition) {
+            long count;
+            int trailingZerosCount = 0;
+            if (wordSizeInBytes == 16) {
+                long val = ZigZagEncoding.getLong(sourceBuffer);
+                if (val < 0) {
+                    long rc = -val;
+                    if (rc > Integer.MAX_VALUE) {
+                        throw new IllegalArgumentException(
+                                "An encoded repeat count of > Integer.MAX_VALUE was encountered in the source");
+                    }
+                    trailingZerosCount = (int) rc;
+                    val = ZigZagEncoding.getLong(sourceBuffer);
+                }
+                count = val;
+            } else {
+                count =
+                        ((wordSizeInBytes == 2) ? sourceBuffer.getShort() :
+                                ((wordSizeInBytes == 4) ? sourceBuffer.getInt() :
+                                        sourceBuffer.getLong()
+                                )
+                        );
+            }
+            if (count > maxAllowableCountInHistigram) {
+                throw new IllegalArgumentException(
+                        "An encoded count (" +
+                                + count +
+                                ") does not fit in the Histogram's (" +
+                                this.wordSizeInBytes + " bytes) was encountered in the source");
+            }
+            setCountAtIndex(dstIndex++, count);
+            dstIndex += trailingZerosCount; // No need to set zeros in array. Just skip them.
+        }
+        return dstIndex; // this is the destination length
     }
 
     synchronized void fillBufferFromCountsArray(ByteBuffer buffer, int wordSizeInBytes) {
+        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) && (wordSizeInBytes != 8) && (wordSizeInBytes != 16)) {
+            throw new IllegalArgumentException("word size must be 2, 4, 8, or 16 bytes");
+        }
         final int countsLimit = countsArrayIndex(maxValue) + 1;
-        switch (wordSizeInBytes) {
-        case 2:
-            for (int i = 0; i < countsLimit; i++) {
-                buffer.putShort((short)getCountAtIndex(i));
-            }
-            break;
+        int srcIndex = 0;
 
-        case 4:
-            for (int i = 0; i < countsLimit; i++) {
-                buffer.putInt((int) getCountAtIndex(i));
+        while (srcIndex < countsLimit) {
+            long count = getCountAtIndex(srcIndex++);
+            if (count < 0) {
+                throw new RuntimeException("Cannot encode histogram containing negative counts (" +
+                        count + " at index " + srcIndex + ", corresponding the value range [" +
+                        lowestEquivalentValue(valueFromIndex(srcIndex)) + "," +
+                        nextNonEquivalentValue(valueFromIndex(srcIndex)) + ")");
             }
-            break;
-
-        case 8:
-            for (int i = 0; i < countsLimit; i++) {
-                buffer.putLong(getCountAtIndex(i));
+            if (wordSizeInBytes == 16) {
+                // Count trailing 0s (which follow this count):
+                long trailingZerosCount = 0;
+                while ((srcIndex < countsLimit) && (getCountAtIndex(srcIndex) == 0)) {
+                    trailingZerosCount++;
+                    srcIndex++;
+                }
+                if (trailingZerosCount != 0) {
+                    ZigZagEncoding.putLong(buffer, -trailingZerosCount);
+                }
+                ZigZagEncoding.putLong(buffer, count);
+            } else {
+                if (wordSizeInBytes == 2) {
+                    buffer.putShort((short) count);
+                } else if (wordSizeInBytes == 4) {
+                    buffer.putInt((int) count);
+                } else {
+                    buffer.putLong(count);
+                }
             }
-            break;
-
-        default:
-            throw new IllegalArgumentException("word size must be 2, 4, or 8 bytes");
         }
     }
 
@@ -1942,9 +2026,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int initialTargetPosition = buffer.position();
         final int cookie = buffer.getInt();
         final int headerSize;
-        if (getCookieBase(cookie) == compressedEncodingCookieBase) {
+        if ((getCookieBase(cookie) == compressedEncodingCookieBase) ||
+                (getCookieBase(cookie) == V1CompressedEncodingCookieBase)) {
             headerSize = ENCODING_HEADER_SIZE;
-        } else if (getCookieBase(cookie) == V0EcompressedEncodingCookieBase) {
+        } else if (getCookieBase(cookie) == V0CompressedEncodingCookieBase) {
             headerSize = V0_ENCODING_HEADER_SIZE;
         } else {
             throw new IllegalArgumentException("The buffer does not contain a compressed Histogram");
@@ -1977,12 +2062,16 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
 
     void establishInternalTackingValues() {
+        establishInternalTackingValues(countsArrayLength);
+    }
+
+    void establishInternalTackingValues(final int lengthToCover) {
         resetMaxValue(0);
         resetMinNonZeroValue(Long.MAX_VALUE);
         int maxIndex = -1;
         int minNonZeroIndex = -1;
         long observedTotalCount = 0;
-        for (int index = 0; index < countsArrayLength; index++) {
+        for (int index = 0; index < lengthToCover; index++) {
             long countAtIndex;
             if ((countAtIndex = getCountAtIndex(index)) > 0) {
                 observedTotalCount += countAtIndex;

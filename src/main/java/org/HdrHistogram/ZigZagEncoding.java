@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
  * negative values to use fewer bytes. Details on both LEB128 and ZigZag can be
  * readily found elsewhere.
  */
-public class ZigZagEncoding {
+class ZigZagEncoding {
 
     /**
      * Writes a long value to the given buffer in LEB128 ZigZag encoded format
@@ -108,28 +108,28 @@ public class ZigZagEncoding {
         long v = buffer.get();
         long value = v & 0x7F;
         if ((v & 0x80) != 0) {
-            v = buffer.get();;
+            v = buffer.get();
             value |= (v & 0x7F) << 7;
             if ((v & 0x80) != 0) {
-                v = buffer.get();;
+                v = buffer.get();
                 value |= (v & 0x7F) << 14;
                 if ((v & 0x80) != 0) {
-                    v = buffer.get();;
+                    v = buffer.get();
                     value |= (v & 0x7F) << 21;
                     if ((v & 0x80) != 0) {
-                        v = buffer.get();;
+                        v = buffer.get();
                         value |= (v & 0x7F) << 28;
                         if ((v & 0x80) != 0) {
-                            v = buffer.get();;
+                            v = buffer.get();
                             value |= (v & 0x7F) << 35;
                             if ((v & 0x80) != 0) {
-                                v = buffer.get();;
+                                v = buffer.get();
                                 value |= (v & 0x7F) << 42;
                                 if ((v & 0x80) != 0) {
-                                    v = buffer.get();;
+                                    v = buffer.get();
                                     value |= (v & 0x7F) << 49;
                                     if ((v & 0x80) != 0) {
-                                        v = buffer.get();;
+                                        v = buffer.get();
                                         value |= v << 56;
                                     }
                                 }
@@ -152,16 +152,16 @@ public class ZigZagEncoding {
         int v = buffer.get();
         int value = v & 0x7F;
         if ((v & 0x80) != 0) {
-            v = buffer.get();;
+            v = buffer.get();
             value |= (v & 0x7F) << 7;
             if ((v & 0x80) != 0) {
-                v = buffer.get();;
+                v = buffer.get();
                 value |= (v & 0x7F) << 14;
                 if ((v & 0x80) != 0) {
-                    v = buffer.get();;
+                    v = buffer.get();
                     value |= (v & 0x7F) << 21;
                     if ((v & 0x80) != 0) {
-                        v = buffer.get();;
+                        v = buffer.get();
                         value |= (v & 0x7F) << 28;
                     }
                 }
