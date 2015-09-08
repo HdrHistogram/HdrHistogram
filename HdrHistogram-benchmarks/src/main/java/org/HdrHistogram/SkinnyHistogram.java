@@ -1,3 +1,10 @@
+/**
+ * Written by Gil Tene of Azul Systems, and released to the public domain,
+ * as explained at http://creativecommons.org/publicdomain/zero/1.0/
+ *
+ * @author Gil Tene
+ */
+
 package org.HdrHistogram;
 
 import java.nio.ByteBuffer;
@@ -5,7 +12,7 @@ import java.util.ArrayList;
 import java.util.zip.Deflater;
 
 /**
- * This is a straight Java port of the Scala SkinnyHistogram encdoding logic from the Khronus
+ * This is a Java port of the Scala SkinnyHistogram encdoding logic from the Khronus
  * project on github. The port only covers the encoding side, since it is (currently) mainly used
  * to gauage the compression volume (and not for correctness).
  */

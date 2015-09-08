@@ -1,3 +1,10 @@
+/**
+ * Written by Gil Tene of Azul Systems, and released to the public domain,
+ * as explained at http://creativecommons.org/publicdomain/zero/1.0/
+ *
+ * @author Gil Tene
+ */
+
 package bench;
 
 import org.HdrHistogram.*;
@@ -7,11 +14,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Locale;
 
-/**
- * Created by gil on 9/6/15.
- */
 public class HistogramData {
 
     static Iterable<Integer> case1IntLatencies = Arrays.asList(
