@@ -1,13 +1,12 @@
 package org.HdrHistogram;
 
+import junit.framework.Assert;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-
-import org.junit.Test;
-
-import junit.framework.Assert;
 
 public class HistogramLogReaderWriterTest {
 
@@ -32,7 +31,8 @@ public class HistogramLogReaderWriterTest {
 
     @Test
     public void jHiccupV2Log() throws Exception {
-        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.LogV2.hlog");
+
         HistogramLogReader reader = new HistogramLogReader(readerStream);
         int histogramCount = 0;
         long totalCount = 0;
@@ -51,7 +51,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
         Assert.assertEquals(1441753532.570, reader.getStartTimeSec());
 
-        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.LogV2.hlog");
         reader = new HistogramLogReader(readerStream);
         histogramCount = 0;
         totalCount = 0;
@@ -67,7 +67,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(969408511, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
 
-        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.LogV2.hlog");
         reader = new HistogramLogReader(readerStream);
         histogramCount = 0;
         totalCount = 0;
