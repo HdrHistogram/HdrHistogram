@@ -45,11 +45,11 @@ public class HistogramLogReaderWriterTest {
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
         }
-        Assert.assertEquals(38, histogramCount);
-        Assert.assertEquals(30874, totalCount);
-        Assert.assertEquals(956825599, accumulatedHistogram.getValueAtPercentile(99.9));
-        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
-        Assert.assertEquals(1441753532.570, reader.getStartTimeSec());
+        Assert.assertEquals(62, histogramCount);
+        Assert.assertEquals(48761, totalCount);
+        Assert.assertEquals(1745879039, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(1796210687, accumulatedHistogram.getMaxValue());
+        Assert.assertEquals(1441812279.474, reader.getStartTimeSec());
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
         reader = new HistogramLogReader(readerStream);
@@ -62,26 +62,26 @@ public class HistogramLogReaderWriterTest {
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
         }
-        Assert.assertEquals(14, histogramCount);
-        Assert.assertEquals(12406, totalCount);
-        Assert.assertEquals(969408511, accumulatedHistogram.getValueAtPercentile(99.9));
-        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
+        Assert.assertEquals(15, histogramCount);
+        Assert.assertEquals(11664, totalCount);
+        Assert.assertEquals(1536163839, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(1544552447, accumulatedHistogram.getMaxValue());
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
         reader = new HistogramLogReader(readerStream);
         histogramCount = 0;
         totalCount = 0;
         accumulatedHistogram.reset();
-        while ((encodeableHistogram = reader.nextIntervalHistogram(15, 32)) != null) {
+        while ((encodeableHistogram = reader.nextIntervalHistogram(40, 60)) != null) {
             histogramCount++;
             Histogram histogram = (Histogram) encodeableHistogram;
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
         }
-        Assert.assertEquals(17, histogramCount);
-        Assert.assertEquals(13754, totalCount);
-        Assert.assertEquals(969408511, accumulatedHistogram.getValueAtPercentile(99.9));
-        Assert.assertEquals(981991423, accumulatedHistogram.getMaxValue());
+        Assert.assertEquals(20, histogramCount);
+        Assert.assertEquals(15830, totalCount);
+        Assert.assertEquals(1779433471, accumulatedHistogram.getValueAtPercentile(99.9));
+        Assert.assertEquals(1796210687, accumulatedHistogram.getMaxValue());
     }
 
     @Test
