@@ -50,7 +50,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     double integerToDoubleValueConversionRatio = 1.0;
 
-    boolean useTzleenconding;
+    boolean useTzleEnconding;
 
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
@@ -247,7 +247,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.setStartTimeStamp(source.getStartTimeStamp());
         this.setEndTimeStamp(source.getEndTimeStamp());
         this.autoResize = source.autoResize;
-        this.useTzleenconding = source.useTzleenconding;
+        this.useTzleEnconding = source.useTzleEnconding;
     }
 
     @SuppressWarnings("deprecation")
@@ -286,7 +286,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
-        useTzleenconding = true;
+        useTzleEnconding = true;
     }
 
     final void establishSize(long newHighestTrackableValue) {
@@ -343,7 +343,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @return TZLE encoding setting
      */
     public boolean isUseTzleEencoding() {
-        return useTzleenconding;
+        return useTzleEnconding;
     }
 
     /**
@@ -351,7 +351,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param useTzleEncoding TZLE encoding setting
      */
     public void setUseTzleEncoding(boolean useTzleEncoding) {
-        this.useTzleenconding = useTzleEncoding;
+        this.useTzleEnconding = useTzleEncoding;
     }
 
     //
@@ -1669,8 +1669,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getNeededPayloadByteBufferCapacity(final int relevantLength) {
-        if (useTzleenconding) {
-            return (relevantLength * 9);
+        if (useTzleEnconding) {
+            return (relevantLength * V2maxWordSizeInBytes);
         }
         return (relevantLength * wordSizeInBytes);
     }
@@ -1690,11 +1690,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static final int V2EncodingCookieBase = 0x1c849303;
     private static final int V2CompressedEncodingCookieBase = 0x1c849304;
 
+    private static final int V2maxWordSizeInBytes = 9; // LEB128 + ZigZag and TZLE require up to 9 bytes per word
+
     private static final int encodingCookieBase = V2EncodingCookieBase;
     private static final int compressedEncodingCookieBase = V2CompressedEncodingCookieBase;
 
     private int getEncodingCookie() {
-        if (useTzleenconding) {
+        if (useTzleEnconding) {
             return encodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
         } else {
             return V1EncodingCookieBase + (determineWordSizeInBytes() << 4);
@@ -1702,7 +1704,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     private int getCompressedEncodingCookie() {
-        if (useTzleenconding) {
+        if (useTzleEnconding) {
             return compressedEncodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
         } else {
             return V1CompressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
@@ -1716,15 +1718,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static int getWordSizeInBytesFromCookie(final int cookie) {
         if ((getCookieBase(cookie) == V2EncodingCookieBase) ||
                 (getCookieBase(cookie) == V2CompressedEncodingCookieBase)) {
-            return 9; // Word size of 9 indicates LEB128 + ZigZag with TZLE
+            return V2maxWordSizeInBytes;
         }
         int sizeByte = (cookie & 0xf0) >> 4;
         return sizeByte & 0xe;
     }
 
     private int determineWordSizeInBytes() {
-        if (useTzleenconding) {
-            return 9; // LEB128 + ZigZag requires up to 9 bytes per word (TZLE will never increase word count)
+        if (useTzleEnconding) {
+            return V2maxWordSizeInBytes;
         } else {
             // Use totalCount as a quick cap on the individual subbucket count level.
             long totalCount = getTotalCount();
@@ -1936,8 +1938,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     private int fillCountsArrayFromSourceBuffer(ByteBuffer sourceBuffer, int lengthInBytes, int wordSizeInBytes) {
-        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) && (wordSizeInBytes != 8) && (wordSizeInBytes != 9)) {
-            throw new IllegalArgumentException("word size must be 2, 4, 8, or 9 bytes");
+        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) &&
+                (wordSizeInBytes != 8) && (wordSizeInBytes != V2maxWordSizeInBytes)) {
+            throw new IllegalArgumentException("word size must be 2, 4, 8, or V2maxWordSizeInBytes ("+
+                    V2maxWordSizeInBytes + ") bytes");
         }
         final long maxAllowableCountInHistigram =
                 ((this.wordSizeInBytes == 2) ? Short.MAX_VALUE :
@@ -1949,7 +1953,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         while (sourceBuffer.position() < endPosition) {
             long count;
             int trailingZerosCount = 0;
-            if (wordSizeInBytes == 9) {
+            if (wordSizeInBytes == V2maxWordSizeInBytes) {
                 long val = ZigZagEncoding.getLong(sourceBuffer);
                 if (val < 0) {
                     long rc = -val;
@@ -1983,8 +1987,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     synchronized void fillBufferFromCountsArray(ByteBuffer buffer, int wordSizeInBytes) {
-        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) && (wordSizeInBytes != 8) && (wordSizeInBytes != 9)) {
-            throw new IllegalArgumentException("word size must be 2, 4, 8, or 9 bytes");
+        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) &&
+                (wordSizeInBytes != 8) && (wordSizeInBytes != V2maxWordSizeInBytes)) {
+            throw new IllegalArgumentException("word size must be 2, 4, 8, or V2maxWordSizeInBytes ("+
+                    V2maxWordSizeInBytes + ") bytes");
         }
         final int countsLimit = countsArrayIndex(maxValue) + 1;
         int srcIndex = 0;
@@ -1997,7 +2003,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                         lowestEquivalentValue(valueFromIndex(srcIndex)) + "," +
                         nextNonEquivalentValue(valueFromIndex(srcIndex)) + ")");
             }
-            if (wordSizeInBytes == 9) {
+            if (wordSizeInBytes == V2maxWordSizeInBytes) {
                 // Count trailing 0s (which follow this count):
                 long trailingZerosCount = 0;
                 while ((srcIndex < countsLimit) && (getCountAtIndex(srcIndex) == 0)) {
