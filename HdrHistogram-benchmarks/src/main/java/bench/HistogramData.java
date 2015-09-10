@@ -270,32 +270,22 @@ public class HistogramData {
                     histogram.recordValueWithCount(latency, 1);
                     skinnyHistogram.recordValueWithCount(latency, 1);
                 }
-                histogram.setUseZleEncoding(true);
                 ByteBuffer buffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
-
-                histogram.setUseZleEncoding(true);
-                int tzleBytes = histogram.encodeIntoByteBuffer(buffer);
+                int histogramBytes = histogram.encodeIntoByteBuffer(buffer);
                 buffer.rewind();
-                int tzleCompressedBytes = histogram.encodeIntoCompressedByteBuffer(buffer);
-                buffer.rewind();
-                histogram.setUseZleEncoding(false);
-                int noTzleBytes = histogram.encodeIntoByteBuffer(buffer);
-                buffer.rewind();
-                int noTzleCompressedBytes = histogram.encodeIntoCompressedByteBuffer(buffer);
+                int histogramCompressedBytes = histogram.encodeIntoCompressedByteBuffer(buffer);
                 buffer.rewind();
                 int skinnyBytes = skinnyHistogram.encodeIntoByteBuffer(buffer);
                 buffer.rewind();
                 int skinnyCompressBytes = skinnyHistogram.encodeIntoCompressedByteBuffer(buffer);
                 System.out.format(
-                        "%20s [%1d] (TzleBytes/noTlzeBytes/Skinny/%%ReductionA/%%ReductionB): " +
-                                "[%6d /%6d /%6d /%7.2f%%/%7.2f%%]   %5d /%5d /%5d /%7.2f%%/%7.2f%%\n",
+                        "%20s [%1d] (Histogram/Skinny/%%Reduction): " +
+                                "[%6d /%6d /%7.2f%%]   %5d /%5d /%7.2f%%\n",
                         seriesName, digits,
-                        tzleBytes, noTzleBytes, skinnyBytes,
-                        (100.0 - 100.0 * (tzleBytes / (noTzleBytes * 1.0))),
-                        (100.0 - 100.0 * (tzleBytes / (skinnyBytes * 1.0))),
-                        tzleCompressedBytes, noTzleCompressedBytes, skinnyCompressBytes,
-                        (100.0 - 100.0 * (tzleCompressedBytes / (noTzleCompressedBytes * 1.0))),
-                        (100.0 - 100.0 * (tzleCompressedBytes / (skinnyCompressBytes * 1.0)))
+                        histogramBytes, skinnyBytes,
+                        (100.0 - 100.0 * (histogramBytes / (skinnyBytes * 1.0))),
+                        histogramCompressedBytes, skinnyCompressBytes,
+                        (100.0 - 100.0 * (histogramCompressedBytes / (skinnyCompressBytes * 1.0)))
                 );
             }
         }

@@ -52,21 +52,12 @@ public class HdrHistogramEncodingBench {
             histogram.recordValue(latency);
             skinnyHistogram.recordValue(latency);
         }
-        histogram.setUseTzleEncoding(true);
         buffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
     }
 
     @Benchmark
     public void encodeIntoCompressedByteBuffer() {
         buffer.clear();
-        histogram.setUseTzleEncoding(true);
-        histogram.encodeIntoCompressedByteBuffer(buffer);
-    }
-
-    @Benchmark
-    public void encodeIntoCompressedByteBufferNoTZLE() {
-        buffer.clear();
-        histogram.setUseTzleEncoding(false);
         histogram.encodeIntoCompressedByteBuffer(buffer);
     }
 
@@ -79,16 +70,6 @@ public class HdrHistogramEncodingBench {
     @Benchmark
     public void roundtripCompressed() throws DataFormatException {
         buffer.clear();
-        histogram.setUseTzleEncoding(true);
-        histogram.encodeIntoCompressedByteBuffer(buffer);
-        buffer.rewind();
-        Histogram.decodeFromCompressedByteBuffer(buffer, 0);
-    }
-
-    @Benchmark
-    public void roundtripCompressedNoTZLE() throws DataFormatException {
-        buffer.clear();
-        histogram.setUseTzleEncoding(false);
         histogram.encodeIntoCompressedByteBuffer(buffer);
         buffer.rewind();
         Histogram.decodeFromCompressedByteBuffer(buffer, 0);
