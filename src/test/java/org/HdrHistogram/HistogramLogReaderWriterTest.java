@@ -193,8 +193,8 @@ public class HistogramLogReaderWriterTest {
     }
 
     @Test
-    public void ycsbLog() throws Exception {
-        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.hist");
+    public void ycsbV1Log() throws Exception {
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.logV1.hlog");
         HistogramLogReader reader = new HistogramLogReader(readerStream);
         int histogramCount = 0;
         long totalCount = 0;
@@ -213,7 +213,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(1546239, accumulatedHistogram.getMaxValue());
         Assert.assertEquals(1438613579.295, reader.getStartTimeSec());
 
-        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.hist");
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.logV1.hlog");
         reader = new HistogramLogReader(readerStream);
         histogramCount = 0;
         totalCount = 0;
@@ -231,7 +231,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(1375231, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(1546239, accumulatedHistogram.getMaxValue());
 
-        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.hist");
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.logV1.hlog");
         reader = new HistogramLogReader(readerStream);
         histogramCount = 0;
         totalCount = 0;
@@ -250,7 +250,7 @@ public class HistogramLogReaderWriterTest {
 
     @Test
     public void emptyHistogramsInLog() throws Exception {
-        File temp = File.createTempFile("hdrhistogramtesting", "hist");
+        File temp = File.createTempFile("hdrhistogramtesting", "hlog");
         FileOutputStream writerStream = new FileOutputStream(temp);
         HistogramLogWriter writer = new HistogramLogWriter(writerStream);
         writer.outputLogFormatVersion();
