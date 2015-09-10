@@ -1404,14 +1404,6 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return integerValuesHistogram.getNeededByteBufferCapacity(relevantLength);
     }
 
-    private void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        integerValuesHistogram.fillCountsArrayFromBuffer(buffer, length);
-    }
-
-    private void fillBufferFromCountsArray(final ByteBuffer buffer, final int length) {
-        integerValuesHistogram.fillBufferFromCountsArray(buffer, length);
-    }
-
     private static final int DHIST_encodingCookie = 0x0c72124e;
     private static final int DHIST_compressedEncodingCookie = 0x0c72124f;
 

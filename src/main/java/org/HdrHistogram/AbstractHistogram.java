@@ -50,8 +50,6 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     double integerToDoubleValueConversionRatio = 1.0;
 
-    boolean useZleEnconding;
-
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
 
@@ -247,7 +245,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.setStartTimeStamp(source.getStartTimeStamp());
         this.setEndTimeStamp(source.getEndTimeStamp());
         this.autoResize = source.autoResize;
-        this.useZleEnconding = source.useZleEnconding;
     }
 
     @SuppressWarnings("deprecation")
@@ -286,7 +283,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
-        useZleEnconding = true;
     }
 
     final void establishSize(long newHighestTrackableValue) {
@@ -330,28 +326,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public void setAutoResize(boolean autoResize) {
         this.autoResize = autoResize;
-    }
-
-    //
-    //
-    // ZLE Encoding control:
-    //
-    //
-
-    /**
-     * Indicate whether or not the histogram is set to use ZLE (Zero Length Encoding)
-     * @return ZLE encoding setting
-     */
-    public boolean isUseZleEencoding() {
-        return useZleEnconding;
-    }
-
-    /**
-     * Control whether or not histogram is set to use ZLE (Zero Length Encoding)
-     * @param useZleEnconding ZLE encoding setting
-     */
-    public void setUseZleEncoding(boolean useZleEnconding) {
-        this.useZleEnconding = useZleEnconding;
     }
 
     //
@@ -1669,10 +1643,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getNeededPayloadByteBufferCapacity(final int relevantLength) {
-        if (useZleEnconding) {
-            return (relevantLength * V2maxWordSizeInBytes);
-        }
-        return (relevantLength * wordSizeInBytes);
+        return (relevantLength * V2maxWordSizeInBytes);
     }
 
     int getNeededV0PayloadByteBufferCapacity(final int relevantLength) {
@@ -1696,19 +1667,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static final int compressedEncodingCookieBase = V2CompressedEncodingCookieBase;
 
     private int getEncodingCookie() {
-        if (useZleEnconding) {
-            return encodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
-        } else {
-            return V1EncodingCookieBase + (determineWordSizeInBytes() << 4);
-        }
+        return encodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
     }
 
     private int getCompressedEncodingCookie() {
-        if (useZleEnconding) {
-            return compressedEncodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
-        } else {
-            return V1CompressedEncodingCookieBase + (determineWordSizeInBytes() << 4);
-        }
+        return compressedEncodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
     }
 
     private static int getCookieBase(final int cookie) {
@@ -1722,22 +1685,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         int sizeByte = (cookie & 0xf0) >> 4;
         return sizeByte & 0xe;
-    }
-
-    private int determineWordSizeInBytes() {
-        if (useZleEnconding) {
-            return V2maxWordSizeInBytes;
-        } else {
-            // Use totalCount as a quick cap on the individual subbucket count level.
-            long totalCount = getTotalCount();
-            if (totalCount < Short.MAX_VALUE) {
-                return 2;
-            }
-            if (totalCount < Integer.MAX_VALUE) {
-                return 4;
-            }
-            return 8;
-        }
     }
 
     /**
@@ -1762,7 +1709,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         buffer.putDouble(getIntegerToDoubleValueConversionRatio());
 
         int payloadStartPosition = buffer.position();
-        fillBufferFromCountsArray(buffer, determineWordSizeInBytes());
+        fillBufferFromCountsArray(buffer);
         buffer.putInt(initialPosition + 4, buffer.position() - payloadStartPosition); // Record the payload length
 
 
@@ -1816,7 +1763,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             );
         compressor.end();
 
-        if (targetBuffer.isDirect()) {
+        if (!targetBuffer.hasArray()) {
             targetBuffer.put(targetArray, compressedTargetOffset, compressedDataLength);
         }
 
@@ -1864,6 +1811,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         if ((getCookieBase(cookie) == encodingCookieBase) ||
                 (getCookieBase(cookie) == V1EncodingCookieBase)) {
+            if (getCookieBase(cookie) == V2EncodingCookieBase) {
+                if (getWordSizeInBytesFromCookie(cookie) != V2maxWordSizeInBytes) {
+                    throw new IllegalArgumentException(
+                            "The buffer does not contain a Histogram (no valid cookie found)");
+                }
+            }
             payloadLengthInBytes = buffer.getInt();
             normalizingIndexOffset = buffer.getInt();
             numberOfSignificantValueDigits = buffer.getInt();
@@ -1879,7 +1832,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             integerToDoubleValueConversionRatio = 1.0;
             normalizingIndexOffset = 0;
         } else {
-            throw new IllegalArgumentException("The buffer does not contain a Histogram");
+            throw new IllegalArgumentException("The buffer does not contain a Histogram (no valid cookie found)");
         }
         highestTrackableValue = Math.max(highestTrackableValue, minBarForHighestTrackableValue);
 
@@ -1954,6 +1907,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             long count;
             int zerosCount = 0;
             if (wordSizeInBytes == V2maxWordSizeInBytes) {
+                // V2 encoding format uses a long encoded in a ZigZag LEB128 format (up to V2maxWordSizeInBytes):
                 count = ZigZagEncoding.getLong(sourceBuffer);
                 if (count < 0) {
                     long zc = -count;
@@ -1964,6 +1918,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     zerosCount = (int) zc;
                 }
             } else {
+                // decoding V1 and V0 encoding formats depends on indicated word size:
                 count =
                         ((wordSizeInBytes == 2) ? sourceBuffer.getShort() :
                                 ((wordSizeInBytes == 4) ? sourceBuffer.getInt() :
@@ -1987,16 +1942,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return dstIndex; // this is the destination length
     }
 
-    synchronized void fillBufferFromCountsArray(ByteBuffer buffer, int wordSizeInBytes) {
-        if ((wordSizeInBytes != 2) && (wordSizeInBytes != 4) &&
-                (wordSizeInBytes != 8) && (wordSizeInBytes != V2maxWordSizeInBytes)) {
-            throw new IllegalArgumentException("word size must be 2, 4, 8, or V2maxWordSizeInBytes ("+
-                    V2maxWordSizeInBytes + ") bytes");
-        }
+    synchronized void fillBufferFromCountsArray(ByteBuffer buffer) {
         final int countsLimit = countsArrayIndex(maxValue) + 1;
         int srcIndex = 0;
 
         while (srcIndex < countsLimit) {
+            // V2 encoding format uses a ZigZag LEB128 encoded long. Positive values are counts,
+            // while negative values indicate a repeat zero counts.
             long count = getCountAtIndex(srcIndex++);
             if (count < 0) {
                 throw new RuntimeException("Cannot encode histogram containing negative counts (" +
@@ -2004,29 +1956,19 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                         lowestEquivalentValue(valueFromIndex(srcIndex)) + "," +
                         nextNonEquivalentValue(valueFromIndex(srcIndex)) + ")");
             }
-            if (wordSizeInBytes == V2maxWordSizeInBytes) {
-                // Count trailing 0s (which follow this count):
-                long zerosCount = 0;
-                if (count == 0) {
-                    zerosCount = 1;
-                    while ((srcIndex < countsLimit) && (getCountAtIndex(srcIndex) == 0)) {
-                        zerosCount++;
-                        srcIndex++;
-                    }
+            // Count trailing 0s (which follow this count):
+            long zerosCount = 0;
+            if (count == 0) {
+                zerosCount = 1;
+                while ((srcIndex < countsLimit) && (getCountAtIndex(srcIndex) == 0)) {
+                    zerosCount++;
+                    srcIndex++;
                 }
-                if (zerosCount > 1) {
-                    ZigZagEncoding.putLong(buffer, -zerosCount);
-                } else {
-                    ZigZagEncoding.putLong(buffer, count);
-                }
+            }
+            if (zerosCount > 1) {
+                ZigZagEncoding.putLong(buffer, -zerosCount);
             } else {
-                if (wordSizeInBytes == 2) {
-                    buffer.putShort((short) count);
-                } else if (wordSizeInBytes == 4) {
-                    buffer.putInt((int) count);
-                } else {
-                    buffer.putLong(count);
-                }
+                ZigZagEncoding.putLong(buffer, count);
             }
         }
     }

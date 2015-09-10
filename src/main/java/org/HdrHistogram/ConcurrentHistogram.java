@@ -519,10 +519,10 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer, final int wordSizeInBytes) {
+    synchronized void fillBufferFromCountsArray(final ByteBuffer buffer) {
         try {
             wrp.readerLock();
-            super.fillBufferFromCountsArray(buffer, wordSizeInBytes);
+            super.fillBufferFromCountsArray(buffer);
         } finally {
             wrp.readerUnlock();
         }
