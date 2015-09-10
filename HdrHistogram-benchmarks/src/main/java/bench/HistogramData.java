@@ -270,15 +270,15 @@ public class HistogramData {
                     histogram.recordValueWithCount(latency, 1);
                     skinnyHistogram.recordValueWithCount(latency, 1);
                 }
-                histogram.setUseTzleEncoding(true);
+                histogram.setUseZleEncoding(true);
                 ByteBuffer buffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
 
-                histogram.setUseTzleEncoding(true);
+                histogram.setUseZleEncoding(true);
                 int tzleBytes = histogram.encodeIntoByteBuffer(buffer);
                 buffer.rewind();
                 int tzleCompressedBytes = histogram.encodeIntoCompressedByteBuffer(buffer);
                 buffer.rewind();
-                histogram.setUseTzleEncoding(false);
+                histogram.setUseZleEncoding(false);
                 int noTzleBytes = histogram.encodeIntoByteBuffer(buffer);
                 buffer.rewind();
                 int noTzleCompressedBytes = histogram.encodeIntoCompressedByteBuffer(buffer);
