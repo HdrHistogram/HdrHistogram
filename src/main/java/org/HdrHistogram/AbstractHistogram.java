@@ -1661,7 +1661,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static final int V2EncodingCookieBase = 0x1c849303;
     private static final int V2CompressedEncodingCookieBase = 0x1c849304;
 
-    private static final int V2maxWordSizeInBytes = 9; // LEB128 + ZigZag require up to 9 bytes per word
+    private static final int V2maxWordSizeInBytes = 9; // LEB128-64b9B + ZigZag require up to 9 bytes per word
 
     private static final int encodingCookieBase = V2EncodingCookieBase;
     private static final int compressedEncodingCookieBase = V2CompressedEncodingCookieBase;
@@ -1947,7 +1947,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int srcIndex = 0;
 
         while (srcIndex < countsLimit) {
-            // V2 encoding format uses a ZigZag LEB128 encoded long. Positive values are counts,
+            // V2 encoding format uses a ZigZag LEB128-64b9B encoded long. Positive values are counts,
             // while negative values indicate a repeat zero counts.
             long count = getCountAtIndex(srcIndex++);
             if (count < 0) {
