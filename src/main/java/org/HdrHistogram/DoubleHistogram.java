@@ -1429,7 +1429,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         int relevantLength = integerValuesHistogram.getLengthForNumberOfBuckets(
                 integerValuesHistogram.getBucketsNeededToCoverValue(maxValue));
         if (buffer.capacity() < getNeededByteBufferCapacity(relevantLength)) {
-            throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" +
+            throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for " +
                     getNeededByteBufferCapacity(relevantLength) + " bytes");
         }
         buffer.putInt(DHIST_encodingCookie);
