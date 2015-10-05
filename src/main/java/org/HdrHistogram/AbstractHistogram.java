@@ -1696,7 +1696,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long maxValue = getMaxValue();
         final int relevantLength = countsArrayIndex(maxValue) + 1;
         if (buffer.capacity() < getNeededByteBufferCapacity(relevantLength)) {
-            throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for" +
+            throw new ArrayIndexOutOfBoundsException("buffer does not have capacity for " +
                     getNeededByteBufferCapacity(relevantLength) + " bytes");
         }
         int initialPosition = buffer.position();
@@ -1928,10 +1928,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
             if (count > maxAllowableCountInHistigram) {
                 throw new IllegalArgumentException(
-                        "An encoded count (" +
-                                + count +
-                                ") does not fit in the Histogram's (" +
-                                this.wordSizeInBytes + " bytes) was encountered in the source");
+                        "An encoded count (" + count +
+                        ") does not fit in the Histogram's (" +
+                        this.wordSizeInBytes + " bytes) was encountered in the source");
             }
             if (zerosCount > 0) {
                 dstIndex += zerosCount; // No need to set zeros in array. Just skip them.
@@ -1952,7 +1951,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             long count = getCountAtIndex(srcIndex++);
             if (count < 0) {
                 throw new RuntimeException("Cannot encode histogram containing negative counts (" +
-                        count + " at index " + srcIndex + ", corresponding the value range [" +
+                        count + ") at index " + srcIndex + ", corresponding the value range [" +
                         lowestEquivalentValue(valueFromIndex(srcIndex)) + "," +
                         nextNonEquivalentValue(valueFromIndex(srcIndex)) + ")");
             }
