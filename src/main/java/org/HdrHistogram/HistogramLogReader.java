@@ -36,7 +36,7 @@ import java.util.zip.DataFormatException;
  * and ignored in parsing the histogram log. All other lines must
  * contain a valid interval description.
  * <p>
- * A valid interval description line must contain exactly three text fields:
+ * A valid interval description line must contain exactly four text fields:
  * <ul>
  * <li>StartTimestamp: The first field must contain a number parse-able as a Double value,
  * representing the start timestamp of the interval in seconds.</li>
