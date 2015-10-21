@@ -110,7 +110,7 @@
                         var percentile = 100.0 - (100.0/dt.getValue(row, 0));
                         return dt.getColumnLabel(j) + ': ' +
                                 percentile.toPrecision(7) +
-                                '\%\'ile = ' + dt.getValue(row, j) + ' usec'
+                                '\%\'ile = ' + dt.getValue(row, j) + ' ' + unitText
                     }
                 })(i)
             });
