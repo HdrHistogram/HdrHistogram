@@ -889,15 +889,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
         AbstractHistogram that = (AbstractHistogram)other;
         if ((lowestDiscernibleValue != that.lowestDiscernibleValue) ||
-                (highestTrackableValue != that.highestTrackableValue) ||
                 (numberOfSignificantValueDigits != that.numberOfSignificantValueDigits) ||
                 (integerToDoubleValueConversionRatio != that.integerToDoubleValueConversionRatio)) {
             return false;
         }
-        if (countsArrayLength != that.countsArrayLength) {
+        if (getTotalCount() != that.getTotalCount()) {
             return false;
         }
-        if (getTotalCount() != that.getTotalCount()) {
+        if (getMaxValue() != that.getMaxValue()) {
+            return false;
+        }
+        if (getMinNonZeroValue() != that.getMinNonZeroValue()) {
             return false;
         }
         for (int i = 0; i < countsArrayLength; i++) {
@@ -906,6 +908,27 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
         }
         return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int h = 0;
+        h = oneAtATimeHashStep(h, unitMagnitude);
+        h = oneAtATimeHashStep(h, numberOfSignificantValueDigits);
+        h = oneAtATimeHashStep(h, (int) getTotalCount());
+        h = oneAtATimeHashStep(h, (int) getMaxValue());
+        h = oneAtATimeHashStep(h, (int) getMinNonZeroValue());
+        h += (h << 3);
+        h ^= (h >> 11);
+        h += (h << 15);
+        return h;
+    }
+
+    private int oneAtATimeHashStep(int h, final int v) {
+        h += v;
+        h += (h << 10);
+        h ^= (h >> 6);
+        return h;
     }
 
     //

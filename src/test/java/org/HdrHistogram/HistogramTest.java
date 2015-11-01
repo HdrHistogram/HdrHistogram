@@ -450,7 +450,7 @@ public class HistogramTest {
         Assert.assertNotNull(newHistogram);
         assertEqual(histogram, newHistogram);
         assertTrue(histogram.equals(newHistogram));
-        Assert.assertFalse(histogram.hashCode() == newHistogram.hashCode());
+        Assert.assertTrue(histogram.hashCode() == newHistogram.hashCode());
         assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.copy().getNeededByteBufferCapacity());
         assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.getNeededByteBufferCapacity());
     }

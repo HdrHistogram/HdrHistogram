@@ -329,6 +329,7 @@ public class DoubleHistogramTest {
 
     private void assertEqual(DoubleHistogram expectedHistogram, DoubleHistogram actualHistogram) {
         assertEquals(expectedHistogram, actualHistogram);
+        Assert.assertTrue(expectedHistogram.hashCode() == actualHistogram.hashCode());
         assertEquals(
                 expectedHistogram.getCountAtValue(testValueLevel),
                 actualHistogram.getCountAtValue(testValueLevel));
@@ -424,7 +425,6 @@ public class DoubleHistogramTest {
         histogram.copyInto(targetHistogram);
         assertEqual(histogram, targetHistogram);
 
-
         DoubleHistogram withIntHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
                 IntCountsHistogram.class);
         DoubleHistogram targetWithIntHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
@@ -442,7 +442,6 @@ public class DoubleHistogramTest {
 
         withIntHistogram.copyInto(targetWithIntHistogram);
         assertEqual(withIntHistogram, targetWithIntHistogram);
-
 
         DoubleHistogram withShortHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
                 ShortCountsHistogram.class);
@@ -462,7 +461,6 @@ public class DoubleHistogramTest {
         withShortHistogram.copyInto(targetWithShortHistogram);
         assertEqual(withShortHistogram, targetWithShortHistogram);
 
-
         DoubleHistogram withConcurrentHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
                 ConcurrentHistogram.class);
         DoubleHistogram targetWithConcurrentHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
@@ -481,7 +479,6 @@ public class DoubleHistogramTest {
         withConcurrentHistogram.copyInto(targetWithConcurrentHistogram);
         assertEqual(withConcurrentHistogram, targetWithConcurrentHistogram);
 
-
         ConcurrentDoubleHistogram concurrentHistogram =
                 new ConcurrentDoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         ConcurrentDoubleHistogram targetConcurrentHistogram =
@@ -499,7 +496,6 @@ public class DoubleHistogramTest {
 
         concurrentHistogram.copyInto(targetConcurrentHistogram);
         assertEqual(concurrentHistogram, targetConcurrentHistogram);
-
 
         DoubleHistogram withSyncHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits,
                 SynchronizedHistogram.class);

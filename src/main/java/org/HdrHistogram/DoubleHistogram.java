@@ -756,23 +756,12 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             return false;
         }
         DoubleHistogram that = (DoubleHistogram) other;
-        if ((currentLowestValueInAutoRange != that.currentLowestValueInAutoRange) ||
-                (currentHighestValueLimitInAutoRange != that.currentHighestValueLimitInAutoRange) ||
-                (getNumberOfSignificantValueDigits() != that.getNumberOfSignificantValueDigits())) {
-            return false;
-        }
-        if (integerValuesHistogram.countsArrayLength != that.integerValuesHistogram.countsArrayLength) {
-            return false;
-        }
-        if (getTotalCount() != that.getTotalCount()) {
-            return false;
-        }
-        for (int i = 0; i < integerValuesHistogram.countsArrayLength; i++) {
-            if (integerValuesHistogram.getCountAtIndex(i) != that.integerValuesHistogram.getCountAtIndex(i)) {
-                return false;
-            }
-        }
-        return true;
+        return integerValuesHistogram.equals(that.integerValuesHistogram);
+    }
+
+    @Override
+    public int hashCode() {
+        return  integerValuesHistogram.hashCode();
     }
 
     //
