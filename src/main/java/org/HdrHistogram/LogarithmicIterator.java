@@ -18,8 +18,9 @@ import java.util.Iterator;
 public class LogarithmicIterator extends AbstractHistogramIterator implements Iterator<HistogramIterationValue> {
     long valueUnitsInFirstBucket;
     double logBase;
-    long nextValueReportingLevel;
-    long nextValueReportingLevelLowestEquivalent;
+    double nextValueReportingLevel;
+    long currentStepHighestValueReportingLevel;
+    long currentStepLowestValueReportingLevel;
 
     /**
      * Reset iterator for re-use in a fresh iteration over the same histogram data set.
@@ -34,8 +35,9 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
         super.resetIterator(histogram);
         this.logBase = logBase;
         this.valueUnitsInFirstBucket = valueUnitsInFirstBucket;
-        this.nextValueReportingLevel = valueUnitsInFirstBucket;
-        this.nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
+        nextValueReportingLevel = valueUnitsInFirstBucket;
+        this.currentStepHighestValueReportingLevel = ((long) nextValueReportingLevel) - 1;
+        this.currentStepLowestValueReportingLevel = histogram.lowestEquivalentValue(currentStepHighestValueReportingLevel);
     }
 
     /**
@@ -52,24 +54,27 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
         if (super.hasNext()) {
             return true;
         }
-        // If next iterate does not move to the next sub bucket index (which is empty if
-        // if we reached this point), then we are not done iterating... Otherwise we're done.
-        return (nextValueReportingLevelLowestEquivalent < nextValueAtIndex);
+        // If the next iterate will not move to the next sub bucket index (which is empty if
+        // if we reached this point), then we are not yet done iterating (we want to iterate
+        // until we are no longer on a value that has a count, rather than util we first reach
+        // the last value that has a count. The difference is subtle but important)...
+        return (histogram.lowestEquivalentValue((long) nextValueReportingLevel) < nextValueAtIndex);
     }
 
     @Override
     void incrementIterationLevel() {
         nextValueReportingLevel *= logBase;
-        nextValueReportingLevelLowestEquivalent = histogram.lowestEquivalentValue(nextValueReportingLevel);
+        this.currentStepHighestValueReportingLevel = ((long)nextValueReportingLevel) - 1;
+        currentStepLowestValueReportingLevel = histogram.lowestEquivalentValue(currentStepHighestValueReportingLevel);
     }
 
     @Override
     long getValueIteratedTo() {
-        return nextValueReportingLevel;
+        return currentStepHighestValueReportingLevel;
     }
 
     @Override
     boolean reachedIterationLevel() {
-        return (currentValueAtIndex >= nextValueReportingLevelLowestEquivalent);
+        return (currentValueAtIndex >= currentStepLowestValueReportingLevel);
     }
 }

@@ -306,8 +306,8 @@ public class HistogramDataAccessTest {
             if (index == 0) {
                 Assert.assertEquals("Linear 1 sec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
-                        "] added a count of 10001",
-                        10001, countAddedInThisBucket);
+                        "] added a count of 10000",
+                        10000, countAddedInThisBucket);
             }
             // Because value resolution is low enough (3 digits) that multiple linear buckets will end up
             // residing in a single value-equivalent range, some linear buckets will have counts of 2 or
@@ -326,7 +326,7 @@ public class HistogramDataAccessTest {
         // Iterate data using linear buckets of 1 msec each.
         for (HistogramIterationValue v : histogram.linearBucketValues(1000)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
-            if (index == 0) {
+            if (index == 1) {
                 Assert.assertEquals("Linear 1 sec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
                         "] added a count of 10000",
@@ -381,8 +381,8 @@ public class HistogramDataAccessTest {
             if (index == 0) {
                 Assert.assertEquals("Logarithmic 10 msec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
-                        "] added a count of 10001",
-                        10001, countAddedInThisBucket);
+                        "] added a count of 10000",
+                        10000, countAddedInThisBucket);
             }
             totalAddedCounts += v.getCountAddedInThisIterationStep();
             index++;
@@ -480,6 +480,23 @@ public class HistogramDataAccessTest {
         }
         Assert.assertEquals("index should be equal to countsArrayLength", histogram.countsArrayLength, index);
         Assert.assertEquals("Total added counts should be 20000", 20000, totalAddedCounts);
+    }
+
+    @Test
+    public void testLinearIteratorSteps() {
+        IntCountsHistogram histogram = new IntCountsHistogram(2);
+        histogram.recordValue(193);
+        histogram.recordValue(0);
+        histogram.recordValue(1);
+        histogram.recordValue(64);
+        histogram.recordValue(128);
+        int step = 64;
+        int stepCount = 0;
+        for (HistogramIterationValue itValue : histogram.linearBucketValues(step)) {
+            stepCount++;
+            itValue.getCountAddedInThisIterationStep();
+        }
+        Assert.assertEquals("should see 4 steps", 4, stepCount);
     }
 
     @Test

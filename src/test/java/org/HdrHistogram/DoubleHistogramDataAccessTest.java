@@ -312,8 +312,8 @@ public class DoubleHistogramDataAccessTest {
             if (index == 0) {
                 Assert.assertEquals("Linear 1 sec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
-                        "] added a count of 10001",
-                        10001, countAddedInThisBucket);
+                        "] added a count of 10000",
+                        10000, countAddedInThisBucket);
             }
             // Because value resolution is low enough (3 digits) that multiple linear buckets will end up
             // residing in a single value-equivalent range, some linear buckets will have counts of 2 or
@@ -332,7 +332,7 @@ public class DoubleHistogramDataAccessTest {
         // Iterate data using linear buckets of 1 msec each.
         for (DoubleHistogramIterationValue v : histogram.linearBucketValues(1000)) {
             long countAddedInThisBucket = v.getCountAddedInThisIterationStep();
-            if (index == 0) {
+            if (index == 1) {
                 Assert.assertEquals("Linear 1 sec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
                         "] added a count of 10000",
@@ -388,8 +388,8 @@ public class DoubleHistogramDataAccessTest {
             if (index == 0) {
                 Assert.assertEquals("Logarithmic 10 msec bucket # 0 [" +
                         v.getValueIteratedFrom() + ".." + v.getValueIteratedTo() +
-                        "] added a count of 10001",
-                        10001, countAddedInThisBucket);
+                        "] added a count of 10000",
+                        10000, countAddedInThisBucket);
             }
             totalAddedCounts += v.getCountAddedInThisIterationStep();
             index++;
