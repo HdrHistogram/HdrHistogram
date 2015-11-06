@@ -68,6 +68,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
 
     @Override
     boolean reachedIterationLevel() {
-        return (currentValueAtIndex >= currentStepLowestValueReportingLevel);
+        return ((currentValueAtIndex >= currentStepLowestValueReportingLevel) ||
+                (currentIndex >= histogram.countsArrayLength - 1)) ;
     }
 }

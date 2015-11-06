@@ -12,6 +12,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * JUnit test for {@link org.HdrHistogram.Histogram}
@@ -497,6 +498,33 @@ public class HistogramDataAccessTest {
             itValue.getCountAddedInThisIterationStep();
         }
         Assert.assertEquals("should see 4 steps", 4, stepCount);
+    }
+
+    private static void recordOneValueAndDisplayLinearBuckets(int value, long step) {
+        IntCountsHistogram histogram = new IntCountsHistogram(2);
+        histogram.recordValue(value);
+        for (HistogramIterationValue itValue : histogram.linearBucketValues(step)) {
+            itValue.getCountAddedInThisIterationStep();
+        }
+    }
+
+    @Test
+    public void scanLinearIteratorForAIOOB() {
+        List<int[]> broken = new ArrayList<int[]>();
+        // scan iterators through a range of step sizes and recorded values, looking for AIOOB:
+        for (int step = 1; step < 100; step++) {
+            for (int value = 1; value < 1000; value++) {
+                try {
+                    recordOneValueAndDisplayLinearBuckets(value, step);
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    broken.add(new int[] { value, step });
+                }
+            }
+        }
+        Assert.assertEquals("should not have any AIOOB iterations", 0, broken.size());
+        for (int[] brk : broken) {
+            System.out.println("broken: value=" + brk[0] + " step=" + brk[1]);
+        }
     }
 
     @Test

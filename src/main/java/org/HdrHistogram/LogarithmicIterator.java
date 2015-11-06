@@ -75,6 +75,7 @@ public class LogarithmicIterator extends AbstractHistogramIterator implements It
 
     @Override
     boolean reachedIterationLevel() {
-        return (currentValueAtIndex >= currentStepLowestValueReportingLevel);
+        return ((currentValueAtIndex >= currentStepLowestValueReportingLevel) ||
+                (currentIndex >= histogram.countsArrayLength - 1)) ;
     }
 }
