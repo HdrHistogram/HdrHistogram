@@ -115,17 +115,21 @@
  * class and it's {@link org.HdrHistogram.IntCountsHistogram} and {@link org.HdrHistogram.ShortCountsHistogram}
  * variants are NOT internally synchronized, and do NOT use atomic variables. Callers wishing to make potentially
  * concurrent, multi-threaded updates or queries against Histogram objects should either take care to externally
- * synchronize and/or order their access, or use the {@link org.HdrHistogram.SynchronizedHistogram},
- * {@link org.HdrHistogram.AtomicHistogram}, or {@link org.HdrHistogram.ConcurrentHistogram} variants.
+ * synchronize and/or order their access, or use the {@link org.HdrHistogram.ConcurrentHistogram},
+ * {@link org.HdrHistogram.AtomicHistogram}, or {@link org.HdrHistogram.SynchronizedHistogram} variants.
  * <p>
- * It's worth mentioning that since Histogram objects are additive, it is common practice to use per-thread,
- * non-synchronized histograms for the recording fast path, and "flipping" the actively recorded-to histogram
- * (usually with some non-locking variants on the fast path) and having a summary/reporting thread perform
- * histogram aggregation math across time and/or threads. When such continuous non-blocking recording operation
- * (concurrent or not) is desired even when sampling, analyzing, or reporting operations are needed, consider using
- * the {@link org.HdrHistogram.Recorder} and
- * {@link org.HdrHistogram.SingleWriterRecorder} recorder variants that were specifically designed
- * for that purpose.
+ * A common pattern seen in histogram value recording involves recording values in a critical path (multi-threaded
+ * or not), coupled with a non-critical path reading the recorded data for summary/reporting purposes. When such
+ * continuous non-blocking recording operation (concurrent or not) is desired even when sampling, analyzing, or
+ * reporting operations are needed, consider using the {@link org.HdrHistogram.Recorder} and
+ * {@link org.HdrHistogram.SingleWriterRecorder} variants that were specifically designed for that purpose.
+ * Recorders provide a recording API similar to Histogram, and internally maintain and coordinate active/inactive
+ * histograms such that recording remains wait-free in the presense of accurate and stable interval sampling.
+ * </p>
+ * <p>
+ * It is worth mentioning that since Histogram objects are additive, it is common practice to use per-thread
+ * non-synchronized histograms or {@link org.HdrHistogram.SingleWriterRecorder}s, and using a summary/reporting
+ * thread perform histogram aggregation math across time and/or threads.
  * </p>
  * <h3>Iteration</h3>
  * Histograms supports multiple convenient forms of iterating through the histogram data set, including linear,
