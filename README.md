@@ -40,7 +40,7 @@ Histogram form. IntHistogram and ShortHistogram, which track value counts in
 int and short fields respectively, are provided for use cases where smaller
 count ranges are practical and smaller overall storage is beneficial.
 
-HdrHistogram is designed for recoding histograms of value measurements in
+HdrHistogram is designed for recording histograms of value measurements in
 latency and performance sensitive applications. Measurements show value
 recording times as low as 3-6 nanoseconds on modern (circa 2012) Intel CPUs.
 AbstractHistogram maintains a fixed cost in both space and time. A
