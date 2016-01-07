@@ -2027,6 +2027,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         decompressor.inflate(headerBuffer.array());
         T histogram = decodeFromByteBuffer(
                 headerBuffer, histogramClass, minBarForHighestTrackableValue, decompressor);
+
+        decompressor.end();
+
         return histogram;
     }
 
