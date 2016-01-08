@@ -242,7 +242,7 @@ public class SynchronizedDoubleHistogram extends DoubleHistogram {
         if ( this == other ) {
             return true;
         }
-        if (other instanceof AbstractHistogram) {
+        if (other instanceof DoubleHistogram) {
             DoubleHistogram otherHistogram = (DoubleHistogram) other;
             if (integerValuesHistogram.identity < otherHistogram.integerValuesHistogram.identity) {
                 synchronized (this) {
