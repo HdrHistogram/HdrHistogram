@@ -342,6 +342,13 @@ public class DoubleHistogramTest {
     }
 
     @Test
+    public void equalsWillNotThrowClassCastException() {
+        SynchronizedDoubleHistogram synchronizedDoubleHistogram = new SynchronizedDoubleHistogram(1);
+        IntCountsHistogram other = new IntCountsHistogram(1);
+        synchronizedDoubleHistogram.equals(other);
+    }
+
+    @Test
     public void testSerialization() throws Exception {
         DoubleHistogram histogram =
                 new DoubleHistogram(trackableValueRangeSize, 3);
