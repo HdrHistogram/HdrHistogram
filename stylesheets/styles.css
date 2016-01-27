@@ -3,7 +3,7 @@
 body {
   padding:50px;
   font:14px/1.5 Lato, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color:#777;
+  color:#222;
   font-weight:300;
 }
 
@@ -40,7 +40,7 @@ a {
 
 a small {
   font-size:11px;
-  color:#777;
+  color:#222;
   margin-top:-0.6em;
   display:block;
 }
