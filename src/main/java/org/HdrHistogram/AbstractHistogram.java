@@ -95,6 +95,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     int unitMagnitude;
     int subBucketHalfCount;
     long subBucketMask;
+    long unitMagnitudeMask;
     volatile long maxValue = 0;
     volatile long minNonZeroValue = Long.MAX_VALUE;
 
@@ -156,13 +157,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value new maxValue to set
      */
     void updatedMaxValue(final long value) {
-        while (value > maxValue) {
-            maxValueUpdater.compareAndSet(this, maxValue, value);
+        final long internalValue = value & unitMagnitudeMask;
+        while (internalValue > maxValue) {
+            maxValueUpdater.compareAndSet(this, maxValue, internalValue);
         }
     }
 
     final void resetMaxValue(final long maxValue) {
-        this.maxValue = maxValue;
+        this.maxValue = maxValue & unitMagnitudeMask;
     }
 
     /**
@@ -171,13 +173,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value new minNonZeroValue to set
      */
     void updateMinNonZeroValue(final long value) {
-        while (value < minNonZeroValue) {
-            minNonZeroValueUpdater.compareAndSet(this, minNonZeroValue, value);
+        final long internalValue = value & unitMagnitudeMask;
+        if (internalValue == 0) {
+            return;
+        }
+        while (internalValue < minNonZeroValue) {
+            minNonZeroValueUpdater.compareAndSet(this, minNonZeroValue, internalValue);
         }
     }
 
     void resetMinNonZeroValue(final long minNonZeroValue) {
-        this.minNonZeroValue = minNonZeroValue;
+        this.minNonZeroValue = (minNonZeroValue == Long.MAX_VALUE) ?
+                minNonZeroValue : minNonZeroValue & unitMagnitudeMask;
     }
 
     //
@@ -264,6 +271,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
         unitMagnitude = (int) Math.floor(Math.log(lowestDiscernibleValue)/Math.log(2));
+        unitMagnitudeMask = ~((1 << unitMagnitude) - 1);
 
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to
         // provide unit resolution to at least largestValueWithSingleUnitResolution. So figure out
@@ -588,7 +596,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if ((bucketCount == otherHistogram.bucketCount) &&
                 (subBucketCount == otherHistogram.subBucketCount) &&
                 (unitMagnitude == otherHistogram.unitMagnitude) &&
-                (getNormalizingIndexOffset() == otherHistogram.getNormalizingIndexOffset())) {
+                (getNormalizingIndexOffset() == otherHistogram.getNormalizingIndexOffset()) &&
+                !(otherHistogram instanceof ConcurrentHistogram) ) {
             // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
             long observedOtherTotalCount = 0;
             for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
@@ -602,10 +611,18 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             updatedMaxValue(Math.max(getMaxValue(), otherHistogram.getMaxValue()));
             updateMinNonZeroValue(Math.min(getMinNonZeroValue(), otherHistogram.getMinNonZeroValue()));
         } else {
-            // Arrays are not a direct match, so we can't just stream through and add them.
-            // Instead, go through the array and add each non-zero value found at it's proper value:
-            for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
-                long otherCount = otherHistogram.getCountAtIndex(i);
+            // Arrays are not a direct match (or the other could change on the fly in some valid way),
+            // so we can't just stream through and add them. Instead, go through the array and add each
+            // non-zero value found at it's proper value:
+
+            // Do max value first, to avoid max value updates on each iteration:
+            int otherMaxIndex = otherHistogram.countsArrayIndex(otherHistogram.getMaxValue());
+            long otherCount = otherHistogram.getCountAtIndex(otherMaxIndex);
+            recordValueWithCount(otherHistogram.valueFromIndex(otherMaxIndex), otherCount);
+
+            // Record the remaining values, up to but not including the max value:
+            for (int i = 0; i < otherMaxIndex; i++) {
+                otherCount = otherHistogram.getCountAtIndex(i);
                 if (otherCount > 0) {
                     recordValueWithCount(otherHistogram.valueFromIndex(i), otherCount);
                 }
@@ -634,39 +651,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
             resize(otherHistogram.getMaxValue());
         }
-        if ((bucketCount == otherHistogram.bucketCount) &&
-                (subBucketCount == otherHistogram.subBucketCount) &&
-                (unitMagnitude == otherHistogram.unitMagnitude) &&
-                (getNormalizingIndexOffset() == otherHistogram.getNormalizingIndexOffset())) {
-            // Counts arrays are of the same length and meaning, so we can just iterate and add directly:
-            long observedOtherTotalCount = 0;
-            for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
-                long otherCount = otherHistogram.getCountAtIndex(i);
-                if (otherCount > 0) {
-                    if (getCountAtIndex(i) < otherCount) {
-                        throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
-                                valueFromIndex(i) + " is larger than this one's (" + getCountAtIndex(i) + ")");
-                    }
-                    addToCountAtIndex(i, -otherCount);
-                    observedOtherTotalCount += otherCount;
+        for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
+            long otherCount = otherHistogram.getCountAtIndex(i);
+            if (otherCount > 0) {
+                long otherValue = otherHistogram.valueFromIndex(i);
+                if (getCountAtValue(otherValue) < otherCount) {
+                    throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
+                            otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
                 }
-            }
-            setTotalCount(getTotalCount() - observedOtherTotalCount);
-            updatedMaxValue(Math.max(getMaxValue(), otherHistogram.getMaxValue()));
-            updateMinNonZeroValue(Math.min(getMinNonZeroValue(), otherHistogram.getMinNonZeroValue()));
-        } else {
-            // Arrays are not a direct match, so we can't just stream through and add them.
-            // Instead, go through the array and add each non-zero value found at it's proper value:
-            for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
-                long otherCount = otherHistogram.getCountAtIndex(i);
-                if (otherCount > 0) {
-                    long otherValue = otherHistogram.valueFromIndex(i);
-                    if (getCountAtValue(otherValue) < otherCount) {
-                        throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
-                                otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
-                    }
-                    recordValueWithCount(otherValue, -otherCount);
-                }
+                recordValueWithCount(otherValue, -otherCount);
             }
         }
         // With subtraction, the max and minNonZero values could have changed:
