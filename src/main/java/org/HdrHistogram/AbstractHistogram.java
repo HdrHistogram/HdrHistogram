@@ -157,14 +157,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value new maxValue to set
      */
     void updatedMaxValue(final long value) {
-        final long internalValue = value & unitMagnitudeMask;
+        final long internalValue = value | unitMagnitudeMask; // Max unit-equivalent value
         while (internalValue > maxValue) {
             maxValueUpdater.compareAndSet(this, maxValue, internalValue);
         }
     }
 
     final void resetMaxValue(final long maxValue) {
-        this.maxValue = maxValue & unitMagnitudeMask;
+        this.maxValue = maxValue | unitMagnitudeMask; // Max unit-equivalent value
     }
 
     /**
@@ -173,18 +173,19 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value new minNonZeroValue to set
      */
     void updateMinNonZeroValue(final long value) {
-        final long internalValue = value & unitMagnitudeMask;
-        if (internalValue == 0) {
-            return;
+        if (value <= unitMagnitudeMask) {
+            return; // Unit-equivalent to 0.
         }
+        final long internalValue = value & ~unitMagnitudeMask; // Min unit-equivalent value
         while (internalValue < minNonZeroValue) {
             minNonZeroValueUpdater.compareAndSet(this, minNonZeroValue, internalValue);
         }
     }
 
     void resetMinNonZeroValue(final long minNonZeroValue) {
+        final long internalValue = minNonZeroValue & ~unitMagnitudeMask; // Min unit-equivalent value
         this.minNonZeroValue = (minNonZeroValue == Long.MAX_VALUE) ?
-                minNonZeroValue : minNonZeroValue & unitMagnitudeMask;
+                minNonZeroValue : internalValue;
     }
 
     //
@@ -271,7 +272,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
         unitMagnitude = (int) Math.floor(Math.log(lowestDiscernibleValue)/Math.log(2));
-        unitMagnitudeMask = ~((1 << unitMagnitude) - 1);
+        unitMagnitudeMask = (1 << unitMagnitude) - 1;
 
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to
         // provide unit resolution to at least largestValueWithSingleUnitResolution. So figure out
