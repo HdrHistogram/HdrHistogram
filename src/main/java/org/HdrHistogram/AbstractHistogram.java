@@ -1015,7 +1015,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * equivalent values are counted in a common total count.
      *
      * @param value The given value
-     * @return The lowest value that is equivalent to the given value within the histogram's resolution.
+     * @return The size of the range of values equivalent to the given value.
      */
     public long sizeOfEquivalentValueRange(final long value) {
         final int bucketIndex = getBucketIndex(value);
