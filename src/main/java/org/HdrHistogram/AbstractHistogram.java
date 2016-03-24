@@ -95,7 +95,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     // counts array reference fields that subclass implementations will typically add.
 
     /**
-     * Number of leading zeros in the largest value that can fit in bucket 0..
+     * Number of leading zeros in the largest value that can fit in bucket 0.
      */
     int leadingZeroCountBase;
     int subBucketHalfCountMagnitude;
