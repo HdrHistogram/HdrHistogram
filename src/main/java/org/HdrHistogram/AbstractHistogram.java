@@ -101,7 +101,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     int subBucketHalfCountMagnitude;
 
     /**
-     * Largest k such that 2^k <= lowestDiscernibleValue
+     * Largest k such that 2^k &lt;= lowestDiscernibleValue
      */
     int unitMagnitude;
     int subBucketHalfCount;
