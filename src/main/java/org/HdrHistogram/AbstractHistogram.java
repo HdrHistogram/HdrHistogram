@@ -178,8 +178,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             return; // Unit-equivalent to 0.
         }
         final long internalValue = value & ~unitMagnitudeMask; // Min unit-equivalent value
-        while (internalValue < minNonZeroValue) {
-            minNonZeroValueUpdater.compareAndSet(this, minNonZeroValue, internalValue);
+        long sampledMinNonZeroValue;
+        while (internalValue < (sampledMinNonZeroValue = minNonZeroValue)) {
+            minNonZeroValueUpdater.compareAndSet(this, sampledMinNonZeroValue, internalValue);
         }
     }
 
