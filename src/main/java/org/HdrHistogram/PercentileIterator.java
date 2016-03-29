@@ -62,6 +62,21 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
     @Override
     void incrementIterationLevel() {
         percentileLevelToIterateFrom = percentileLevelToIterateTo;
+
+        // To calculate the delta to add on at the current iteration, we want to know how many
+        // iterations at the current scale it would take to go from 0 to 100.
+        // By definition, it should take percentileTicksPerHalfDistance to go half the
+        // remaining distance, so the ticks to go 0-100 is
+        // 2 * percentileTicksPerHalfDistance * (multiples of remaining distance that fit in 0-100).
+        //
+        // However, this will give a "natural" half-distance behavior, where each iteration is
+        // slightly smaller than the one preceding it. To make it easier for users to reason about,
+        // it would be nice if the iteration size would stay the same throughout the entire first
+        // half, then divide in half and stay the same for the next quarter, etc. To do this,
+        // instead of using simply the number of times that the remaining distance will fit, we use
+        // the greatest power of 2 smaller than that. This will exhibit the desired behavior of
+        // "the same every time until it can double".
+
         long percentileReportingTicks =
                 percentileTicksPerHalfDistance *
                         (long) Math.pow(2,

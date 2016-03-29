@@ -2168,6 +2168,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return bucketBaseIndex + offsetInBucket;
     }
 
+    /**
+     * @return the lowest (and therefore highest precision) bucket index that can represent the value
+     */
     int getBucketIndex(final long value) {
         // Calculates the number of powers of two by which the value is greater than the biggest value that fits in
         // bucket 0. This is the bucket index since each successive bucket can hold a value 2x greater.
