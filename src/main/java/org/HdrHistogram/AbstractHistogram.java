@@ -158,8 +158,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     void updatedMaxValue(final long value) {
         final long internalValue = value | unitMagnitudeMask; // Max unit-equivalent value
+        long maxValue = this.maxValue;
         while (internalValue > maxValue) {
-            maxValueUpdater.compareAndSet(this, maxValue, internalValue);
+            if(maxValueUpdater.compareAndSet(this, maxValue, internalValue)) {
+                return;
+            } else {
+                maxValue = this.maxValue;
+            }
         }
     }
 
