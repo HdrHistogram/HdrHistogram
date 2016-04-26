@@ -200,7 +200,7 @@ public class HistogramLogWriter {
      * logging based on histogram timestamps.
      * Base time is expected to be in msec since the epoch, as histogram start/end times
      * are typically stamped with absolute times in msec since the epoch.
-     * @param baseTimeMsec
+     * @param baseTimeMsec base time to calculate timestamp deltas from
      */
     public void setBaseTime(long baseTimeMsec) {
         this.baseTime = baseTimeMsec;

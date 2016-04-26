@@ -41,6 +41,10 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
     int numberOfSignificantValueDigits;
 
     int bucketCount;
+    /**
+     * Power-of-two length of linearly scaled array slots in the counts array. Long enough to hold the first sequence of
+     * entries that must be distinguished by a single unit (determined by configured precision).
+     */
     int subBucketCount;
     int countsArrayLength;
     int wordSizeInBytes;
@@ -84,17 +88,30 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
  * See package description for {@link org.HdrHistogram} for details.
  *
  */
-
 public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable {
 
     // "Hot" accessed fields (used in the the value recording code path) are bunched here, such
     // that they will have a good chance of ending up in the same cache line as the totalCounts and
     // counts array reference fields that subclass implementations will typically add.
+
+    /**
+     * Number of leading zeros in the largest value that can fit in bucket 0.
+     */
     int leadingZeroCountBase;
     int subBucketHalfCountMagnitude;
+
+    /**
+     * Largest k such that 2^k &lt;= lowestDiscernibleValue
+     */
     int unitMagnitude;
     int subBucketHalfCount;
+    /**
+     * Biggest value that can fit in bucket 0
+     */
     long subBucketMask;
+    /**
+     * Lowest unitMagnitude bits are set
+     */
     long unitMagnitudeMask;
     volatile long maxValue = 0;
     volatile long minNonZeroValue = Long.MAX_VALUE;
@@ -271,6 +288,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             setNormalizingIndexOffset(normalizingIndexOffset);
         }
 
+        /*
+         * Given a 3 decimal point accuracy, the expectation is obviously for "+/- 1 unit at 1000". It also means that
+         * it's "ok to be +/- 2 units at 2000". The "tricky" thing is that it is NOT ok to be +/- 2 units at 1999. Only
+         * starting at 2000. So internally, we need to maintain single unit resolution to 2x 10^decimalPoints.
+         */
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
         unitMagnitude = (int) Math.floor(Math.log(lowestDiscernibleValue)/Math.log(2));
@@ -290,12 +312,29 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         establishSize(highestTrackableValue);
 
         // Establish leadingZeroCountBase, used in getBucketIndex() fast path:
+        // subtract the bits that would be used by the largest value in bucket 0.
         leadingZeroCountBase = 64 - unitMagnitude - subBucketHalfCountMagnitude - 1;
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
     }
 
+    /**
+     * The buckets (each of which has subBucketCount sub-buckets, here assumed to be 2048 as an example) overlap:
+     *
+     * <pre>
+     * The 0'th bucket covers from 0...2047 in multiples of 1, using all 2048 sub-buckets
+     * The 1'th bucket covers from 2048..4097 in multiples of 2, using only the top 1024 sub-buckets
+     * The 2'th bucket covers from 4096..8191 in multiple of 4, using only the top 1024 sub-buckets
+     * ...
+     * </pre>
+     *
+     * Bucket 0 is "special" here. It is the only one that has 2048 entries. All the rest have 1024 entries (because
+     * their bottom half overlaps with and is already covered by the all of the previous buckets put together). In other
+     * words, the k'th bucket could represent 0 * 2^k to 2048 * 2^k in 2048 buckets with 2^k precision, but the midpoint
+     * of 1024 * 2^k = 2048 * 2^(k-1) = the k-1'th bucket's end, so we would use the previous bucket for those lower
+     * values as it has better precision.
+     */
     final void establishSize(long newHighestTrackableValue) {
         // establish counts array length:
         countsArrayLength = determineArrayLengthNeeded(newHighestTrackableValue);
@@ -839,9 +878,22 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         // indicate underflow if minValue is in the range being shifted from:
         int minNonZeroValueIndex = countsArrayIndex(getMinNonZeroValue());
-        // Any shifting into the bottom-most half bucket would represents a loss of accuracy,
-        // and a non-reversible operation. Therefore any non-0 value that falls in an
-        // index below (shiftAmount + subBucketHalfCount) would represent an underflow:
+        // The fact that the top and bottom halves of the first bucket use the same scale means any
+        // shift into the bottom half is invalid. The shift requires that each successive
+        // subBucketCount be encoded with a scale 2x the previous one, as that is how the powers of 2
+        // are applied.
+        // In particular, if the shift amount is such that it would shift something from the top half
+        // of the first bucket to the bottom half, that's all stored with the same unit, so half of a
+        // larger odd value couldn't be restored to its proper value by a subsequent left shift because
+        // we would need the bottom half to be encoded in half-units.
+        // Furthermore, shifts from anywhere (in the top half of the first bucket or beyond) will be
+        // incorrectly encoded if they end up in the bottom half. If subBucketHalfCount is, say, 1024,
+        // and the shift is by 1, the value for 1600 would become 576, which is certainly not 1600/2.,
+        // With a shift of 2 and a value of 2112 (index 2048 + 32), the resulting value is 32, not 525.
+        // For comparison, with shift 2 and value 4096 (index 2048 + 1024 = 3072), 3072 - 2048 = 1024.
+        // That's the first entry in the top half of bucket 0, which encodes simply 1024 = 4096 / 4.
+        // Thus, any non-0 value that falls in an index below (shiftAmount + subBucketHalfCount)
+        // would represent an underflow:
         if (minNonZeroValueIndex < shiftAmount + subBucketHalfCount) {
             throw new ArrayIndexOutOfBoundsException(
                     "Operation would underflow and lose precision of already recorded value counts");
@@ -965,7 +1017,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * equivalent values are counted in a common total count.
      *
      * @param value The given value
-     * @return The lowest value that is equivalent to the given value within the histogram's resolution.
+     * @return The size of the range of values equivalent to the given value.
      */
     public long sizeOfEquivalentValueRange(final long value) {
         final int bucketIndex = getBucketIndex(value);
@@ -2067,10 +2119,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getBucketsNeededToCoverValue(final long value) {
-        long smallestUntrackableValue = ((long)subBucketCount) << unitMagnitude;
+        // the k'th bucket can express from 0 * 2^k to subBucketCount * 2^k in units of 2^k
+        long smallestUntrackableValue = ((long) subBucketCount) << unitMagnitude;
+
+        // always have at least 1 bucket
         int bucketsNeeded = 1;
         while (smallestUntrackableValue <= value) {
             if (smallestUntrackableValue > (Long.MAX_VALUE / 2)) {
+                // next shift will overflow, meaning that bucket could represent values up to ones greater than
+                // Long.MAX_VALUE, so it's the last bucket
                 return bucketsNeeded + 1;
             }
             smallestUntrackableValue <<= 1;
@@ -2079,6 +2136,12 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return bucketsNeeded;
     }
 
+    /**
+     * If we have N such that subBucketCount * 2^N > max value, we need storage for N+1 buckets, each with enough
+     * slots to hold the top half of the subBucketCount (the lower half is covered by previous buckets), and the +1
+     * being used for the lower half of the 0'th bucket. Or, equivalently, we need 1 more bucket to capture the max
+     * value if we consider the sub-bucket length to be halved.
+     */
     int getLengthForNumberOfBuckets(final int numberOfBuckets) {
         final int lengthNeeded = (numberOfBuckets + 1) * (subBucketCount / 2);
         return lengthNeeded;
@@ -2096,23 +2159,40 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private int countsArrayIndex(final int bucketIndex, final int subBucketIndex) {
         assert(subBucketIndex < subBucketCount);
         assert(bucketIndex == 0 || (subBucketIndex >= subBucketHalfCount));
-        // Calculate the index for the first entry in the bucket:
-        // (The following is the equivalent of ((bucketIndex + 1) * subBucketHalfCount) ):
+        // Calculate the index for the first entry that will be used in the bucket (halfway through subBucketCount).
+        // For bucketIndex 0, all subBucketCount entries may be used, but bucketBaseIndex is still set in the middle.
         final int bucketBaseIndex = (bucketIndex + 1) << subBucketHalfCountMagnitude;
-        // Calculate the offset in the bucket (can be negative for first bucket):
+        // Calculate the offset in the bucket. This subtraction will result in a positive value in all buckets except
+        // the 0th bucket (since a value in that bucket may be less than half the bucket's 0 to subBucketCount range).
+        // However, this works out since we give bucket 0 twice as much space.
         final int offsetInBucket = subBucketIndex - subBucketHalfCount;
         // The following is the equivalent of ((subBucketIndex  - subBucketHalfCount) + bucketBaseIndex;
         return bucketBaseIndex + offsetInBucket;
     }
 
+    /**
+     * @return the lowest (and therefore highest precision) bucket index that can represent the value
+     */
     int getBucketIndex(final long value) {
+        // Calculates the number of powers of two by which the value is greater than the biggest value that fits in
+        // bucket 0. This is the bucket index since each successive bucket can hold a value 2x greater.
+        // The mask maps small values to bucket 0.
         return leadingZeroCountBase - Long.numberOfLeadingZeros(value | subBucketMask);
     }
 
     int getSubBucketIndex(final long value, final int bucketIndex) {
+        // For bucketIndex 0, this is just value, so it may be anywhere in 0 to subBucketCount.
+        // For other bucketIndex, this will always end up in the top half of subBucketCount: assume that for some bucket
+        // k > 0, this calculation will yield a value in the bottom half of 0 to subBucketCount. Then, because of how
+        // buckets overlap, it would have also been in the top half of bucket k-1, and therefore would have
+        // returned k-1 in getBucketIndex(). Since we would then shift it one fewer bits here, it would be twice as big,
+        // and therefore in the top half of subBucketCount.
         return  (int)(value >>> (bucketIndex + unitMagnitude));
     }
 
+    /**
+     * @return The value `index - normalizingIndexOffset` modulo arrayLength (always nonnegative)
+     */
     int normalizeIndex(int index, int normalizingIndexOffset, int arrayLength) {
         if (normalizingIndexOffset == 0) {
             // Fastpath out of normalization. Keeps integer value histograms fast while allowing

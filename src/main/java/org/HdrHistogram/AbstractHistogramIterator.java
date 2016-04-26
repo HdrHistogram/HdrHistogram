@@ -113,6 +113,9 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
 
     abstract void incrementIterationLevel();
 
+    /**
+     * @return true if the current position's data should be emitted by the iterator
+     */
     abstract boolean reachedIterationLevel();
 
     double getPercentileIteratedTo() {
