@@ -40,7 +40,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
 
     /**
      * @param histogram The histogram this iterator will operate on
-     * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
+     * @param percentileTicksPerHalfDistance The number of equal-sized iteration steps per half-distance to 100%.
      */
     public PercentileIterator(final AbstractHistogram histogram, final int percentileTicksPerHalfDistance) {
         reset(histogram, percentileTicksPerHalfDistance);
@@ -63,19 +63,17 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
     void incrementIterationLevel() {
         percentileLevelToIterateFrom = percentileLevelToIterateTo;
 
-        // To calculate the delta to add on at the current iteration, we want to know how many
-        // iterations at the current scale it would take to go from 0 to 100.
-        // By definition, it should take percentileTicksPerHalfDistance to go half the
-        // remaining distance, so the ticks to go 0-100 is
-        // 2 * percentileTicksPerHalfDistance * (multiples of remaining distance that fit in 0-100).
+        // The choice to maintain fixed-sized "ticks" in each half-distance to 100% [starting
+        // from 0%], as opposed to a "tick" size that varies with each interval, was made to
+        // make the steps easily comprehensible and readable to humans. The resulting percentile
+        // steps are much easier to browse through in a percentile distribution output, for example.
         //
-        // However, this will give a "natural" half-distance behavior, where each iteration is
-        // slightly smaller than the one preceding it. To make it easier for users to reason about,
-        // it would be nice if the iteration size would stay the same throughout the entire first
-        // half, then divide in half and stay the same for the next quarter, etc. To do this,
-        // instead of using simply the number of times that the remaining distance will fit, we use
-        // the greatest power of 2 smaller than that. This will exhibit the desired behavior of
-        // "the same every time until it can double".
+        // We calculate the number of equal-sized "ticks" that the 0-100 range will be divided
+        // by at the current scale. The scale is detemined by the percentile level we are
+        // iterating to. The following math determines the tick size for the current scale,
+        // and maintain a fixed tick size for the remaining "half the distance to 100%"
+        // [from either 0% or from the previous half-distance]. When that half-distance is
+        // crossed, the scale changes and the tick size is effectively cut in half.
 
         long percentileReportingTicks =
                 percentileTicksPerHalfDistance *

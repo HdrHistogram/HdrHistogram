@@ -878,22 +878,31 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         // indicate underflow if minValue is in the range being shifted from:
         int minNonZeroValueIndex = countsArrayIndex(getMinNonZeroValue());
-        // The fact that the top and bottom halves of the first bucket use the same scale means any
-        // shift into the bottom half is invalid. The shift requires that each successive
-        // subBucketCount be encoded with a scale 2x the previous one, as that is how the powers of 2
-        // are applied.
-        // In particular, if the shift amount is such that it would shift something from the top half
-        // of the first bucket to the bottom half, that's all stored with the same unit, so half of a
-        // larger odd value couldn't be restored to its proper value by a subsequent left shift because
-        // we would need the bottom half to be encoded in half-units.
-        // Furthermore, shifts from anywhere (in the top half of the first bucket or beyond) will be
-        // incorrectly encoded if they end up in the bottom half. If subBucketHalfCount is, say, 1024,
-        // and the shift is by 1, the value for 1600 would become 576, which is certainly not 1600/2.,
-        // With a shift of 2 and a value of 2112 (index 2048 + 32), the resulting value is 32, not 525.
-        // For comparison, with shift 2 and value 4096 (index 2048 + 1024 = 3072), 3072 - 2048 = 1024.
-        // That's the first entry in the top half of bucket 0, which encodes simply 1024 = 4096 / 4.
-        // Thus, any non-0 value that falls in an index below (shiftAmount + subBucketHalfCount)
-        // would represent an underflow:
+
+        // Any shifting into the bottom-most half bucket would represents a loss of accuracy,
+        // and a non-reversible operation. Therefore any non-0 value that falls in an
+        // index below (shiftAmount + subBucketHalfCount) would represent an underflow:
+        // <DetailedExplanation:>
+        //     The fact that the top and bottom halves of the first bucket use the same scale
+        //     means any shift into the bottom half is invalid. The shift requires that each
+        //     successive subBucketCount be encoded with a scale 2x the previous one, as that
+        //     is how the powers of 2 are applied.
+        //     In particular, if the shift amount is such that it would shift something from
+        //     the top half of the first bucket to the bottom half, that's all stored with the
+        //     same unit, so half of a larger odd value couldn't be restored to its proper
+        //     value by a subsequent left shift because we would need the bottom half to be
+        //     encoded in half-units.
+        //     Furthermore, shifts from anywhere (in the top half of the first bucket or
+        //     beyond) will be incorrectly encoded if they end up in the bottom half. If
+        //     subBucketHalfCount is, say, 1024, and the shift is by 1, the value for 1600
+        //     would become 576, which is certainly not 1600/2. With a shift of 2 and a
+        //     value of 2112 (index 2048 + 32), the resulting value is 32, not 525. For
+        //     comparison, with shift 2 and value 4096 (index 2048 + 1024 = 3072), 3072 - 2048 = 1024.
+        //     That's the first entry in the top half of bucket 0, which encodes simply
+        //     1024 = 4096 / 4. Thus, any non-0 value that falls in an index below
+        //     (shiftAmount + subBucketHalfCount) would represent an underflow.
+        // </DetailedExplanation:>
+
         if (minNonZeroValueIndex < shiftAmount + subBucketHalfCount) {
             throw new ArrayIndexOutOfBoundsException(
                     "Operation would underflow and lose precision of already recorded value counts");
