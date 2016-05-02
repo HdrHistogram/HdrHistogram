@@ -929,7 +929,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     //
     //
     //
-    // Timestamp support:
+    // Timestamp and tag support:
     //
     //
     //
@@ -939,7 +939,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the start time stamp [optionally] stored with this histogram
      */
     public long getStartTimeStamp() {
-        return integerValuesHistogram.startTimeStampMsec;
+        return integerValuesHistogram.getStartTimeStamp();
     }
 
     /**
@@ -947,7 +947,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
      */
     public void setStartTimeStamp(final long timeStampMsec) {
-        this.integerValuesHistogram.startTimeStampMsec = timeStampMsec;
+        integerValuesHistogram.setStartTimeStamp(timeStampMsec);
     }
 
     /**
@@ -955,7 +955,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the end time stamp [optionally] stored with this histogram
      */
     public long getEndTimeStamp() {
-        return integerValuesHistogram.endTimeStampMsec;
+        return integerValuesHistogram.getEndTimeStamp();
     }
 
     /**
@@ -963,7 +963,23 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
      */
     public void setEndTimeStamp(final long timeStampMsec) {
-        this.integerValuesHistogram.endTimeStampMsec = timeStampMsec;
+        integerValuesHistogram.setEndTimeStamp(timeStampMsec);
+    }
+
+    /**
+     * get the tag string [optionally] associated with this histogram
+     * @return tag string [optionally] associated with this histogram
+     */
+    public String getTag() {
+        return integerValuesHistogram.getTag();
+    }
+
+    /**
+     * Set the tag string associated with this histogram
+     * @param tag the tag string to assciate with this histogram
+     */
+    public void setTag(String tag) {
+        integerValuesHistogram.setTag(tag);
     }
 
     //

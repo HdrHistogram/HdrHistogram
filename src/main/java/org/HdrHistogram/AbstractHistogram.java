@@ -51,6 +51,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
 
     long startTimeStampMsec = Long.MAX_VALUE;
     long endTimeStampMsec = 0;
+    String tag = null;
 
     double integerToDoubleValueConversionRatio = 1.0;
 
@@ -1112,7 +1113,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     //
     //
     //
-    // Timestamp support:
+    // Timestamp and tag support:
     //
     //
     //
@@ -1151,6 +1152,22 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     @Override
     public void setEndTimeStamp(final long timeStampMsec) {
         this.endTimeStampMsec = timeStampMsec;
+    }
+
+    /**
+     * get the tag string [optionally] associated with this histogram
+     * @return tag string [optionally] associated with this histogram
+     */
+    public String getTag() {
+        return tag;
+    }
+
+    /**
+     * Set the tag string associated with this histogram
+     * @param tag the tag string to assciate with this histogram
+     */
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 
     //

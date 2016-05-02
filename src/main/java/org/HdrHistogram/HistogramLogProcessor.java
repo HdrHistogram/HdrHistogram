@@ -10,8 +10,7 @@ package org.HdrHistogram;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.Date;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * {@link org.HdrHistogram.HistogramLogProcessor} will process an input log and
@@ -36,6 +35,11 @@ import java.util.Locale;
  * produce [only] the histogram percentile distribution log output to
  * standard output.
  * <p>
+ * By default, HistogramLogProcessor only processes hlog file lines lines
+ * with no tag specified [aka "default tagged" lines]. An optional -tag
+ * parameter can be used to process lines of a [single] specific tag. The
+ * -listtags option can be used to list all the tags found in the input file.
+ * <p>
  * HistogramLogProcessor accepts optional -start and -end time range
  * parameters. When provided, the output will only reflect the portion
  * of the input log with timestamps that fall within the provided start
@@ -57,11 +61,13 @@ public class HistogramLogProcessor extends Thread {
         public boolean verbose = false;
         public String outputFileName = null;
         public String inputFileName = null;
+        public String tag = null;
 
         public double rangeStartTimeSec = 0.0;
         public double rangeEndTimeSec = Double.MAX_VALUE;
 
         public boolean logFormatCsv = false;
+        public boolean listTags = false;
 
         public int percentilesOutputTicksPerHalf = 5;
         public Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
@@ -77,8 +83,12 @@ public class HistogramLogProcessor extends Thread {
                         logFormatCsv = true;
                     } else if (args[i].equals("-v")) {
                         verbose = true;
+                    } else if (args[i].equals("-listtags")) {
+                        listTags = true;
                     } else if (args[i].equals("-i")) {
                         inputFileName = args[++i];
+                    } else if (args[i].equals("-tag")) {
+                        tag = args[++i];
                     } else if (args[i].equals("-start")) {
                         rangeStartTimeSec = Double.parseDouble(args[++i]);
                     } else if (args[i].equals("-end")) {
@@ -110,9 +120,9 @@ public class HistogramLogProcessor extends Thread {
                 }
 
                 final String validArgs =
-                        "\"[-csv] [-v] [-i inputFileName] [-o outputFileName] " +
+                        "\"[-csv] [-v] [-i inputFileName] [-o outputFileName] [-tag tag] " +
                                 "[-start rangeStartTimeSec] [-end rangeEndTimeSec] " +
-                                "[-outputValueUnitRatio r]";
+                                "[-outputValueUnitRatio r] [-listtags]";
 
                 System.err.println("valid arguments = " + validArgs);
 
@@ -123,10 +133,12 @@ public class HistogramLogProcessor extends Thread {
                                 " [-i logFileName]            File name of Histogram Log to process (default is standard input)\n" +
                                 " [-o outputFileName]         File name to output to (default is standard output)\n" +
                                 "                             (will replace occurrences of %pid and %date with appropriate information)\n" +
+                                " [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n" +
                                 " [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)\n" +
                                 " [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)\n" +
                                 " [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units\n" +
-                                "                             in output. [default = 1000000.0 (1 msec in nsec)]\n"
+                                "                             in output. [default = 1000000.0 (1 msec in nsec)]\n" +
+                                " [-listtags]                 list all tags found on histogram lines the input file."
                 );
                 System.exit(1);
             }
@@ -166,6 +178,21 @@ public class HistogramLogProcessor extends Thread {
         lineNumber++;
         return histogram;
     }
+
+    private EncodableHistogram getIntervalHistogram(String tag) {
+        EncodableHistogram histogram;
+        if (tag == null) {
+            do {
+                histogram = getIntervalHistogram();
+            } while ((histogram != null) && histogram.getTag() != null);
+        } else {
+            do {
+                histogram = getIntervalHistogram();
+            } while ((histogram != null) && !tag.equals(histogram.getTag()));
+        }
+        return histogram;
+    }
+
     /**
      * Run the log processor with the currently provided arguments.
      */
@@ -175,6 +202,30 @@ public class HistogramLogProcessor extends Thread {
         PrintStream histogramPercentileLog = System.out;
         Double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
+
+        if (config.listTags) {
+            Set<String> tags = new TreeSet<String>();
+            EncodableHistogram histogram;
+            boolean nullTagFound = false;
+            while ((histogram = getIntervalHistogram()) != null) {
+                String tag = histogram.getTag();
+                if (tag != null) {
+                    tags.add(histogram.getTag());
+                } else {
+                    nullTagFound = true;
+                }
+            }
+            System.out.println("Tags found in input file:");
+            if (nullTagFound) {
+                System.out.println("[NO TAG (default)]");
+            }
+            for (String tag : tags) {
+                System.out.println(tag);
+            }
+            // listtags does nothing other than list tags:
+            return;
+        }
+
         try {
             if (config.outputFileName != null) {
                 try {
@@ -199,9 +250,7 @@ public class HistogramLogProcessor extends Thread {
                 logFormat = "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
             }
 
-
-            EncodableHistogram intervalHistogram = getIntervalHistogram();
-
+            EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);
 
             Histogram accumulatedRegularHistogram = null;
             DoubleHistogram accumulatedDoubleHistogram = null;
@@ -290,7 +339,7 @@ public class HistogramLogProcessor extends Thread {
                     }
                 }
 
-                intervalHistogram = getIntervalHistogram();
+                intervalHistogram = getIntervalHistogram(config.tag);
             }
 
             if (accumulatedDoubleHistogram != null) {

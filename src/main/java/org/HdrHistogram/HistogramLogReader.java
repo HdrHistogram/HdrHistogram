@@ -34,9 +34,13 @@ import java.util.zip.DataFormatException;
  * the "#" character are optional and treated as comments. Lines
  * containing the legend (starting with "Timestamp") are also optional
  * and ignored in parsing the histogram log. All other lines must
- * contain a valid interval description.
+ * be valid interval description lines. Text fields are delimited by
+ * commas, spaces.
  * <p>
- * A valid interval description line must contain exactly four text fields:
+ * A valid interval description line contains an optional Tag=tagString
+ * identifier text field, followed by an interval description.
+ * <p>
+ * A valid interval description must contain exactly four text fields:
  * <ul>
  * <li>StartTimestamp: The first field must contain a number parse-able as a Double value,
  * representing the start timestamp of the interval in seconds.</li>
@@ -93,7 +97,7 @@ public class HistogramLogReader {
 
     private void initScanner() {
         scanner.useLocale(Locale.US);
-        scanner.useDelimiter("[ ,\\r\\n]");
+        scanner.useDelimiter("[, \\r\\n]");
     }
 
     /**
@@ -215,6 +219,11 @@ public class HistogramLogReader {
                     continue;
                 }
 
+                String tagString = null;
+                if (scanner.hasNext("Tag\\=.*")) {
+                    tagString = scanner.next("Tag\\=.*").substring(4);
+                }
+
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
                 final double logTimeStampInSec = scanner.nextDouble(); // Timestamp is expected to be in seconds
@@ -263,6 +272,7 @@ public class HistogramLogReader {
 
                 histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
                 histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
+                histogram.setTag(tagString);
 
                 scanner.nextLine(); // Move to next line. Very much needed for e.g. windows CR/LF lines
 

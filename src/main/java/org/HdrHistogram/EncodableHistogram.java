@@ -30,6 +30,10 @@ public abstract class EncodableHistogram {
 
     public abstract void setEndTimeStamp(long endTimestamp);
 
+    public abstract String getTag();
+
+    public abstract void setTag(String tag);
+
     public abstract double getMaxValueAsDouble();
 
     /**

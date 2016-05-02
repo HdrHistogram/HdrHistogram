@@ -13,6 +13,7 @@ public class HistogramLogReaderWriterTest {
     @Test
     public void emptyLog() throws Exception {
         File temp = File.createTempFile("hdrhistogramtesting", "hist");
+        temp.deleteOnExit();
         FileOutputStream writerStream = new FileOutputStream(temp);
         HistogramLogWriter writer = new HistogramLogWriter(writerStream);
         writer.outputLogFormatVersion();
@@ -30,6 +31,31 @@ public class HistogramLogReaderWriterTest {
     }
 
     @Test
+    public void taggedV2LogTest() throws Exception {
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-Log.logV2.hlog");
+
+        HistogramLogReader reader = new HistogramLogReader(readerStream);
+        int histogramCount = 0;
+        long totalCount = 0;
+        EncodableHistogram encodeableHistogram = null;
+        Histogram accumulatedHistogramWithNoTag = new Histogram(3);
+        Histogram accumulatedHistogramWithTagA = new Histogram(3);
+        while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
+            histogramCount++;
+            Assert.assertTrue("Expected integer value histograms in log file", encodeableHistogram instanceof Histogram);
+            Histogram histogram = (Histogram) encodeableHistogram;
+            totalCount += histogram.getTotalCount();
+            if ("A".equals(histogram.getTag())) {
+                accumulatedHistogramWithTagA.add(histogram);
+            } else {
+                accumulatedHistogramWithNoTag.add(histogram);
+            }
+        }
+        Assert.assertEquals(32290, totalCount);
+        Assert.assertEquals(accumulatedHistogramWithTagA, accumulatedHistogramWithNoTag);
+    }
+
+    @Test
     public void jHiccupV2Log() throws Exception {
         InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
 
@@ -40,7 +66,7 @@ public class HistogramLogReaderWriterTest {
         Histogram accumulatedHistogram = new Histogram(3);
         while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
             histogramCount++;
-            Assert.assertTrue("Expected integer value histogramsin log file", encodeableHistogram instanceof Histogram);
+            Assert.assertTrue("Expected integer value histograms in log file", encodeableHistogram instanceof Histogram);
             Histogram histogram = (Histogram) encodeableHistogram;
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
@@ -94,7 +120,7 @@ public class HistogramLogReaderWriterTest {
         Histogram accumulatedHistogram = new Histogram(3);
         while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
             histogramCount++;
-            Assert.assertTrue("Expected integer value histogramsin log file", encodeableHistogram instanceof Histogram);
+            Assert.assertTrue("Expected integer value histograms in log file", encodeableHistogram instanceof Histogram);
             Histogram histogram = (Histogram) encodeableHistogram;
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
@@ -148,7 +174,7 @@ public class HistogramLogReaderWriterTest {
         Histogram accumulatedHistogram = new Histogram(3);
         while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
             histogramCount++;
-            Assert.assertTrue("Expected integer value histogramsin log file", encodeableHistogram instanceof Histogram);
+            Assert.assertTrue("Expected integer value histograms in log file", encodeableHistogram instanceof Histogram);
             Histogram histogram = (Histogram) encodeableHistogram;
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);
@@ -202,7 +228,7 @@ public class HistogramLogReaderWriterTest {
         Histogram accumulatedHistogram = new Histogram(3);
         while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
             histogramCount++;
-            Assert.assertTrue("Expected integer value histogramsin log file", encodeableHistogram instanceof Histogram);
+            Assert.assertTrue("Expected integer value histograms in log file", encodeableHistogram instanceof Histogram);
             Histogram histogram = (Histogram) encodeableHistogram;
             totalCount += histogram.getTotalCount();
             accumulatedHistogram.add(histogram);

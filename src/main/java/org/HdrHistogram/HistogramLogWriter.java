@@ -9,7 +9,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.IllegalFormatException;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.Deflater;
 
 import static java.nio.ByteOrder.BIG_ENDIAN;
@@ -34,6 +37,8 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
  * details). Optional comments, start time, legend, and format version
  * can be logged.
  * <p>
+ *     The log writer will use the
+ * <p>
  * By convention, it is typical for the logging application
  * to use a comment to indicate the logging application at the head
  * of the log, followed by the log format version, a start time,
@@ -41,7 +46,10 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
  *
  */
 public class HistogramLogWriter {
-    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.2";
+    private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.3";
+
+    private static Pattern containsDelimeterPattern = Pattern.compile(".[, \\r\\n].");
+    private Matcher containsDelimeterMatcher = containsDelimeterPattern.matcher("");
 
     private final PrintStream log;
 
@@ -84,8 +92,9 @@ public class HistogramLogWriter {
     }
 
     /**
-     * Output an interval histogram, with the given timestamp and a configurable maxValueUnitRatio.
-     * (note that the specified timestamp will be used, and the timestamp in the actual
+     * Output an interval histogram, with the given timestamp information and the [optional] tag
+     * associated with the histogram, using a configurable maxValueUnitRatio. (note that the
+     * specified timestamp information will be used, and the timestamp information in the actual
      * histogram will be ignored).
      * The max value reported with the interval line will be scaled by the given maxValueUnitRatio.
      * @param startTimeStampSec The start timestamp to log with the interval histogram, in seconds.
@@ -93,7 +102,7 @@ public class HistogramLogWriter {
      * @param histogram The interval histogram to log.
      * @param maxValueUnitRatio The ratio by which to divide the histogram's max value when reporting on it.
      */
-    public void outputIntervalHistogram(final double startTimeStampSec,
+    public synchronized void outputIntervalHistogram(final double startTimeStampSec,
                                         final double endTimeStampSec,
                                         final EncodableHistogram histogram,
                                         final double maxValueUnitRatio) {
@@ -105,18 +114,33 @@ public class HistogramLogWriter {
         int compressedLength = histogram.encodeIntoCompressedByteBuffer(targetBuffer, Deflater.BEST_COMPRESSION);
         byte[] compressedArray = Arrays.copyOf(targetBuffer.array(), compressedLength);
 
-        log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
-                startTimeStampSec,
-                endTimeStampSec - startTimeStampSec,
-                histogram.getMaxValueAsDouble() / maxValueUnitRatio,
-                DatatypeConverter.printBase64Binary(compressedArray)
-        );
+        String tag = histogram.getTag();
+        if (tag == null) {
+            log.format(Locale.US, "%.3f,%.3f,%.3f,%s\n",
+                    startTimeStampSec,
+                    endTimeStampSec - startTimeStampSec,
+                    histogram.getMaxValueAsDouble() / maxValueUnitRatio,
+                    DatatypeConverter.printBase64Binary(compressedArray)
+            );
+        } else {
+            containsDelimeterMatcher.reset(tag);
+            if (containsDelimeterMatcher.matches()) {
+                throw new IllegalArgumentException("Tag string cannot contain commas, spaces, or line breaks");
+            }
+            log.format(Locale.US, "Tag=%s,%.3f,%.3f,%.3f,%s\n",
+                    tag,
+                    startTimeStampSec,
+                    endTimeStampSec - startTimeStampSec,
+                    histogram.getMaxValueAsDouble() / maxValueUnitRatio,
+                    DatatypeConverter.printBase64Binary(compressedArray)
+            );
+        }
     }
 
     /**
-     * Output an interval histogram, with the given timestamp.
-     * (note that the specified timestamp will be used, and the timestamp in the actual
-     * histogram will be ignored).
+     * Output an interval histogram, with the given timestamp information, and the [optional] tag
+     * associated with the histogram. (note that the specified timestamp information will be used,
+     * and the timestamp information in the actual histogram will be ignored).
      * The max value in the histogram will be reported scaled down by a default maxValueUnitRatio of
      * 1,000,000 (which is the msec : nsec ratio). Caller should use the direct form specifying
      * maxValueUnitRatio some other ratio is needed for the max value output.
@@ -131,7 +155,8 @@ public class HistogramLogWriter {
     }
 
     /**
-     * Output an interval histogram, using the start/end timestamp indicated in the histogram.
+     * Output an interval histogram, using the start/end timestamp indicated in the histogram,
+     * and the [optional] tag associated with the histogram.
      * The histogram start and end timestamps are assumed to be in msec units. Logging will be
      * in seconds, realtive by a base time (if set via {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}).
      * The default base time is 0.
