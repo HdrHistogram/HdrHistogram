@@ -1,3 +1,9 @@
+HdrHistogram
+----------------------------------------------
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/HdrHistogram/HdrHistogram?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+![Javadoc](http://javadoc-emblem.rhcloud.com/doc/org.hdrhistogram/HdrHistogram/badge.svg)
+(http://www.javadoc.io/doc/org.hdrhistogram/HdrHistogram)
+
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
 This respository currently includes Java and C# implementations of
@@ -11,9 +17,7 @@ some details may vary by implementation (e.g. iteration and
 synchronization), so you should consult the documentation or header
 information of specific API library you intended to use.
 
-HdrHistogram
 ----------------------------------------------
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/HdrHistogram/HdrHistogram?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 HdrHistogram supports the recording and analyzing of sampled data value
 counts across a configurable integer value range with configurable value
