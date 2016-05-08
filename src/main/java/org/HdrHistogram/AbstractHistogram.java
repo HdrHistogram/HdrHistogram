@@ -539,6 +539,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         resetMaxValue(0);
         resetMinNonZeroValue(Long.MAX_VALUE);
         setNormalizingIndexOffset(0);
+        startTimeStampMsec = Long.MAX_VALUE;
+        endTimeStampMsec = 0;
+        tag = null;
     }
 
     //
