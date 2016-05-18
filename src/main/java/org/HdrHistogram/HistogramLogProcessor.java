@@ -68,6 +68,7 @@ public class HistogramLogProcessor extends Thread {
 
         public boolean logFormatCsv = false;
         public boolean listTags = false;
+        public boolean allTags = false;
 
         public int percentilesOutputTicksPerHalf = 5;
         public Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
@@ -85,6 +86,8 @@ public class HistogramLogProcessor extends Thread {
                         verbose = true;
                     } else if (args[i].equals("-listtags")) {
                         listTags = true;
+                    } else if (args[i].equals("-alltags")) {
+                        allTags = true;
                     } else if (args[i].equals("-i")) {
                         inputFileName = args[++i];
                     } else if (args[i].equals("-tag")) {
@@ -132,7 +135,6 @@ public class HistogramLogProcessor extends Thread {
                                 " [-csv]                      Use CSV format for output log files\n" +
                                 " [-i logFileName]            File name of Histogram Log to process (default is standard input)\n" +
                                 " [-o outputFileName]         File name to output to (default is standard output)\n" +
-                                "                             (will replace occurrences of %pid and %date with appropriate information)\n" +
                                 " [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n" +
                                 " [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)\n" +
                                 " [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)\n" +
@@ -226,6 +228,13 @@ public class HistogramLogProcessor extends Thread {
             return;
         }
 
+        final String logFormat;
+        if (config.logFormatCsv) {
+            logFormat = "%.3f,%d,%.3f,%.3f,%.3f,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n";
+        } else {
+            logFormat = "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
+        }
+
         try {
             if (config.outputFileName != null) {
                 try {
@@ -241,13 +250,6 @@ public class HistogramLogProcessor extends Thread {
                 } catch (FileNotFoundException ex) {
                     System.err.println("Failed to open percentiles histogram output file " + hgrmOutputFileName);
                 }
-            }
-
-            final String logFormat;
-            if (config.logFormatCsv) {
-                logFormat = "%.3f,%d,%.3f,%.3f,%.3f,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n";
-            } else {
-                logFormat = "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
             }
 
             EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);

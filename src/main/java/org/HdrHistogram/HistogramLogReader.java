@@ -38,7 +38,7 @@ import java.util.zip.DataFormatException;
  * commas, spaces.
  * <p>
  * A valid interval description line contains an optional Tag=tagString
- * identifier text field, followed by an interval description.
+ * text field, followed by an interval description.
  * <p>
  * A valid interval description must contain exactly four text fields:
  * <ul>
