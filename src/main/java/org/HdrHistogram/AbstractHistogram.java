@@ -371,6 +371,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
+     * Indicate whether or not the histogram is capable of supporting auto-resize functionality.
+     * Note that this is an indication that enabling auto-resize by calling setAutoResize() is allowed,
+     * and NOT that the histogram will actually auto-resize. Use isAutoResize() to determine if
+     * the histogram is in auto-resize mode.
+     * @return autoResize setting
+     */
+    public boolean supportsAutoResize() { return true; }
+
+    /**
      * Control whether or not the histogram can auto-resize and auto-adjust it's
      * highestTrackableValue
      * @param autoResize autoResize setting

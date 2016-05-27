@@ -104,6 +104,9 @@ public class AtomicHistogram extends Histogram {
     }
 
     @Override
+    public boolean supportsAutoResize() { return false; }
+
+    @Override
     void clearCounts() {
         for (int i = 0; i < counts.length(); i++) {
             counts.lazySet(i, 0);

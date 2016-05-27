@@ -420,6 +420,10 @@ public class HistogramTest {
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
         histogram.recordValueWithExpectedInterval(histogram.getHighestTrackableValue() - 1, 255);
+        if (histogram.supportsAutoResize()) {
+            histogram.setAutoResize(true);
+            assertTrue(histogram.isAutoResize());
+        }
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = null;
         ByteArrayInputStream bis = null;
@@ -450,6 +454,7 @@ public class HistogramTest {
         Assert.assertNotNull(newHistogram);
         assertEqual(histogram, newHistogram);
         assertTrue(histogram.equals(newHistogram));
+        assertEquals(newHistogram.isAutoResize(), histogram.isAutoResize());
         Assert.assertTrue(histogram.hashCode() == newHistogram.hashCode());
         assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.copy().getNeededByteBufferCapacity());
         assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.getNeededByteBufferCapacity());
