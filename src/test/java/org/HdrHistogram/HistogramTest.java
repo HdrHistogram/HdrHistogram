@@ -454,6 +454,9 @@ public class HistogramTest {
         Assert.assertNotNull(newHistogram);
         assertEqual(histogram, newHistogram);
         assertTrue(histogram.equals(newHistogram));
+        if (histogram.supportsAutoResize()) {
+            assertTrue(histogram.isAutoResize());
+        }
         assertEquals(newHistogram.isAutoResize(), histogram.isAutoResize());
         Assert.assertTrue(histogram.hashCode() == newHistogram.hashCode());
         assertEquals(histogram.getNeededByteBufferCapacity(), newHistogram.copy().getNeededByteBufferCapacity());
