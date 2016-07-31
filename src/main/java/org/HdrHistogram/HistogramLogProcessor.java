@@ -48,16 +48,25 @@ import java.util.*;
  * HistogramLogProcessor also accepts and optional -csv parameter, which
  * will cause the output formatting (of both output file forms) to use
  * a CSV file format.
+ * <p>
+ * The customize the logging output, the {@link HistogramLogProcessor} can be
+ * extended and the following methods overridden:
+ * <ol>
+ *     <li>{{@link #buildLegend(boolean)}}</li>
+ *     <li>{@link #buildLogFormat(boolean)}</li>
+ *     <li>{@link #buildDoubleHistogramStatistics(DoubleHistogram, DoubleHistogram)}</li>
+ *     <li>{@link #buildRegularHistogramStatistics(Histogram, Histogram)}</li>
+ * </ol>
  */
 public class HistogramLogProcessor extends Thread {
 
     public static final String versionString = "Histogram Log Processor version " + Version.version;
 
-    private final HistogramLogProcessorConfiguration config;
+    protected final HistogramLogProcessorConfiguration config;
 
-    private HistogramLogReader logReader;
+    protected HistogramLogReader logReader;
 
-    private static class HistogramLogProcessorConfiguration {
+    protected static class HistogramLogProcessorConfiguration {
         public boolean verbose = false;
         public String outputFileName = null;
         public String inputFileName = null;
@@ -228,12 +237,7 @@ public class HistogramLogProcessor extends Thread {
             return;
         }
 
-        final String logFormat;
-        if (config.logFormatCsv) {
-            logFormat = "%.3f,%d,%.3f,%.3f,%.3f,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n";
-        } else {
-            logFormat = "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
-        }
+        final String logFormat = buildLogFormat(config.logFormatCsv);
 
         try {
             if (config.outputFileName != null) {
@@ -296,49 +300,14 @@ public class HistogramLogProcessor extends Thread {
                 if (timeIntervalLog != null) {
                     if (!timeIntervalLogLegendWritten) {
                         timeIntervalLogLegendWritten = true;
-                        if (config.logFormatCsv) {
-                            timeIntervalLog.println("\"Timestamp\",\"Int_Count\",\"Int_50%\",\"Int_90%\",\"Int_Max\",\"Total_Count\"," +
-                                    "\"Total_50%\",\"Total_90%\",\"Total_99%\",\"Total_99.9%\",\"Total_99.99%\",\"Total_Max\"");
-                        } else {
-                            timeIntervalLog.println("Time: IntervalPercentiles:count ( 50% 90% Max ) TotalPercentiles:count ( 50% 90% 99% 99.9% 99.99% Max )");
-                        }
+                        timeIntervalLog.println(buildLegend(config.logFormatCsv));
                     }
 
-                    if (intervalHistogram instanceof DoubleHistogram) {
-                        timeIntervalLog.format(Locale.US, logFormat,
-                                ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
-                                // values recorded during the last reporting interval
-                                ((DoubleHistogram) intervalHistogram).getTotalCount(),
-                                ((DoubleHistogram) intervalHistogram).getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                                ((DoubleHistogram) intervalHistogram).getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                                ((DoubleHistogram) intervalHistogram).getMaxValue() / config.outputValueUnitRatio,
-                                // values recorded from the beginning until now
-                                accumulatedDoubleHistogram.getTotalCount(),
-                                accumulatedDoubleHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                                accumulatedDoubleHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                                accumulatedDoubleHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
-                                accumulatedDoubleHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
-                                accumulatedDoubleHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
-                                accumulatedDoubleHistogram.getMaxValue() / config.outputValueUnitRatio
-                        );
-                    } else {
-                        timeIntervalLog.format(Locale.US, logFormat,
-                                ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
-                                // values recorded during the last reporting interval
-                                ((Histogram) intervalHistogram).getTotalCount(),
-                                ((Histogram) intervalHistogram).getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                                ((Histogram) intervalHistogram).getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                                ((Histogram) intervalHistogram).getMaxValue() / config.outputValueUnitRatio,
-                                // values recorded from the beginning until now
-                                accumulatedRegularHistogram.getTotalCount(),
-                                accumulatedRegularHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
-                                accumulatedRegularHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
-                                accumulatedRegularHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
-                                accumulatedRegularHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
-                                accumulatedRegularHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
-                                accumulatedRegularHistogram.getMaxValue() / config.outputValueUnitRatio
-                        );
-                    }
+                    Object[] statistics = intervalHistogram instanceof DoubleHistogram
+                            ? buildDoubleHistogramStatistics((DoubleHistogram) intervalHistogram, accumulatedDoubleHistogram)
+                            : buildRegularHistogramStatistics((Histogram) intervalHistogram, accumulatedRegularHistogram);
+
+                    timeIntervalLog.format(Locale.US, logFormat, statistics);
                 }
 
                 intervalHistogram = getIntervalHistogram(config.tag);
@@ -361,6 +330,57 @@ public class HistogramLogProcessor extends Thread {
                 timeIntervalLog.close();
                 histogramPercentileLog.close();
             }
+        }
+    }
+
+    protected Object[] buildRegularHistogramStatistics(Histogram intervalHistogram, Histogram accumulatedRegularHistogram) {
+            return new Object[]{((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                // values recorded during the last reporting interval
+                intervalHistogram.getTotalCount(),
+                intervalHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                intervalHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                intervalHistogram.getMaxValue() / config.outputValueUnitRatio,
+                // values recorded from the beginning until now
+                accumulatedRegularHistogram.getTotalCount(),
+                accumulatedRegularHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                accumulatedRegularHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                accumulatedRegularHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
+                accumulatedRegularHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
+                accumulatedRegularHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
+                accumulatedRegularHistogram.getMaxValue() / config.outputValueUnitRatio};
+    }
+
+    protected Object[] buildDoubleHistogramStatistics(DoubleHistogram doubleIntervalHistogram, DoubleHistogram accumulatedDoubleHistogram) {
+        return new Object[]{((doubleIntervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                // values recorded during the last reporting interval
+                doubleIntervalHistogram.getTotalCount(),
+                doubleIntervalHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                doubleIntervalHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                doubleIntervalHistogram.getMaxValue() / config.outputValueUnitRatio,
+                // values recorded from the beginning until now
+                accumulatedDoubleHistogram.getTotalCount(),
+                accumulatedDoubleHistogram.getValueAtPercentile(50.0) / config.outputValueUnitRatio,
+                accumulatedDoubleHistogram.getValueAtPercentile(90.0) / config.outputValueUnitRatio,
+                accumulatedDoubleHistogram.getValueAtPercentile(99.0) / config.outputValueUnitRatio,
+                accumulatedDoubleHistogram.getValueAtPercentile(99.9) / config.outputValueUnitRatio,
+                accumulatedDoubleHistogram.getValueAtPercentile(99.99) / config.outputValueUnitRatio,
+                accumulatedDoubleHistogram.getMaxValue() / config.outputValueUnitRatio};
+    }
+
+    protected String buildLegend(boolean cvs) {
+        if(cvs){
+            return "\"Timestamp\",\"Int_Count\",\"Int_50%\",\"Int_90%\",\"Int_Max\",\"Total_Count\"," +
+                    "\"Total_50%\",\"Total_90%\",\"Total_99%\",\"Total_99.9%\",\"Total_99.99%\",\"Total_Max\"";
+        }else{
+            return "Time: IntervalPercentiles:count ( 50% 90% Max ) TotalPercentiles:count ( 50% 90% 99% 99.9% 99.99% Max )";
+        }
+    }
+
+    protected String buildLogFormat(boolean cvs) {
+        if (cvs) {
+            return "%.3f,%d,%.3f,%.3f,%.3f,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n";
+        } else {
+            return  "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
         }
     }
 
