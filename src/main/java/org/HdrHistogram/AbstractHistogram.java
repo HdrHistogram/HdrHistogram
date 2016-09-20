@@ -1267,7 +1267,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordedValuesIterator.reset();
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
-            Double deviation = (medianEquivalentValue(iterationValue.getValueIteratedTo()) * 1.0) - mean;
+            double deviation = (medianEquivalentValue(iterationValue.getValueIteratedTo()) * 1.0) - mean;
             geometric_deviation_total += (deviation * deviation) * iterationValue.getCountAddedInThisIterationStep();
         }
         double std_deviation = Math.sqrt(geometric_deviation_total / getTotalCount());
