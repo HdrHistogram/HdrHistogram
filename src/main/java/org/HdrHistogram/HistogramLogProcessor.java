@@ -70,6 +70,10 @@ public class HistogramLogProcessor extends Thread {
         public boolean listTags = false;
         public boolean allTags = false;
 
+        public boolean movingWindow = false;
+        public double movingWindowPercentileToReport = 99.0;
+        public int movingWindowIntervalCount = 2;
+
         public int percentilesOutputTicksPerHalf = 5;
         public Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
 
@@ -92,6 +96,12 @@ public class HistogramLogProcessor extends Thread {
                         inputFileName = args[++i];
                     } else if (args[i].equals("-tag")) {
                         tag = args[++i];
+                    } else if (args[i].equals("-mpw")) {
+                        movingWindowPercentileToReport = Double.parseDouble(args[++i]);
+                        movingWindow = true;
+                    } else if (args[i].equals("-mpwi")) {
+                        movingWindowIntervalCount = Integer.parseInt(args[++i]);
+                        movingWindow = true;
                     } else if (args[i].equals("-start")) {
                         rangeStartTimeSec = Double.parseDouble(args[++i]);
                     } else if (args[i].equals("-end")) {
@@ -201,9 +211,15 @@ public class HistogramLogProcessor extends Thread {
     @Override
     public void run() {
         PrintStream timeIntervalLog = null;
+        PrintStream movingWindowLog = null;
         PrintStream histogramPercentileLog = System.out;
         Double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
+        boolean movingWindowLogLegendWritten = false;
+
+        EncodableHistogram[] movingWindow = new EncodableHistogram[config.movingWindowIntervalCount];
+        EncodableHistogram movingWindowSumHistogram = null;
+        int movingWindowIndex = 0;
 
         if (config.listTags) {
             Set<String> tags = new TreeSet<String>();
@@ -229,10 +245,13 @@ public class HistogramLogProcessor extends Thread {
         }
 
         final String logFormat;
+        final String movingWindowLogFormat;
         if (config.logFormatCsv) {
             logFormat = "%.3f,%d,%.3f,%.3f,%.3f,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n";
+            movingWindowLogFormat = "%.3f,%d,%.3f,%.3f\n";
         } else {
             logFormat = "%4.3f: I:%d ( %7.3f %7.3f %7.3f ) T:%d ( %7.3f %7.3f %7.3f %7.3f %7.3f %7.3f )\n";
+            movingWindowLogFormat = "%4.3f: I:%d P:%7.3f M:%7.3f\n";
         }
 
         try {
@@ -250,6 +269,16 @@ public class HistogramLogProcessor extends Thread {
                 } catch (FileNotFoundException ex) {
                     System.err.println("Failed to open percentiles histogram output file " + hgrmOutputFileName);
                 }
+                if (config.movingWindow) {
+                    String movingWindowOutputFileName = config.outputFileName + ".mpw";
+                    try {
+                        movingWindowLog = new PrintStream(new FileOutputStream(movingWindowOutputFileName), false);
+                        outputTimeRange(movingWindowLog, "Moving window log for " +
+                                config.movingWindowPercentileToReport + " percentile");
+                    } catch (FileNotFoundException ex) {
+                        System.err.println("Failed to open moving window output file " + movingWindowOutputFileName);
+                    }
+                }
             }
 
             EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);
@@ -263,14 +292,18 @@ public class HistogramLogProcessor extends Thread {
                     accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
                     accumulatedDoubleHistogram.reset();
                     accumulatedDoubleHistogram.setAutoResize(true);
+                    movingWindowSumHistogram = new DoubleHistogram(3);
                 } else {
                     accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
                     accumulatedRegularHistogram.reset();
                     accumulatedRegularHistogram.setAutoResize(true);
+                    movingWindowSumHistogram = new Histogram(3);
                 }
             }
 
             while (intervalHistogram != null) {
+
+                // handle accumulated histogram:
                 if (intervalHistogram instanceof DoubleHistogram) {
                     if (accumulatedDoubleHistogram == null) {
                         throw new IllegalStateException("Encountered a DoubleHistogram line in a log of Histograms.");
@@ -281,6 +314,25 @@ public class HistogramLogProcessor extends Thread {
                         throw new IllegalStateException("Encountered a Histogram line in a log of DoubleHistograms.");
                     }
                     accumulatedRegularHistogram.add((Histogram) intervalHistogram);
+                }
+
+                // handle moving window:
+                if (config.movingWindow) {
+                    EncodableHistogram prevHist = movingWindow[movingWindowIndex];
+                    movingWindow[movingWindowIndex] = intervalHistogram;
+                    if (movingWindowSumHistogram instanceof DoubleHistogram) {
+                        ((DoubleHistogram) movingWindowSumHistogram).add((DoubleHistogram) intervalHistogram);
+                        if (prevHist != null) {
+                            ((DoubleHistogram) movingWindowSumHistogram).subtract((DoubleHistogram) prevHist);
+                        }
+                    } else {
+                        ((Histogram) movingWindowSumHistogram).add((Histogram) intervalHistogram);
+                        if (prevHist != null) {
+                            ((Histogram) movingWindowSumHistogram).subtract((Histogram) prevHist);
+                        }
+                    }
+                    movingWindowIndex++;
+                    movingWindowIndex %= config.movingWindowIntervalCount;
                 }
 
                 if ((firstStartTime == 0.0) && (logReader.getStartTimeSec() != 0.0)) {
@@ -339,6 +391,36 @@ public class HistogramLogProcessor extends Thread {
                                 accumulatedRegularHistogram.getMaxValue() / config.outputValueUnitRatio
                         );
                     }
+                }
+
+                if (movingWindowLog != null) {
+                    if (!movingWindowLogLegendWritten) {
+                        movingWindowLogLegendWritten = true;
+                        if (config.logFormatCsv) {
+                            movingWindowLog.println("\"Timestamp\",\"Window_Count\",\"" +
+                                    config.movingWindowPercentileToReport +"%'ile\",\"Max\"");
+                        } else {
+                            movingWindowLog.println("Time: WindoCount " + config.movingWindowPercentileToReport + "%'ile Max");
+                        }
+                    }
+                    if (intervalHistogram instanceof DoubleHistogram) {
+                        movingWindowLog.format(Locale.US, movingWindowLogFormat,
+                                ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                                // values recorded during the last reporting interval
+                                ((DoubleHistogram) movingWindowSumHistogram).getTotalCount(),
+                                ((DoubleHistogram) movingWindowSumHistogram).getValueAtPercentile(config.movingWindowPercentileToReport) / config.outputValueUnitRatio,
+                                ((DoubleHistogram) movingWindowSumHistogram).getMaxValue() / config.outputValueUnitRatio
+                                );
+                    } else {
+                        movingWindowLog.format(Locale.US, movingWindowLogFormat,
+                                ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
+                                // values recorded during the last reporting interval
+                                ((Histogram) movingWindowSumHistogram).getTotalCount(),
+                                ((Histogram) movingWindowSumHistogram).getValueAtPercentile(config.movingWindowPercentileToReport) / config.outputValueUnitRatio,
+                                ((Histogram) movingWindowSumHistogram).getMaxValue() / config.outputValueUnitRatio
+                                );
+                    }
+
                 }
 
                 intervalHistogram = getIntervalHistogram(config.tag);
