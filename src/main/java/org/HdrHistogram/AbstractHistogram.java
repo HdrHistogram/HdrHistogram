@@ -1916,7 +1916,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int numberOfSignificantValueDigits;
         final long lowestTrackableUnitValue;
         long highestTrackableValue;
-        final Double integerToDoubleValueConversionRatio;
+        final double integerToDoubleValueConversionRatio;
 
         if ((getCookieBase(cookie) == encodingCookieBase) ||
                 (getCookieBase(cookie) == V1EncodingCookieBase)) {
