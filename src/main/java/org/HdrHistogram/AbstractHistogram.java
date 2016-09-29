@@ -1267,7 +1267,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordedValuesIterator.reset();
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
-            Double deviation = (medianEquivalentValue(iterationValue.getValueIteratedTo()) * 1.0) - mean;
+            double deviation = (medianEquivalentValue(iterationValue.getValueIteratedTo()) * 1.0) - mean;
             geometric_deviation_total += (deviation * deviation) * iterationValue.getCountAddedInThisIterationStep();
         }
         double std_deviation = Math.sqrt(geometric_deviation_total / getTotalCount());
@@ -1916,7 +1916,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int numberOfSignificantValueDigits;
         final long lowestTrackableUnitValue;
         long highestTrackableValue;
-        final Double integerToDoubleValueConversionRatio;
+        final double integerToDoubleValueConversionRatio;
 
         if ((getCookieBase(cookie) == encodingCookieBase) ||
                 (getCookieBase(cookie) == V1EncodingCookieBase)) {
