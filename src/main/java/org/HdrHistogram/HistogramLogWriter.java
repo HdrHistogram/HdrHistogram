@@ -92,6 +92,13 @@ public class HistogramLogWriter {
     }
 
     /**
+     * Closes the file or output stream for this log writer.
+     */
+    public void close() {
+        log.close();
+    }
+
+    /**
      * Output an interval histogram, with the given timestamp information and the [optional] tag
      * associated with the histogram, using a configurable maxValueUnitRatio. (note that the
      * specified timestamp information will be used, and the timestamp information in the actual
