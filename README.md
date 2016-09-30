@@ -11,7 +11,7 @@ HdrHistogram, C, Python, Erlang, and Go ports can be found in other
 respositories. All of which share common concepts and data
 representation capabilities.
 
-Note: The below is an excerpt from a HistograUpdate m JavaDoc. While much
+Note: The below is an excerpt from a Histogram JavaDoc. While much
 of it generally applies to other language implementations as well,
 some details may vary by implementation (e.g. iteration and
 synchronization), so you should consult the documentation or header
