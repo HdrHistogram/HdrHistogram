@@ -131,7 +131,9 @@ public class HistogramLogReader {
      * value to the latest [optional] start time found in the log.
      * <p>
      * Upon encountering any unexpected format errors in reading the next
-     * interval from the file, this method will return a null.
+     * interval from the file, this method will return a null. Use {@link #hasNext} to determine
+     * whether or not additional intervals may be available for reading in the log input.
+     *
      * @param startTimeSec The (non-absolute time) start of the expected
      *                     time range, in seconds.
      * @param endTimeSec The (non-absolute time) end of the expected time
@@ -165,7 +167,9 @@ public class HistogramLogReader {
      * a "#[StartTime: " followed by the start time in seconds.
      * <p>
      * Upon encountering any unexpected format errors in reading the next
-     * interval from the file, this method will return a null.
+     * interval from the file, this method will return a null. Use {@link #hasNext} to determine
+     * whether or not additional intervals may be available for reading in the log input.
+     *
      * @param absoluteStartTimeSec The (absolute time) start of the expected
      *                             time range, in seconds.
      * @param absoluteEndTimeSec The (absolute time) end of the expected
@@ -182,8 +186,9 @@ public class HistogramLogReader {
      * Read the next interval histogram from the log. Returns a Histogram object if
      * an interval line was found, or null if not.
      * <p>Upon encountering any unexpected format errors in reading the next interval
-     * from the file, this method will return a null.
-     * @return a DecodedInterval, or a null if no appropriate interval found
+     * from the input, this method will return a null. Use {@link #hasNext} to determine
+     * whether or not additional intervals may be available for reading in the log input.
+     * @return a DecodedInterval, or a null if no appropriately formatted interval was found
      */
     public EncodableHistogram nextIntervalHistogram() {
         return nextIntervalHistogram(0.0, Long.MAX_VALUE * 1.0, true);
@@ -209,13 +214,11 @@ public class HistogramLogReader {
                             observedBaseTime = true;
                         }
                     }
-                    scanner.nextLine();
                     continue;
                 }
 
                 if (scanner.hasNext("\"StartTimestamp\".*")) {
                     // Legend line
-                    scanner.nextLine();
                     continue;
                 }
 
@@ -255,7 +258,6 @@ public class HistogramLogReader {
                 final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
 
                 if (startTimeStampToCheckRangeOn < rangeStartTimeSec) {
-                    scanner.nextLine();
                     continue;
                 }
 
@@ -274,17 +276,25 @@ public class HistogramLogReader {
                 histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
                 histogram.setTag(tagString);
 
-                scanner.nextLine(); // Move to next line. Very much needed for e.g. windows CR/LF lines
-
                 return histogram;
 
             } catch (java.util.NoSuchElementException ex) {
                 return null;
             } catch (DataFormatException ex) {
                 return null;
+            } finally {
+                scanner.nextLine(); // Move to next line.
             }
         }
         return null;
+    }
+
+    /**
+     * Indicates whther or not additional intervals may exist in the log
+     * @return ture if additional intervals may exist in the log
+     */
+    public boolean hasNext() {
+        return scanner.hasNextLine();
     }
 
 }
