@@ -85,7 +85,7 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
      * duplicating the source's start/end timestamps (but NOT it's contents)
      * @param source The source histogram to duplicate
      */
-    public ConcurrentDoubleHistogram(final ConcurrentDoubleHistogram source) {
+    public ConcurrentDoubleHistogram(final DoubleHistogram source) {
         super(source);
     }
 }
