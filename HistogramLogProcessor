@@ -48,7 +48,7 @@
 function readlink_f () { _=`pwd`; cd `dirname $1` && echo `pwd` && cd $_; }
 INSTALLED_PATH=$(readlink_f $0)
 
-# Check if running from unpacked distribution archive by assuming jHiccup.jar
+# Check if running from unpacked distribution archive by assuming HdrHistogram.jar
 # in the same directory as this script. If not, try to search in target/ directory
 # (running from the source repository build).
 HDRHISTOGRAM_JAR_FILE=$INSTALLED_PATH/HdrHistogram.jar
@@ -69,10 +69,10 @@ fi
 
 # Deal with Windows/cygwin path normalization syntax needs:
 # Key Assumption: only cygwin/Windows installations will have a cygpath command...
-cygpath -w $JHICCUP_JAR_FILE &> /dev/null
+cygpath -w $HDRHISTOGRAM_JAR_FILE &> /dev/null
 if [ $? -eq 0 ] ; then
     # if using cygwin, use valid windows-style classpath
-    JHICCUP_JAR_FILE=`cygpath -w $HDRHISTOGRAM_JAR_FILE`
+    HDRHISTOGRAM_JAR_FILE=`cygpath -w $HDRHISTOGRAM_JAR_FILE`
 	echo Windows path for hiccup jar file is $HDRHISTOGRAM_JAR_FILE
 fi
 
