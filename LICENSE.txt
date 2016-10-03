@@ -13,7 +13,7 @@ the Author.
 -----------------------------------------------------------------------------
 ** Beginning of "BSD 2-Clause License" text. **
 
- Copyright (c) 2012, 2013, 2014 Gil Tene
+ Copyright (c) 2012, 2013, 2014, 2015, 2016 Gil Tene
  Copyright (c) 2014 Michael Barker
  Copyright (c) 2014 Matt Warren
  All rights reserved.
