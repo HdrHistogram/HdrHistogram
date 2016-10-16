@@ -84,8 +84,7 @@ public class Recorder {
                     final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalAtomicHistogram(
                 instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalAtomicHistogram(
-                instanceId, lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
         activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
