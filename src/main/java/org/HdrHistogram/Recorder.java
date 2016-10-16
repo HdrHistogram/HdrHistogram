@@ -44,7 +44,7 @@ public class Recorder {
      */
     public Recorder(final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
         activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
