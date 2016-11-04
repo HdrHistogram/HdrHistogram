@@ -72,7 +72,7 @@ public class HistogramLogProcessor extends Thread {
 
         public boolean movingWindow = false;
         public double movingWindowPercentileToReport = 99.0;
-        public int movingWindowIntervalCount = 2;
+        public long movingWindowLengthInMsec = 60000; // 1 minute
 
         public int percentilesOutputTicksPerHalf = 5;
         public Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
@@ -99,8 +99,8 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-mpw")) {
                         movingWindowPercentileToReport = Double.parseDouble(args[++i]);
                         movingWindow = true;
-                    } else if (args[i].equals("-mpwi")) {
-                        movingWindowIntervalCount = Integer.parseInt(args[++i]);
+                    } else if (args[i].equals("-mpwl")) {
+                        movingWindowLengthInMsec = Long.parseLong(args[++i]);
                         movingWindow = true;
                     } else if (args[i].equals("-start")) {
                         rangeStartTimeSec = Double.parseDouble(args[++i]);
@@ -217,8 +217,9 @@ public class HistogramLogProcessor extends Thread {
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-        EncodableHistogram[] movingWindow = new EncodableHistogram[config.movingWindowIntervalCount];
+//        EncodableHistogram[] movingWindow = new EncodableHistogram[config.movingWindowIntervalCount];
         EncodableHistogram movingWindowSumHistogram = null;
+        Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
         int movingWindowIndex = 0;
 
         if (config.listTags) {
@@ -316,23 +317,32 @@ public class HistogramLogProcessor extends Thread {
                     accumulatedRegularHistogram.add((Histogram) intervalHistogram);
                 }
 
+                long windowCutOffTimeStamp = intervalHistogram.getEndTimeStamp() - config.movingWindowLengthInMsec;
                 // handle moving window:
                 if (config.movingWindow) {
-                    EncodableHistogram prevHist = movingWindow[movingWindowIndex];
-                    movingWindow[movingWindowIndex] = intervalHistogram;
+
+                    // Add the current interval histogram to the moving window sums:
                     if (movingWindowSumHistogram instanceof DoubleHistogram) {
                         ((DoubleHistogram) movingWindowSumHistogram).add((DoubleHistogram) intervalHistogram);
-                        if (prevHist != null) {
-                            ((DoubleHistogram) movingWindowSumHistogram).subtract((DoubleHistogram) prevHist);
-                        }
                     } else {
                         ((Histogram) movingWindowSumHistogram).add((Histogram) intervalHistogram);
-                        if (prevHist != null) {
-                            ((Histogram) movingWindowSumHistogram).subtract((Histogram) prevHist);
+                    }
+                    // Remove previous, now-out-of-window interval histograms from moving window:
+                    while ((movingWindowQueue.peek() != null) &&
+                            (movingWindowQueue.peek().getEndTimeStamp() <= windowCutOffTimeStamp)) {
+                        EncodableHistogram prevHist = movingWindowQueue.remove();
+                        if (movingWindowSumHistogram instanceof DoubleHistogram) {
+                            if (prevHist != null) {
+                                ((DoubleHistogram) movingWindowSumHistogram).subtract((DoubleHistogram) prevHist);
+                            }
+                        } else {
+                            if (prevHist != null) {
+                                ((Histogram) movingWindowSumHistogram).subtract((Histogram) prevHist);
+                            }
                         }
                     }
-                    movingWindowIndex++;
-                    movingWindowIndex %= config.movingWindowIntervalCount;
+                    // Add interval histogram to moving window previous intervals memory:
+                    movingWindowQueue.add(intervalHistogram);
                 }
 
                 if ((firstStartTime == 0.0) && (logReader.getStartTimeSec() != 0.0)) {
