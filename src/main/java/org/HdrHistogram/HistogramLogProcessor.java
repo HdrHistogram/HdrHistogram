@@ -96,10 +96,10 @@ public class HistogramLogProcessor extends Thread {
                         inputFileName = args[++i];
                     } else if (args[i].equals("-tag")) {
                         tag = args[++i];
-                    } else if (args[i].equals("-mpw")) {
+                    } else if (args[i].equals("-mwp")) {
                         movingWindowPercentileToReport = Double.parseDouble(args[++i]);
                         movingWindow = true;
-                    } else if (args[i].equals("-mpwl")) {
+                    } else if (args[i].equals("-mwpl")) {
                         movingWindowLengthInMsec = Long.parseLong(args[++i]);
                         movingWindow = true;
                     } else if (args[i].equals("-start")) {
@@ -271,7 +271,7 @@ public class HistogramLogProcessor extends Thread {
                     System.err.println("Failed to open percentiles histogram output file " + hgrmOutputFileName);
                 }
                 if (config.movingWindow) {
-                    String movingWindowOutputFileName = config.outputFileName + ".mpw";
+                    String movingWindowOutputFileName = config.outputFileName + ".mwp";
                     try {
                         movingWindowLog = new PrintStream(new FileOutputStream(movingWindowOutputFileName), false);
                         outputTimeRange(movingWindowLog, "Moving window log for " +
