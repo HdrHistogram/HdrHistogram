@@ -44,7 +44,7 @@ public class DoubleRecorder {
      */
     public DoubleRecorder(final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
         activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
@@ -61,8 +61,7 @@ public class DoubleRecorder {
                           final int numberOfSignificantValueDigits) {
         activeHistogram = new InternalConcurrentDoubleHistogram(
                 instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
-        inactiveHistogram = new InternalConcurrentDoubleHistogram(
-                instanceId, highestToLowestValueRatio, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
         activeHistogram.setStartTimeStamp(System.currentTimeMillis());
     }
 
