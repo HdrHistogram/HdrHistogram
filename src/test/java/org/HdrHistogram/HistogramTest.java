@@ -63,6 +63,20 @@ public class HistogramTest {
     }
 
     @Test
+    public void testLargeUnitMagnitudeDoesntInfiniteLoopInBucketCalculation() {
+        // Out of 63 bits for positive longs, subBucketCount for 5 sig  digs = 2^18 will use 19.
+        // A 45-bit lowest value will lead to a unitMagnitude of 44. 2^18 << 44 = 2^62 = (Long.MAX_VALUE / 2) + 1
+        // So, this one will not overflow in bucket calculation, and will exit normally after 1 trip through the loop.
+        assertEquals(2, new Histogram(1L << 44, Long.MAX_VALUE, 5).bucketCount);
+        // A 46-bit lowest value leads to a unitMagnitude of 45. 2^18 << 45 = 2^63 = Long.MIN_VALUE, which would cause
+        // an infinite loop if it hit the normal bucket count loop.
+        assertEquals(1, new Histogram(1L << 45, Long.MAX_VALUE, 5).bucketCount);
+        // And a 63-bit lowest value is definitely too large to fit all of subBucketCount: this can represent only
+        // one value (2^62) without overflowing.
+        assertEquals(1, new Histogram(1L << 62, Long.MAX_VALUE, 5).bucketCount);
+    }
+
+    @Test
     public void testEmptyHistogram() throws Exception {
         Histogram histogram = new Histogram(3);
         long min = histogram.getMinValue();

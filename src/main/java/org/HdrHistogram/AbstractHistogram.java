@@ -2157,6 +2157,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getBucketsNeededToCoverValue(final long value) {
+        if (unitMagnitude + subBucketHalfCountMagnitude + 1 > 62) {
+            // The unitMagnitude is very large, so subBucketCount << unitMagnitude won't fit in a (positive) long.
+            // The shift logic would shift the bit set in subBucketCount into the 63rd bit (making a negative number)
+            // or off the end of the long entirely.
+            // The higher sub buckets in the sole bucket will represent values that are larger than can be represented
+            // in a long, but that is already possibly the case for the last bucket.
+            return 1;
+        }
+
         // the k'th bucket can express from 0 * 2^k to subBucketCount * 2^k in units of 2^k
         long smallestUntrackableValue = ((long) subBucketCount) << unitMagnitude;
 
