@@ -296,15 +296,15 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
          */
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
-        unitMagnitude = (int) Math.floor(Math.log(lowestDiscernibleValue)/Math.log(2));
+        unitMagnitude = (int) (Math.log(lowestDiscernibleValue)/Math.log(2));
         unitMagnitudeMask = (1 << unitMagnitude) - 1;
 
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to
         // provide unit resolution to at least largestValueWithSingleUnitResolution. So figure out
         // largestValueWithSingleUnitResolution's nearest power-of-two (rounded up), and use that:
         int subBucketCountMagnitude = (int) Math.ceil(Math.log(largestValueWithSingleUnitResolution)/Math.log(2));
-        subBucketHalfCountMagnitude = ((subBucketCountMagnitude > 1) ? subBucketCountMagnitude : 1) - 1;
-        subBucketCount = (int) Math.pow(2, (subBucketHalfCountMagnitude + 1));
+        subBucketHalfCountMagnitude = subBucketCountMagnitude - 1;
+        subBucketCount = 1 << subBucketCountMagnitude;
         subBucketHalfCount = subBucketCount / 2;
         subBucketMask = ((long)subBucketCount - 1) << unitMagnitude;
 
@@ -2181,7 +2181,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * value if we consider the sub-bucket length to be halved.
      */
     int getLengthForNumberOfBuckets(final int numberOfBuckets) {
-        final int lengthNeeded = (numberOfBuckets + 1) * (subBucketCount / 2);
+        final int lengthNeeded = (numberOfBuckets + 1) * (subBucketHalfCount);
         return lengthNeeded;
     }
 
