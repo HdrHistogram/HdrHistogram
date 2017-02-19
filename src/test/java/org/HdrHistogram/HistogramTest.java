@@ -91,7 +91,6 @@ public class HistogramTest {
 
         // past last bucket -- not near Long.MAX_VALUE, so should still calculate ok.
         assertEquals(23, h.getBucketIndex((2048L << 22) + 3 * (1 << 23)));
-        // counting by 4s, starting at halfway through the bucket
         assertEquals(1024 + 3, h.getSubBucketIndex((2048L << 22) + 3 * (1 << 23), 23));
     }
 
@@ -150,12 +149,12 @@ public class HistogramTest {
         assertEquals(0, h.getBucketIndex(3));
         assertEquals(0, h.getSubBucketIndex(3, 0));
 
-        // first half of first bucket, unit = (1L << 53)
+        // first half of first bucket
         assertEquals(0, h.getBucketIndex(3 * unit));
         assertEquals(3, h.getSubBucketIndex(3 * unit, 0));
 
         // second half of first bucket
-        // subBucketHalfCount's worth of 4096 units, plus 3 more
+        // subBucketHalfCount's worth of units, plus 3 more
         assertEquals(0, h.getBucketIndex(unit * (1024 + 3)));
         assertEquals(1024 + 3, h.getSubBucketIndex(unit * (1024 + 3), 0));
 
@@ -186,7 +185,7 @@ public class HistogramTest {
     }
 
     @Test
-    public void testUnitMagnitude55SubBucketMagnitude8Ok() {
+    public void testUnitMagnitude54SubBucketMagnitude8Ok() {
         Histogram h = new Histogram(1L << 54, 1L << 62, 2);
         assertEquals(256, h.subBucketCount);
         assertEquals(54, h.unitMagnitude);
@@ -200,23 +199,6 @@ public class HistogramTest {
         // upper half of second bucket, last slot
         assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
         assertEquals(128 + 127, h.getSubBucketIndex(Long.MAX_VALUE, 1));
-    }
-
-    @Test
-    public void testUnitMagnitude51SubBucketMagnitude11Ok() {
-        Histogram h = new Histogram(1L << 51, 1L << 62, 3);
-        assertEquals(2048, h.subBucketCount);
-        assertEquals(51, h.unitMagnitude);
-        // subBucketCount = 2^11. With unit magnitude shift, it's 2^62. 1 more bucket to be > the max of 2^62.
-        assertEquals(2, h.bucketCount);
-
-        // below lowest value
-        assertEquals(0, h.getBucketIndex(3));
-        assertEquals(0, h.getSubBucketIndex(3, 0));
-
-        // upper half of second bucket, last slot
-        assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
-        assertEquals(1024 + 1023, h.getSubBucketIndex(Long.MAX_VALUE, 1));
     }
 
     @Test
