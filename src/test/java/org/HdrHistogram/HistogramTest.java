@@ -17,6 +17,7 @@ import java.io.ByteArrayOutputStream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * JUnit test for {@link Histogram}
@@ -63,17 +64,176 @@ public class HistogramTest {
     }
 
     @Test
-    public void testLargeUnitMagnitudeDoesntInfiniteLoopInBucketCalculation() {
-        // Out of 63 bits for positive longs, subBucketCount for 5 sig  digs = 2^18 will use 19.
-        // A 45-bit lowest value will lead to a unitMagnitude of 44. 2^18 << 44 = 2^62 = (Long.MAX_VALUE / 2) + 1
-        // So, this one will not overflow in bucket calculation, and will exit normally after 1 trip through the loop.
-        assertEquals(2, new Histogram(1L << 44, Long.MAX_VALUE, 5).bucketCount);
-        // A 46-bit lowest value leads to a unitMagnitude of 45. 2^18 << 45 = 2^63 = Long.MIN_VALUE, which would cause
-        // an infinite loop if it hit the normal bucket count loop.
-        assertEquals(1, new Histogram(1L << 45, Long.MAX_VALUE, 5).bucketCount);
-        // And a 63-bit lowest value is definitely too large to fit all of subBucketCount: this can represent only
-        // one value (2^62) without overflowing.
-        assertEquals(1, new Histogram(1L << 62, Long.MAX_VALUE, 5).bucketCount);
+    public void testUnitMagnitude0IndexCalculations() {
+        Histogram h = new Histogram(1L, 1L << 32, 3);
+        assertEquals(2048, h.subBucketCount);
+        assertEquals(0, h.unitMagnitude);
+        // subBucketCount = 2^11, so 2^11 << 22 is > the max of 2^32 for 23 buckets total
+        assertEquals(23, h.bucketCount);
+
+        // first half of first bucket
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(3, h.getSubBucketIndex(3, 0));
+
+        // second half of first bucket
+        assertEquals(0, h.getBucketIndex(1024 + 3));
+        assertEquals(1024 + 3, h.getSubBucketIndex(1024 + 3, 0));
+
+        // second bucket (top half)
+        assertEquals(1, h.getBucketIndex(2048 + 3 * 2));
+        // counting by 2s, starting at halfway through the bucket
+        assertEquals(1024 + 3, h.getSubBucketIndex(2048 + 3 * 2, 1));
+
+        // third bucket (top half)
+        assertEquals(2, h.getBucketIndex((2048 << 1) + 3 * 4));
+        // counting by 4s, starting at halfway through the bucket
+        assertEquals(1024 + 3, h.getSubBucketIndex((2048 << 1) + 3 * 4, 2));
+
+        // past last bucket -- not near Long.MAX_VALUE, so should still calculate ok.
+        assertEquals(23, h.getBucketIndex((2048L << 22) + 3 * (1 << 23)));
+        // counting by 4s, starting at halfway through the bucket
+        assertEquals(1024 + 3, h.getSubBucketIndex((2048L << 22) + 3 * (1 << 23), 23));
+    }
+
+    @Test
+    public void testUnitMagnitude4IndexCalculations() {
+        Histogram h = new Histogram(1L << 12, 1L << 32, 3);
+        assertEquals(2048, h.subBucketCount);
+        assertEquals(12, h.unitMagnitude);
+        // subBucketCount = 2^11. With unit magnitude shift, it's 2^23. 2^23 << 10 is > the max of 2^32 for 11 buckets
+        // total
+        assertEquals(11, h.bucketCount);
+        long unit = 1L << 12;
+
+        // below lowest value
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(0, h.getSubBucketIndex(3, 0));
+
+        // first half of first bucket
+        assertEquals(0, h.getBucketIndex(3 * unit));
+        assertEquals(3, h.getSubBucketIndex(3 * unit, 0));
+
+        // second half of first bucket
+        // subBucketHalfCount's worth of units, plus 3 more
+        assertEquals(0, h.getBucketIndex(unit * (1024 + 3)));
+        assertEquals(1024 + 3, h.getSubBucketIndex(unit * (1024 + 3), 0));
+
+        // second bucket (top half), bucket scale = unit << 1.
+        // Middle of bucket is (subBucketHalfCount = 2^10) of bucket scale, = unit << 11.
+        // Add on 3 of bucket scale.
+        assertEquals(1, h.getBucketIndex((unit << 11) + 3 * (unit << 1)));
+        assertEquals(1024 + 3, h.getSubBucketIndex((unit << 11) + 3 * (unit << 1), 1));
+
+        // third bucket (top half), bucket scale = unit << 2.
+        // Middle of bucket is (subBucketHalfCount = 2^10) of bucket scale, = unit << 12.
+        // Add on 3 of bucket scale.
+        assertEquals(2, h.getBucketIndex((unit << 12) + 3 * (unit << 2)));
+        assertEquals(1024 + 3, h.getSubBucketIndex((unit << 12) + 3 * (unit << 2), 2));
+
+        // past last bucket -- not near Long.MAX_VALUE, so should still calculate ok.
+        assertEquals(11, h.getBucketIndex((unit << 21) + 3 * (unit << 11)));
+        assertEquals(1024 + 3, h.getSubBucketIndex((unit << 21) + 3 * (unit << 11), 11));
+    }
+
+    @Test
+    public void testUnitMagnitude51SubBucketMagnitude11IndexCalculations() {
+        // maximum unit magnitude for this precision
+        Histogram h = new Histogram(1L << 51, Long.MAX_VALUE, 3);
+        assertEquals(2048, h.subBucketCount);
+        assertEquals(51, h.unitMagnitude);
+        // subBucketCount = 2^11. With unit magnitude shift, it's 2^62. 1 more bucket to (almost) reach 2^63.
+        assertEquals(2, h.bucketCount);
+        assertEquals(2, h.leadingZeroCountBase);
+        long unit = 1L << 51;
+
+        // below lowest value
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(0, h.getSubBucketIndex(3, 0));
+
+        // first half of first bucket, unit = (1L << 53)
+        assertEquals(0, h.getBucketIndex(3 * unit));
+        assertEquals(3, h.getSubBucketIndex(3 * unit, 0));
+
+        // second half of first bucket
+        // subBucketHalfCount's worth of 4096 units, plus 3 more
+        assertEquals(0, h.getBucketIndex(unit * (1024 + 3)));
+        assertEquals(1024 + 3, h.getSubBucketIndex(unit * (1024 + 3), 0));
+
+        // end of second half
+        assertEquals(0, h.getBucketIndex(unit * 1024 + 1023 * unit));
+        assertEquals(1024 + 1023, h.getSubBucketIndex(unit * 1024 + 1023 * unit, 0));
+
+        // second bucket (top half), bucket scale = unit << 1.
+        // Middle of bucket is (subBucketHalfCount = 2^10) of bucket scale, = unit << 11.
+        // Add on 3 of bucket scale.
+        assertEquals(1, h.getBucketIndex((unit << 11) + 3 * (unit << 1)));
+        assertEquals(1024 + 3, h.getSubBucketIndex((unit << 11) + 3 * (unit << 1), 1));
+
+        // upper half of second bucket, last slot
+        assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
+        assertEquals(1024 + 1023, h.getSubBucketIndex(Long.MAX_VALUE, 1));
+    }
+
+    @Test
+    public void testUnitMagnitude52SubBucketMagnitude11Throws() {
+        try {
+            new Histogram(1L << 52, 1L << 62, 3);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertEquals("Cannot represent numberOfSignificantValueDigits worth of values beyond lowestDiscernibleValue",
+                    e.getMessage());
+        }
+    }
+
+    @Test
+    public void testUnitMagnitude55SubBucketMagnitude8Ok() {
+        Histogram h = new Histogram(1L << 54, 1L << 62, 2);
+        assertEquals(256, h.subBucketCount);
+        assertEquals(54, h.unitMagnitude);
+        // subBucketCount = 2^8. With unit magnitude shift, it's 2^62.
+        assertEquals(2, h.bucketCount);
+
+        // below lowest value
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(0, h.getSubBucketIndex(3, 0));
+
+        // upper half of second bucket, last slot
+        assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
+        assertEquals(128 + 127, h.getSubBucketIndex(Long.MAX_VALUE, 1));
+    }
+
+    @Test
+    public void testUnitMagnitude51SubBucketMagnitude11Ok() {
+        Histogram h = new Histogram(1L << 51, 1L << 62, 3);
+        assertEquals(2048, h.subBucketCount);
+        assertEquals(51, h.unitMagnitude);
+        // subBucketCount = 2^11. With unit magnitude shift, it's 2^62. 1 more bucket to be > the max of 2^62.
+        assertEquals(2, h.bucketCount);
+
+        // below lowest value
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(0, h.getSubBucketIndex(3, 0));
+
+        // upper half of second bucket, last slot
+        assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
+        assertEquals(1024 + 1023, h.getSubBucketIndex(Long.MAX_VALUE, 1));
+    }
+
+    @Test
+    public void testUnitMagnitude61SubBucketMagnitude0Ok() {
+        Histogram h = new Histogram(1L << 61, 1L << 62, 0);
+        assertEquals(2, h.subBucketCount);
+        assertEquals(61, h.unitMagnitude);
+        // subBucketCount = 2^1. With unit magnitude shift, it's 2^62. 1 more bucket to be > the max of 2^62.
+        assertEquals(2, h.bucketCount);
+
+        // below lowest value
+        assertEquals(0, h.getBucketIndex(3));
+        assertEquals(0, h.getSubBucketIndex(3, 0));
+
+        // upper half of second bucket, last slot
+        assertEquals(1, h.getBucketIndex(Long.MAX_VALUE));
+        assertEquals(1, h.getSubBucketIndex(Long.MAX_VALUE, 1));
     }
 
     @Test
