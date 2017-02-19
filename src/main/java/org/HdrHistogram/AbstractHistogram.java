@@ -251,6 +251,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (lowestDiscernibleValue < 1) {
             throw new IllegalArgumentException("lowestDiscernibleValue must be >= 1");
         }
+        if (lowestDiscernibleValue > Long.MAX_VALUE / 2) {
+            // prevent subsequent multiplication by 2 for highestTrackableValue check from overflowing
+            throw new IllegalArgumentException("lowestDiscernibleValue must be <= Long.MAX_VALUE / 2");
+        }
         if (highestTrackableValue < 2L * lowestDiscernibleValue) {
             throw new IllegalArgumentException("highestTrackableValue must be >= 2 * lowestDiscernibleValue");
         }
@@ -308,13 +312,22 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         subBucketHalfCount = subBucketCount / 2;
         subBucketMask = ((long)subBucketCount - 1) << unitMagnitude;
 
+        if (subBucketCountMagnitude + unitMagnitude > 62) {
+            // subBucketCount entries can't be represented, with unitMagnitude applied, in a positive long.
+            // Technically it still sort of works if their sum is 63: you can represent all but the last number
+            // in the shifted subBucketCount. However, the utility of such a histogram vs ones whose magnitude here
+            // fits in 62 bits is debatable, and it makes it harder to work through the logic.
+            // Sums larger than 64 are totally broken as leadingZeroCountBase would go negative.
+            throw new IllegalArgumentException("Cannot represent numberOfSignificantValueDigits worth of values " +
+                    "beyond lowestDiscernibleValue");
+        }
 
         // determine exponent range needed to support the trackable value with no overflow:
         establishSize(highestTrackableValue);
 
         // Establish leadingZeroCountBase, used in getBucketIndex() fast path:
         // subtract the bits that would be used by the largest value in bucket 0.
-        leadingZeroCountBase = 64 - unitMagnitude - subBucketHalfCountMagnitude - 1;
+        leadingZeroCountBase = 64 - unitMagnitude - subBucketCountMagnitude;
 
         percentileIterator = new PercentileIterator(this, 1);
         recordedValuesIterator = new RecordedValuesIterator(this);
@@ -2157,15 +2170,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     int getBucketsNeededToCoverValue(final long value) {
-        if (unitMagnitude + subBucketHalfCountMagnitude + 1 > 62) {
-            // The unitMagnitude is very large, so subBucketCount << unitMagnitude won't fit in a (positive) long.
-            // The shift logic would shift the bit set in subBucketCount into the 63rd bit (making a negative number)
-            // or off the end of the long entirely.
-            // The higher sub buckets in the sole bucket will represent values that are larger than can be represented
-            // in a long, but that is already possibly the case for the last bucket.
-            return 1;
-        }
-
+        // Shift won't overflow because subBucketMagnitude + unitMagnitude <= 62.
         // the k'th bucket can express from 0 * 2^k to subBucketCount * 2^k in units of 2^k
         long smallestUntrackableValue = ((long) subBucketCount) << unitMagnitude;
 
