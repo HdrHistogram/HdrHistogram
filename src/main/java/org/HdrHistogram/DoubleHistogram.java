@@ -1,4 +1,4 @@
-/**
+/*
  * Written by Gil Tene of Azul Systems, and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
@@ -51,7 +51,7 @@ import java.util.zip.Deflater;
  * See package description for {@link org.HdrHistogram} for details.
  */
 public class DoubleHistogram extends EncodableHistogram implements Serializable {
-    static final double highestAllowedValueEver; // A value that will keep us from multiplying into infinity.
+    private static final double highestAllowedValueEver; // A value that will keep us from multiplying into infinity.
 
     private long configuredHighestToLowestValueRatio;
 
@@ -60,8 +60,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
 
     AbstractHistogram integerValuesHistogram;
 
-    volatile double doubleToIntegerValueConversionRatio;
-    volatile double integerToDoubleValueConversionRatio;
+//    volatile double doubleToIntegerValueConversionRatio;
+//    volatile double integerToDoubleValueConversionRatio;
 
     private boolean autoResize = false;
 
@@ -253,9 +253,12 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     private void setTrackableValueRange(final double lowestValueInAutoRange, final double highestValueInAutoRange) {
         this.currentLowestValueInAutoRange = lowestValueInAutoRange;
         this.currentHighestValueLimitInAutoRange = highestValueInAutoRange;
-        this.integerToDoubleValueConversionRatio = lowestValueInAutoRange / getLowestTrackingIntegerValue();
-        this.doubleToIntegerValueConversionRatio= 1.0 / integerToDoubleValueConversionRatio;
+        double integerToDoubleValueConversionRatio = lowestValueInAutoRange / getLowestTrackingIntegerValue();
         integerValuesHistogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
+    }
+
+    double getDoubleToIntegerValueConversionRatio() {
+        return  integerValuesHistogram.getDoubleToIntegerValueConversionRatio();
     }
 
     //
@@ -334,8 +337,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             autoAdjustRangeForValue(value);
         }
 
-        long integerValue = (long) (value * doubleToIntegerValueConversionRatio);
-        integerValuesHistogram.recordValueWithCount(integerValue, count);
+        integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
     }
 
     private void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
@@ -345,8 +347,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             autoAdjustRangeForValue(value);
         }
 
-        long integerValue = (long) (value * doubleToIntegerValueConversionRatio);
-        integerValuesHistogram.recordValue(integerValue);
+        integerValuesHistogram.recordConvertedDoubleValue(value);
     }
 
     private void recordValueWithCountAndExpectedInterval(final double value, final long count,
@@ -440,6 +441,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             // fails. If this shift succeeds, the pending adjustment attempt will end up doing nothing.
             currentHighestValueLimitInAutoRange *= shiftMultiplier;
 
+            double newIntegerToDoubleValueConversionRatio =
+                    getIntegerToDoubleValueConversionRatio() * shiftMultiplier;
+
             // First shift the values, to give the shift a chance to fail:
 
             // Shift integer histogram left, increasing the recorded integer values for current recordings
@@ -449,7 +453,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             if (getTotalCount() > integerValuesHistogram.getCountAtIndex(0)) {
                 // Apply the shift:
                 try {
-                    integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
+                    integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude,
+                            newIntegerToDoubleValueConversionRatio);
                 } catch (ArrayIndexOutOfBoundsException ex) {
                     // Failed to shift, try to expand size instead:
                     handleShiftValuesException(numberOfBinaryOrdersOfMagnitude, ex);
@@ -460,7 +465,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                     // we grew the max value without changing the value mapping. Since we were trying to
                     // shift values left to begin with, trying to shift the left again will work (we now
                     // have room to shift into):
-                    integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude);
+                    integerValuesHistogram.shiftValuesLeft(numberOfBinaryOrdersOfMagnitude,
+                            newIntegerToDoubleValueConversionRatio);
                 }
             }
             // Shift (or resize) was successful. Adjust new range to reflect:
@@ -488,6 +494,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         try {
             double shiftMultiplier = 1.0 * (1L << numberOfBinaryOrdersOfMagnitude);
 
+            double newIntegerToDoubleValueConversionRatio =
+                    getIntegerToDoubleValueConversionRatio() * shiftMultiplier;
+
             // First, temporarily change the lowest value in auto-range without changing conversion ratios.
             // This is done to force new values lower than the new expected lowest value to attempt an
             // adjustment (which is synchronized and will wait behind this one). This ensures that we will
@@ -504,7 +513,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             if (getTotalCount() > integerValuesHistogram.getCountAtIndex(0)) {
                 // Apply the shift:
                 try {
-                    integerValuesHistogram.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
+                    integerValuesHistogram.shiftValuesRight(numberOfBinaryOrdersOfMagnitude,
+                            newIntegerToDoubleValueConversionRatio);
                     // Shift was successful. Adjust new range to reflect:
                     newLowestValueInAutoRange *= shiftMultiplier;
                     newHighestValueLimitInAutoRange *= shiftMultiplier;
@@ -670,7 +680,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             if (count > 0) {
                 recordValueWithCount(
                         fromIntegerHistogram.valueFromIndex(i) *
-                                fromHistogram.integerToDoubleValueConversionRatio,
+                                fromHistogram.getIntegerToDoubleValueConversionRatio(),
                         count);
             }
         }
@@ -705,7 +715,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
 
         for (HistogramIterationValue v : fromHistogram.integerValuesHistogram.recordedValues()) {
             toHistogram.recordValueWithCountAndExpectedInterval(
-                    v.getValueIteratedTo() * integerToDoubleValueConversionRatio,
+                    v.getValueIteratedTo() * getIntegerToDoubleValueConversionRatio(),
                     v.getCountAtValueIteratedTo(), expectedIntervalBetweenValueSamples);
         }
     }
@@ -724,7 +734,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             long otherCount = otherIntegerHistogram.getCountAtIndex(i);
             if (otherCount > 0) {
                 double otherValue = otherIntegerHistogram.valueFromIndex(i) *
-                        otherHistogram.integerToDoubleValueConversionRatio;
+                        otherHistogram.getIntegerToDoubleValueConversionRatio();
                 if (getCountAtValue(otherValue) < otherCount) {
                     throw new IllegalArgumentException("otherHistogram count (" + otherCount + ") at value " +
                             otherValue + " is larger than this one's (" + getCountAtValue(otherValue) + ")");
@@ -811,7 +821,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the current conversion ratio from interval integer value representation to double units.
      */
     public double getIntegerToDoubleValueConversionRatio() {
-        return integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.integerToDoubleValueConversionRatio;
     }
 
     /**
@@ -841,8 +851,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return The lowest value that is equivalent to the given value within the histogram's resolution.
      */
     public double sizeOfEquivalentValueRange(final double value) {
-        return integerValuesHistogram.sizeOfEquivalentValueRange((long)(value * doubleToIntegerValueConversionRatio)) *
-                integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.sizeOfEquivalentValueRange((long)(value * getDoubleToIntegerValueConversionRatio())) *
+                getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -854,8 +864,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return The lowest value that is equivalent to the given value within the histogram's resolution.
      */
     public double lowestEquivalentValue(final double value) {
-        return integerValuesHistogram.lowestEquivalentValue((long)(value * doubleToIntegerValueConversionRatio)) *
-                integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.lowestEquivalentValue((long)(value * getDoubleToIntegerValueConversionRatio())) *
+                getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -888,8 +898,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return The value lies in the middle (rounded up) of the range of values equivalent the given value.
      */
     public double medianEquivalentValue(final double value) {
-        return integerValuesHistogram.medianEquivalentValue((long)(value * doubleToIntegerValueConversionRatio)) *
-                integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.medianEquivalentValue((long)(value * getDoubleToIntegerValueConversionRatio())) *
+                getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -901,8 +911,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return The next value that is not equivalent to the given value within the histogram's resolution.
      */
     public double nextNonEquivalentValue(final double value) {
-        return integerValuesHistogram.nextNonEquivalentValue((long)(value * doubleToIntegerValueConversionRatio)) *
-                integerToDoubleValueConversionRatio;     }
+        return integerValuesHistogram.nextNonEquivalentValue((long)(value * getDoubleToIntegerValueConversionRatio())) *
+                getIntegerToDoubleValueConversionRatio();     }
 
     /**
      * Determine if two values are equivalent with the histogram's resolution.
@@ -996,7 +1006,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the Min value recorded in the histogram
      */
     public double getMinValue() {
-        return integerValuesHistogram.getMinValue() * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getMinValue() * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1005,7 +1015,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the Max value recorded in the histogram
      */
     public double getMaxValue() {
-        return integerValuesHistogram.getMaxValue() * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getMaxValue() * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1014,7 +1024,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the lowest recorded non-zero value level in the histogram
      */
     public double getMinNonZeroValue() {
-        return integerValuesHistogram.getMinNonZeroValue() * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getMinNonZeroValue() * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1033,7 +1043,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the mean value (in value units) of the histogram data
      */
     public double getMean() {
-        return integerValuesHistogram.getMean() * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getMean() * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1042,7 +1052,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @return the standard deviation (in value units) of the histogram data
      */
     public double getStdDeviation() {
-        return integerValuesHistogram.getStdDeviation() * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getStdDeviation() * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1061,7 +1071,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * value that all value entries in the histogram are either larger than or equivalent to.
      */
     public double getValueAtPercentile(final double percentile) {
-        return integerValuesHistogram.getValueAtPercentile(percentile) * integerToDoubleValueConversionRatio;
+        return integerValuesHistogram.getValueAtPercentile(percentile) * getIntegerToDoubleValueConversionRatio();
     }
 
     /**
@@ -1077,7 +1087,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * to the given value.
      */
     public double getPercentileAtOrBelowValue(final double value) {
-        return integerValuesHistogram.getPercentileAtOrBelowValue((long)(value * doubleToIntegerValueConversionRatio));
+        return integerValuesHistogram.getPercentileAtOrBelowValue((long)(value * getDoubleToIntegerValueConversionRatio()));
     }
 
     /**
@@ -1094,8 +1104,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     public double getCountBetweenValues(final double lowValue, final double highValue)
             throws ArrayIndexOutOfBoundsException {
         return integerValuesHistogram.getCountBetweenValues(
-                (long)(lowValue * doubleToIntegerValueConversionRatio),
-                (long)(highValue * doubleToIntegerValueConversionRatio)
+                (long)(lowValue * getDoubleToIntegerValueConversionRatio()),
+                (long)(highValue * getDoubleToIntegerValueConversionRatio())
         );
     }
 
@@ -1107,7 +1117,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * {@literal >=} lowestEquivalentValue(<i>value</i>) and {@literal <=} highestEquivalentValue(<i>value</i>)
      */
     public long getCountAtValue(final double value) throws ArrayIndexOutOfBoundsException {
-        return integerValuesHistogram.getCountAtValue((long)(value * doubleToIntegerValueConversionRatio));
+        return integerValuesHistogram.getCountAtValue((long)(value * getDoubleToIntegerValueConversionRatio()));
     }
 
     /**
@@ -1358,7 +1368,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
                                              final boolean useCsvFormat) {
         integerValuesHistogram.outputPercentileDistribution(printStream,
                 percentileTicksPerHalfDistance,
-                outputValueUnitScalingRatio / integerToDoubleValueConversionRatio,
+                outputValueUnitScalingRatio / getIntegerToDoubleValueConversionRatio(),
                 useCsvFormat);
     }
 
@@ -1416,11 +1426,11 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return isCompressedDoubleHistogramCookie(cookie) || isNonCompressedDoubleHistogramCookie(cookie);
     }
 
-    static boolean isCompressedDoubleHistogramCookie(int cookie) {
+    private static boolean isCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_compressedEncodingCookie);
     }
 
-    static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
+    private static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_encodingCookie);
     }
 
@@ -1468,7 +1478,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
     }
 
-    static DoubleHistogram constructHistogramFromBuffer(
+    private static DoubleHistogram constructHistogramFromBuffer(
             int cookie,
             final ByteBuffer buffer,
             final Class<? extends AbstractHistogram> histogramClass,

@@ -83,7 +83,9 @@ public class AtomicHistogram extends Histogram {
     }
 
     @Override
-    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+    void shiftNormalizingIndexByOffset(int offsetToAdd,
+                                       boolean lowestHalfBucketPopulated,
+                                       double newIntegerToDoubleValueConversionRatio) {
         throw new IllegalStateException(
                 "AtomicHistogram does not support Shifting operations." +
                         " Use ConcurrentHistogram Instead.");
@@ -227,13 +229,5 @@ public class AtomicHistogram extends Histogram {
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
-    }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        LongBuffer logbuffer = buffer.asLongBuffer();
-        for (int i = 0; i < length; i++) {
-            counts.lazySet(i, logbuffer.get());
-        }
     }
 }

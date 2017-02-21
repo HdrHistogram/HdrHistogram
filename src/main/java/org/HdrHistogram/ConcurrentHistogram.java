@@ -49,6 +49,38 @@ public class ConcurrentHistogram extends Histogram {
     transient WriterReaderPhaser wrp = new WriterReaderPhaser();
 
     @Override
+    void setIntegerToDoubleValueConversionRatio(final double integerToDoubleValueConversionRatio) {
+        try {
+            wrp.readerLock();
+
+            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / integerToDoubleValueConversionRatio;
+
+            // switch active and inactive:
+            AtomicLongArrayWithNormalizingOffset tmp = activeCounts;
+            activeCounts = inactiveCounts;
+            inactiveCounts = tmp;
+
+            wrp.flipPhase();
+
+            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / integerToDoubleValueConversionRatio;
+
+            // switch active and inactive again:
+            tmp = activeCounts;
+            activeCounts = inactiveCounts;
+            inactiveCounts = tmp;
+
+            wrp.flipPhase();
+
+            // At this point, both active and inactive have normalizingIndexOffset safely set,
+            // and the switch in each was done without any writers using the wrong value in flight.
+
+        } finally {
+            wrp.readerUnlock();
+        }
+        super.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
+    }
+
+    @Override
     long getCountAtIndex(final int index) {
         try {
             wrp.readerLock();
@@ -101,7 +133,7 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    void setCountAtIndex(int index, long value) {
+    void setCountAtIndex(final int index, final long value) {
         try {
             wrp.readerLock();
             assert (countsArrayLength == activeCounts.length());
@@ -116,7 +148,7 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    void setCountAtNormalizedIndex(int index, long value) {
+    void setCountAtNormalizedIndex(final int index, final long value) {
         try {
             wrp.readerLock();
             assert (countsArrayLength == activeCounts.length());
@@ -128,6 +160,35 @@ public class ConcurrentHistogram extends Histogram {
         }
     }
 
+    @Override
+    void recordConvertedDoubleValue(final double value) {
+        long criticalValue = wrp.writerCriticalSectionEnter();
+        try {
+            long integerValue = (long) (value * activeCounts.doubleToIntegerValueConversionRatio);
+            int index = countsArrayIndex(integerValue);
+            activeCounts.incrementAndGet(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()));
+            updateMinAndMax(integerValue);
+            incrementTotalCount();
+        } finally {
+            wrp.writerCriticalSectionExit(criticalValue);
+        }
+    }
+
+    @Override
+    public void recordConvertedDoubleValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
+        long criticalValue = wrp.writerCriticalSectionEnter();
+        try {
+            long integerValue = (long) (value * activeCounts.doubleToIntegerValueConversionRatio);
+            int index = countsArrayIndex(integerValue);
+            activeCounts.addAndGet(
+                    normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), count);
+            updateMinAndMax(integerValue);
+            addToTotalCount(count);
+        } finally {
+            wrp.writerCriticalSectionExit(criticalValue);
+        }
+    }
 
     @Override
     int getNormalizingIndexOffset() {
@@ -135,14 +196,15 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    void setNormalizingIndexOffset(int normalizingIndexOffset) {
-        setNormalizingIndexOffset(normalizingIndexOffset, 0, false);
+    void setNormalizingIndexOffset(final int normalizingIndexOffset) {
+        setNormalizingIndexOffset(normalizingIndexOffset, 0, false, getIntegerToDoubleValueConversionRatio());
     }
 
     private void setNormalizingIndexOffset(
-            int normalizingIndexOffset,
-            int shiftedAmount,
-            boolean lowestHalfBucketPopulated) {
+            final int normalizingIndexOffset,
+            final int shiftedAmount,
+            final boolean lowestHalfBucketPopulated,
+            final double newIntegerToDoubleValueConversionRatio) {
         try {
             wrp.readerLock();
 
@@ -169,6 +231,8 @@ public class ConcurrentHistogram extends Histogram {
             // Restore the inactive 0 value count:
             zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
             inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
+            
+            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
 
             // switch active and inactive:
             AtomicLongArrayWithNormalizingOffset tmp = activeCounts;
@@ -194,6 +258,8 @@ public class ConcurrentHistogram extends Histogram {
             zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
             inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
 
+            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
+
             // switch active and inactive again:
             tmp = activeCounts;
             activeCounts = inactiveCounts;
@@ -209,7 +275,7 @@ public class ConcurrentHistogram extends Histogram {
         }
     }
 
-    private void shiftLowestInactiveHalfBucketContentsLeft(int shiftAmount) {
+    private void shiftLowestInactiveHalfBucketContentsLeft(final int shiftAmount) {
         final int numberOfBinaryOrdersOfMagnitude = shiftAmount >> subBucketHalfCountMagnitude;
 
         // The lowest inactive half-bucket (not including the 0 value) is special: unlike all other half
@@ -244,20 +310,26 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+    void shiftNormalizingIndexByOffset(final int offsetToAdd,
+                                       final boolean lowestHalfBucketPopulated,
+                                       final double newIntegerToDoubleValueConversionRatio) {
         try {
             wrp.readerLock();
             assert (countsArrayLength == activeCounts.length());
             assert (countsArrayLength == inactiveCounts.length());
             int newNormalizingIndexOffset = getNormalizingIndexOffset() + offsetToAdd;
-            setNormalizingIndexOffset(newNormalizingIndexOffset, offsetToAdd, lowestHalfBucketPopulated);
+            setNormalizingIndexOffset(newNormalizingIndexOffset,
+                    offsetToAdd,
+                    lowestHalfBucketPopulated,
+                    newIntegerToDoubleValueConversionRatio
+                    );
         } finally {
             wrp.readerUnlock();
         }
     }
 
     @Override
-    void resize(long newHighestTrackableValue) {
+    void resize(final long newHighestTrackableValue) {
         try {
             wrp.readerLock();
 
@@ -356,7 +428,7 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    public void setAutoResize(boolean autoResize) {
+    public void setAutoResize(final boolean autoResize) {
         this.autoResize = true;
     }
 
@@ -531,6 +603,7 @@ public class ConcurrentHistogram extends Histogram {
     static class AtomicLongArrayWithNormalizingOffset extends AtomicLongArray {
 
         private int normalizingIndexOffset;
+        private double doubleToIntegerValueConversionRatio;
 
         AtomicLongArrayWithNormalizingOffset(int length, int normalizingIndexOffset) {
             super(length);

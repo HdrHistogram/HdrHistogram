@@ -27,7 +27,7 @@ public class DoubleLogarithmicIterator implements Iterator<DoubleHistogramIterat
      */
     public void reset(final double valueUnitsInFirstBucket, final double logBase) {
         integerLogarithmicIterator.reset(
-                (long) (valueUnitsInFirstBucket * histogram.doubleToIntegerValueConversionRatio),
+                (long) (valueUnitsInFirstBucket * histogram.getDoubleToIntegerValueConversionRatio()),
                 logBase
         );
     }
@@ -42,7 +42,7 @@ public class DoubleLogarithmicIterator implements Iterator<DoubleHistogramIterat
         this.histogram = histogram;
         integerLogarithmicIterator = new LogarithmicIterator(
                 histogram.integerValuesHistogram,
-                (long) (valueUnitsInFirstBucket * histogram.doubleToIntegerValueConversionRatio),
+                (long) (valueUnitsInFirstBucket * histogram.getDoubleToIntegerValueConversionRatio()),
                 logBase
         );
         iterationValue = new DoubleHistogramIterationValue(integerLogarithmicIterator.currentIterationValue);

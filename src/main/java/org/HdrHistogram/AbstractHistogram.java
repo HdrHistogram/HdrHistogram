@@ -1,4 +1,4 @@
-/**
+/*
  * Written by Gil Tene of Azul Systems, and released to the public domain,
  * as explained at http://creativecommons.org/publicdomain/zero/1.0/
  *
@@ -54,6 +54,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
     String tag = null;
 
     double integerToDoubleValueConversionRatio = 1.0;
+    double doubleToIntegerValueConversionRatio = 1.0;
 
     PercentileIterator percentileIterator;
     RecordedValuesIterator recordedValuesIterator;
@@ -65,8 +66,13 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
         return integerToDoubleValueConversionRatio;
     }
 
+    double getDoubleToIntegerValueConversionRatio() {
+        return doubleToIntegerValueConversionRatio;
+    }
+
     void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
+        this.doubleToIntegerValueConversionRatio = 1.0/integerToDoubleValueConversionRatio;
     }
 }
 
@@ -149,7 +155,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     abstract void setNormalizingIndexOffset(int normalizingIndexOffset);
 
-    abstract void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated);
+    abstract void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated,
+                                                double newIntegerToDoubleValueConversionRatio);
 
     abstract void setTotalCount(long totalCount);
 
@@ -174,7 +181,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * May be overridden by subclasses for synchronization or atomicity purposes.
      * @param value new maxValue to set
      */
-    void updatedMaxValue(final long value) {
+    private void updatedMaxValue(final long value) {
         final long internalValue = value | unitMagnitudeMask; // Max unit-equivalent value
         long sampledMaxValue;
         while (internalValue > (sampledMaxValue = maxValue)) {
@@ -182,7 +189,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    final void resetMaxValue(final long maxValue) {
+    private void resetMaxValue(final long maxValue) {
         this.maxValue = maxValue | unitMagnitudeMask; // Max unit-equivalent value
     }
 
@@ -191,7 +198,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * May be overridden by subclasses for synchronization or atomicity purposes.
      * @param value new minNonZeroValue to set
      */
-    void updateMinNonZeroValue(final long value) {
+    private void updateMinNonZeroValue(final long value) {
         if (value <= unitMagnitudeMask) {
             return; // Unit-equivalent to 0.
         }
@@ -202,7 +209,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    void resetMinNonZeroValue(final long minNonZeroValue) {
+    private void resetMinNonZeroValue(final long minNonZeroValue) {
         final long internalValue = minNonZeroValue & ~unitMagnitudeMask; // Min unit-equivalent value
         this.minNonZeroValue = (minNonZeroValue == Long.MAX_VALUE) ?
                 minNonZeroValue : internalValue;
@@ -456,6 +463,17 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordSingleValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
     }
 
+    // Package-internal support for converting and recording double values into integer histograms:
+    void recordConvertedDoubleValue(final double value) {
+        long integerValue = (long) (value * doubleToIntegerValueConversionRatio);
+        recordValue(integerValue);
+    }
+
+    public void recordConvertedDoubleValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
+        long integerValue = (long) (value * doubleToIntegerValueConversionRatio);
+        recordCountAtValue(count, integerValue);
+    }
+
     /**
      * @deprecated
      *
@@ -473,7 +491,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         recordValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
     }
 
-    private void updateMinAndMax(final long value) {
+    void updateMinAndMax(final long value) {
         if (value > maxValue) {
             updatedMaxValue(value);
         }
@@ -789,6 +807,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param numberOfBinaryOrdersOfMagnitude The number of binary orders of magnitude to shift by
      */
     public void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude) {
+        shiftValuesLeft(numberOfBinaryOrdersOfMagnitude, integerToDoubleValueConversionRatio);
+    }
+
+    void shiftValuesLeft(final int numberOfBinaryOrdersOfMagnitude, final double newIntegerToDoubleValueConversionRatio) {
         if (numberOfBinaryOrdersOfMagnitude < 0) {
             throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
         }
@@ -815,7 +837,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         boolean lowestHalfBucketPopulated = (minNonZeroValueBeforeShift < subBucketHalfCount);
 
         // Perform the shift:
-        shiftNormalizingIndexByOffset(shiftAmount, lowestHalfBucketPopulated);
+        shiftNormalizingIndexByOffset(shiftAmount, lowestHalfBucketPopulated, newIntegerToDoubleValueConversionRatio);
 
         // adjust min, max:
         updateMinAndMax(maxValueBeforeShift << numberOfBinaryOrdersOfMagnitude);
@@ -841,7 +863,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         setCountAtIndex(0, zeroValueCount);
     }
 
-    void shiftLowestHalfBucketContentsLeft(int shiftAmount) {
+    private void shiftLowestHalfBucketContentsLeft(int shiftAmount) {
         final int numberOfBinaryOrdersOfMagnitude = shiftAmount >> subBucketHalfCountMagnitude;
 
         // The lowest half-bucket (not including the 0 value) is special: unlike all other half
@@ -888,6 +910,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param numberOfBinaryOrdersOfMagnitude The number of binary orders of magnitude to shift by
      */
     public void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude) {
+        shiftValuesRight(numberOfBinaryOrdersOfMagnitude, integerToDoubleValueConversionRatio);
+    }
+
+    void shiftValuesRight(final int numberOfBinaryOrdersOfMagnitude, final double newIntegerToDoubleValueConversionRatio) {
         if (numberOfBinaryOrdersOfMagnitude < 0) {
             throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
         }
@@ -940,7 +966,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         long minNonZeroValueBeforeShift = minNonZeroValueUpdater.getAndSet(this, Long.MAX_VALUE);
 
         // move normalizingIndexOffset
-        shiftNormalizingIndexByOffset(-shiftAmount, false);
+        shiftNormalizingIndexByOffset(-shiftAmount, false, newIntegerToDoubleValueConversionRatio);
 
         // adjust min, max:
         updateMinAndMax(maxValueBeforeShift >> numberOfBinaryOrdersOfMagnitude);
@@ -1917,7 +1943,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
-    static <T extends AbstractHistogram> T decodeFromByteBuffer(
+    private static <T extends AbstractHistogram> T decodeFromByteBuffer(
             final ByteBuffer buffer,
             final Class<T> histogramClass,
             final long minBarForHighestTrackableValue,
@@ -2267,7 +2293,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return normalizedIndex;
     }
 
-    final long valueFromIndex(final int bucketIndex, final int subBucketIndex) {
+    private long valueFromIndex(final int bucketIndex, final int subBucketIndex) {
         return ((long) subBucketIndex) << (bucketIndex + unitMagnitude);
     }
 

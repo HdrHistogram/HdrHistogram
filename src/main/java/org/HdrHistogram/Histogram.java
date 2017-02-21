@@ -88,7 +88,9 @@ public class Histogram extends AbstractHistogram {
     }
 
     @Override
-    void shiftNormalizingIndexByOffset(int offsetToAdd, boolean lowestHalfBucketPopulated) {
+    void shiftNormalizingIndexByOffset(int offsetToAdd,
+                                       boolean lowestHalfBucketPopulated,
+                                       double newIntegerToDoubleValueConversionRatio) {
         nonConcurrentNormalizingIndexShift(offsetToAdd, lowestHalfBucketPopulated);
     }
 
