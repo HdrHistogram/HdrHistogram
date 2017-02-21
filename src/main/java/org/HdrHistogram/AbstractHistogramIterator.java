@@ -15,7 +15,7 @@ import java.util.Iterator;
  */
 abstract class AbstractHistogramIterator implements Iterator<HistogramIterationValue> {
     AbstractHistogram histogram;
-    long savedHistogramTotalRawCount;
+    long arrayTotalCount;
 
     int currentIndex;
     long currentValueAtIndex;
@@ -28,7 +28,6 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
     long totalCountToCurrentIndex;
     long totalValueToCurrentIndex;
 
-    long arrayTotalCount;
     long countAtThisValue;
 
     private boolean freshSubBucket;
@@ -38,7 +37,6 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
 
     void resetIterator(final AbstractHistogram histogram) {
         this.histogram = histogram;
-        this.savedHistogramTotalRawCount = histogram.getTotalCount();
         this.arrayTotalCount = histogram.getTotalCount();
         this.integerToDoubleValueConversionRatio = histogram.getIntegerToDoubleValueConversionRatio();
         this.currentIndex = 0;
@@ -61,7 +59,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
      */
     @Override
     public boolean hasNext() {
-        if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
+        if (histogram.getTotalCount() != arrayTotalCount) {
             throw new ConcurrentModificationException();
         }
         return (totalCountToCurrentIndex < arrayTotalCount);
@@ -92,14 +90,19 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
                 totalCountToPrevIndex = totalCountToCurrentIndex;
                 // move the next iteration level forward:
                 incrementIterationLevel();
-                if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
+                if (histogram.getTotalCount() != arrayTotalCount) {
                     throw new ConcurrentModificationException();
                 }
                 return currentIterationValue;
             }
             incrementSubBucket();
         }
-        // Should not reach here. But possible for overflowed histograms under certain conditions
+        // Should not reach here. But possible for concurrent modification or overflowed histograms
+        // under certain conditions
+        if ((histogram.getTotalCount() != arrayTotalCount) ||
+            (totalCountToCurrentIndex > arrayTotalCount)) {
+            throw new ConcurrentModificationException();
+        }
         throw new ArrayIndexOutOfBoundsException();
     }
 

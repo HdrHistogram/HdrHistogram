@@ -50,7 +50,7 @@ public class AllValuesIterator extends AbstractHistogramIterator implements Iter
 
     @Override
     public boolean hasNext() {
-        if (histogram.getTotalCount() != savedHistogramTotalRawCount) {
+        if (histogram.getTotalCount() != arrayTotalCount) {
             throw new ConcurrentModificationException();
         }
         // Unlike other iterators AllValuesIterator is only done when we've exhausted the indices:
