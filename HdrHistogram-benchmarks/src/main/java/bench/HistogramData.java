@@ -239,7 +239,7 @@ public class HistogramData {
         }
     }
 
-    static HashMap<String, Iterable<Long>> data = new HashMap<String, Iterable<Long>>();
+    static final HashMap<String, Iterable<Long>> data = new HashMap<String, Iterable<Long>>();
 
     static {
         data.put("case1", case1Latencies);
