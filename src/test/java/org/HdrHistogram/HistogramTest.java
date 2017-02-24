@@ -449,6 +449,12 @@ public class HistogramTest {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Assert.assertEquals("Size of equivalent range for value 1 is 1",
                 1, histogram.sizeOfEquivalentValueRange(1));
+        Assert.assertEquals("Size of equivalent range for value 1025 is 1",
+                1, histogram.sizeOfEquivalentValueRange(1025));
+        Assert.assertEquals("Size of equivalent range for value 2047 is 1",
+                1, histogram.sizeOfEquivalentValueRange(2047));
+        Assert.assertEquals("Size of equivalent range for value 2048 is 2",
+                2, histogram.sizeOfEquivalentValueRange(2048));
         Assert.assertEquals("Size of equivalent range for value 2500 is 2",
                 2, histogram.sizeOfEquivalentValueRange(2500));
         Assert.assertEquals("Size of equivalent range for value 8191 is 4",
