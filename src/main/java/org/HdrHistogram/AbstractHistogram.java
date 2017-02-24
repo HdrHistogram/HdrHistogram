@@ -1083,8 +1083,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     public long sizeOfEquivalentValueRange(final long value) {
         final int bucketIndex = getBucketIndex(value);
         final int subBucketIndex = getSubBucketIndex(value, bucketIndex);
-        long distanceToNextValue =
-                (1L << ( unitMagnitude + ((subBucketIndex >= subBucketCount) ? (bucketIndex + 1) : bucketIndex)));
+        long distanceToNextValue = 1L << (unitMagnitude + bucketIndex);
         return distanceToNextValue;
     }
 
