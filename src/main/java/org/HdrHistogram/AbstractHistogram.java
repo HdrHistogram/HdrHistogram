@@ -731,7 +731,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
         if (highestEquivalentValue(otherHistogram.getMaxValue()) >
                 highestEquivalentValue(valueFromIndex(this.countsArrayLength - 1))) {
-            throw new ArrayIndexOutOfBoundsException(
+            throw new IllegalArgumentException(
                     "The other histogram includes values that do not fit in this histogram's range.");
         }
         for (int i = 0; i < otherHistogram.countsArrayLength; i++) {

@@ -451,7 +451,7 @@ public class HistogramTest {
         try {
             histogram.subtract(biggerOther);
             fail();
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (IllegalArgumentException e) {
             // should throw
         }
 
