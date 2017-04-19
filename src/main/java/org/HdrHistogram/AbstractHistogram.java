@@ -729,13 +729,10 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public void subtract(final AbstractHistogram otherHistogram)
             throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
-        long highestRecordableValue = valueFromIndex(countsArrayLength - 1);
-        if (highestRecordableValue < otherHistogram.getMaxValue()) {
-            if (!isAutoResize()) {
-                throw new ArrayIndexOutOfBoundsException(
-                        "The other histogram includes values that do not fit in this histogram's range.");
-            }
-            resize(otherHistogram.getMaxValue());
+        if (highestEquivalentValue(otherHistogram.getMaxValue()) >
+                highestEquivalentValue(valueFromIndex(this.countsArrayLength - 1))) {
+            throw new IllegalArgumentException(
+                    "The other histogram includes values that do not fit in this histogram's range.");
         }
         for (int i = 0; i < otherHistogram.countsArrayLength; i++) {
             long otherCount = otherHistogram.getCountAtIndex(i);

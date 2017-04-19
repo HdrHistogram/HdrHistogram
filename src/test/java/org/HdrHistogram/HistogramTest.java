@@ -375,7 +375,7 @@ public class HistogramTest {
     }
 
     @Test
-    public void testSubtract() throws Exception {
+    public void testSubtractAfterAdd() {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         Histogram other = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
@@ -394,21 +394,76 @@ public class HistogramTest {
         Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
         Assert.assertEquals(4L, histogram.getTotalCount());
+
+        verifyMaxValue(histogram);
+        verifyMaxValue(other);
+    }
+
+    @Test
+    public void testSubtractToZeroCounts() {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
+        Assert.assertEquals(1L, histogram.getCountAtValue(testValueLevel));
+        Assert.assertEquals(1L, histogram.getCountAtValue(testValueLevel * 1000));
+        Assert.assertEquals(2L, histogram.getTotalCount());
+
         // Subtracting down to zero counts should work:
         histogram.subtract(histogram);
         Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel * 1000));
         Assert.assertEquals(0L, histogram.getTotalCount());
-        // But subtracting down to negative counts should not:
-        boolean thrown = false;
-        try {
-            // This should throw:
-            histogram.subtract(other);
-        } catch (IllegalArgumentException e) {
-            thrown = true;
-        }
-        Assert.assertTrue(thrown);
 
+        verifyMaxValue(histogram);
+    }
+
+    @Test
+    public void testSubtractToNegativeCountsThrows() {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        Histogram other = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
+        other.recordValueWithCount(testValueLevel, 2);
+        other.recordValueWithCount(testValueLevel * 1000, 2);
+
+        try {
+            histogram.subtract(other);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // should throw
+        }
+
+        verifyMaxValue(histogram);
+        verifyMaxValue(other);
+    }
+
+    @Test
+    public void testSubtractSubtrahendValuesOutsideMinuendRangeThrows() {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
+
+        Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
+        biggerOther.recordValue(testValueLevel);
+        biggerOther.recordValue(testValueLevel * 1000);
+        biggerOther.recordValue(highestTrackableValue * 2); // outside smaller histogram's range
+
+        try {
+            histogram.subtract(biggerOther);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // should throw
+        }
+
+        verifyMaxValue(histogram);
+        verifyMaxValue(biggerOther);
+    }
+
+    @Test
+    public void testSubtractSubtrahendValuesInsideMinuendRangeWorks() {
+        Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        histogram.recordValue(testValueLevel);
+        histogram.recordValue(testValueLevel * 1000);
 
         Histogram biggerOther = new Histogram(highestTrackableValue * 2, numberOfSignificantValueDigits);
         biggerOther.recordValue(testValueLevel);
@@ -422,27 +477,15 @@ public class HistogramTest {
         Assert.assertEquals(12L, biggerOther.getTotalCount());
 
         // Subtracting the smaller histogram from the bigger one should work:
-        biggerOther.subtract(other);
+        biggerOther.subtract(histogram);
         Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel));
         Assert.assertEquals(3L, biggerOther.getCountAtValue(testValueLevel * 1000));
         Assert.assertEquals(4L, biggerOther.getCountAtValue(highestTrackableValue * 2)); // overflow smaller hist...
         Assert.assertEquals(10L, biggerOther.getTotalCount());
 
-        // But trying to subtract a larger histogram into a smaller one should throw an AIOOB:
-        thrown = false;
-        try {
-            // This should throw:
-            histogram.subtract(biggerOther);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            thrown = true;
-        }
-        Assert.assertTrue(thrown);
-
         verifyMaxValue(histogram);
-        verifyMaxValue(other);
         verifyMaxValue(biggerOther);
     }
-
 
     @Test
     public void testSizeOfEquivalentValueRange() {
