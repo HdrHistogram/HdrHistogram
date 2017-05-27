@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * wait-free atomic increment operations.
  * </blockquote>
  * {@link WriterReaderPhaser} "writers" are wait free, "readers" block for other "readers", and
- * "readers" are only blocked by "writers" whose critical was entered before the reader's
+ * "readers" are only blocked by "writers" whose critical section was entered before the reader's
  * {@link WriterReaderPhaser#flipPhase()} attempt.
  * <p>
  * When used to protect an actively recording data structure, the assumptions on how readers and writers act are:
