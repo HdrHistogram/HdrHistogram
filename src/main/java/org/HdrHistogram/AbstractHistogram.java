@@ -1311,14 +1311,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Get the value at a given percentile.
-     * Returns the largest value that (100% - percentile) of the overall recorded value entries
+     * Returns the largest value that (100% - percentile) [+/- 1 ulp] of the overall recorded value entries
      * in the histogram are either larger than or equivalent to. Returns 0 if no recorded values exist.
      * <p>
      * Note that two values are "equivalent" in this statement if
      * {@link org.HdrHistogram.AbstractHistogram#valuesAreEquivalent} would return true.
      *
      * @param percentile  The percentile for which to return the associated value
-     * @return The largest value that (100% - percentile) of the overall recorded value entries
+     * @return The largest value that (100% - percentile) [+/- 1 ulp] of the overall recorded value entries
      * in the histogram are either larger than or equivalent to. Returns 0 if no recorded values exist.
      */
     public long getValueAtPercentile(final double percentile) {
