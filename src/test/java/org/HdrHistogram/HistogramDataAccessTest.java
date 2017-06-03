@@ -170,8 +170,12 @@ public class HistogramDataAccessTest {
         hist.recordValue(1);
         hist.recordValue(2);
 
-//        Assert.assertEquals("50.00000000000001%'ile is 1",
-//                1, hist.getValueAtPercentile(50.00000000000001));
+        Assert.assertEquals("50.0%'ile is 1",
+                1, hist.getValueAtPercentile(50.0));
+        Assert.assertEquals("50.00000000000001%'ile is 1",
+                1, hist.getValueAtPercentile(50.00000000000001));
+        Assert.assertEquals("50.0000000000001%'ile is 2",
+                2, hist.getValueAtPercentile(50.0000000000001));
 
         hist.recordValue(2);
         hist.recordValue(2);
