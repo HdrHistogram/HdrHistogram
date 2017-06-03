@@ -297,7 +297,8 @@ public class HistogramTest {
         histogram.recordValue(20000000);
         histogram.recordValue(30000000);
         Assert.assertTrue(histogram.valuesAreEquivalent(20000000, histogram.getValueAtPercentile(50.0)));
-        Assert.assertTrue(histogram.valuesAreEquivalent(30000000, histogram.getValueAtPercentile(83.33)));
+        Assert.assertTrue(histogram.valuesAreEquivalent(30000000, histogram.getValueAtPercentile(50.0)));
+        Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(83.33)));
         Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(83.34)));
         Assert.assertTrue(histogram.valuesAreEquivalent(100000000, histogram.getValueAtPercentile(99.0)));
     }

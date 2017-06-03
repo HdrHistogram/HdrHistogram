@@ -165,6 +165,28 @@ public class HistogramDataAccessTest {
     }
 
     @Test
+    public void testGetValueAtPercentileExamples() throws Exception {
+        Histogram hist = new Histogram(3600000000L, 3);
+        hist.recordValue(1);
+        hist.recordValue(2);
+
+//        Assert.assertEquals("50.00000000000001%'ile is 1",
+//                1, hist.getValueAtPercentile(50.00000000000001));
+
+        hist.recordValue(2);
+        hist.recordValue(2);
+        hist.recordValue(2);
+
+        long val = hist.getValueAtPercentile(25);
+
+        Assert.assertEquals("25%'ile is 2",
+                2, hist.getValueAtPercentile(25));
+        Assert.assertEquals("30%'ile is 2",
+                2, hist.getValueAtPercentile(30));
+        
+    }
+
+    @Test
     public void testGetValueAtPercentile() throws Exception {
         Assert.assertEquals("raw 30%'ile is 1 msec +/- 0.1%",
                 1000.0, (double) rawHistogram.getValueAtPercentile(30.0),
@@ -262,10 +284,38 @@ public class HistogramDataAccessTest {
                     "\ngetPercentile = " + v.getPercentile() +
                     "\ngetValueAtPercentile(getPercentile())" +
                     histogram.getValueAtPercentile(v.getPercentile()) +
-                    "\nequivalent1 = " +
+                    "\nequivalent at getValueAtPercentile(v.getPercentileLevelIteratedTo()) = " +
                     histogram.highestEquivalentValue(histogram.getValueAtPercentile(v.getPercentileLevelIteratedTo())) +
-                    "\nequivalent2 = " +
+                    "\nequivalent at getValueAtPercentile(v.getPercentile()) = " +
                     histogram.highestEquivalentValue(histogram.getValueAtPercentile(v.getPercentile())) +
+                    "\nindex at v.getValueIteratedTo() = " +
+                    histogram.countsArrayIndex(v.getValueIteratedTo()) +
+                    "\nindex at getValueAtPercentile(v.getPercentileLevelIteratedTo()) = " +
+                    histogram.countsArrayIndex(histogram.getValueAtPercentile(v.getPercentileLevelIteratedTo())) +
+                    "\nindex at getValueAtPercentile(v.getPercentile()) = " +
+                    histogram.countsArrayIndex(histogram.getValueAtPercentile(v.getPercentile())) +
+                    "\nindex at getValueAtPercentile(v.getPercentile() - 0.0000000001) = " +
+                    histogram.countsArrayIndex(histogram.getValueAtPercentile(v.getPercentile() - 0.0000000001)) +
+                    "\ncount for (long)(((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) = " +
+                            (long)(((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) +
+                    "\n math for ((v.getPercentile() / 100.0) * histogram.getTotalCount()) = " +
+                            ((v.getPercentile() / 100.0) * histogram.getTotalCount()) +
+                    "\n math for (((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) = " +
+                            (((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) +
+                    "\n math for (long)(((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) = " +
+                            (long)(((v.getPercentile() / 100.0) * histogram.getTotalCount()) + 0.5) +
+                    "\ncount for (long)(Math.ceil((v.getPercentile() / 100.0) * histogram.getTotalCount())) = " +
+                            (long)(Math.ceil((v.getPercentile() / 100.0) * histogram.getTotalCount())) +
+                    "\n math for Math.ceil((v.getPercentile() / 100.0) * histogram.getTotalCount()) = " +
+                            Math.ceil((v.getPercentile() / 100.0) * histogram.getTotalCount()) +
+                    "\ntotalCountToThisValue = " +
+                    v.getTotalCountToThisValue() +
+                    "\ncountAtValueIteratedTo = " +
+                    v.getCountAtValueIteratedTo() +
+                    "\ncount at index at getValueAtPercentile(v.getPercentileLevelIteratedTo()) = " +
+                    histogram.getCountAtIndex(histogram.countsArrayIndex(histogram.getValueAtPercentile(v.getPercentileLevelIteratedTo()))) +
+                    "\ncount at index at getValueAtPercentile(v.getPercentile()) = " +
+                    histogram.getCountAtIndex(histogram.countsArrayIndex(histogram.getValueAtPercentile(v.getPercentile()))) +
                     "\n"
                     ,
                     v.getValueIteratedTo(),
