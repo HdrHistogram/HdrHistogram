@@ -1311,22 +1311,28 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Get the value at a given percentile.
-     * When the given percentile is &gt; 0.0, the value returned is the value that the given
-     * percentage of the overall recorded value entries in the histogram are either smaller than
-     * or equivalent to. When the given percentile is 0.0, the value returned is the value that all value
-     * entries in the histogram are either larger than or equivalent to.
+     * Returns the largest value that (100% - percentile) of the overall recorded value entries
+     * in the histogram are either larger than or equivalent to. Returns 0 if no recorded values exist.
      * <p>
      * Note that two values are "equivalent" in this statement if
      * {@link org.HdrHistogram.AbstractHistogram#valuesAreEquivalent} would return true.
      *
      * @param percentile  The percentile for which to return the associated value
-     * @return The value that the given percentage of the overall recorded value entries in the
-     * histogram are either smaller than or equivalent to. When the percentile is 0.0, returns the
-     * value that all value entries in the histogram are either larger than or equivalent to.
+     * @return The largest value that (100% - percentile) of the overall recorded value entries
+     * in the histogram are either larger than or equivalent to. Returns 0 if no recorded values exist.
      */
     public long getValueAtPercentile(final double percentile) {
         final double requestedPercentile = Math.min(percentile, 100.0); // Truncate down to 100%
-        long countAtPercentile = (long)(((requestedPercentile / 100.0) * getTotalCount()) + 0.5); // round to nearest
+        // round count up to nearest integer, to ensure that the largest value that the requested percentile
+        // of overall recorded values is actually included. However, this must be done with care:
+        //
+        // First, Compute fp value for count at the requested percentile. Note that fp result end up
+        // being 1 ulp larger than the correct integer count for this percentile:
+        double fpCountAtPercentile = (requestedPercentile / 100.0) * getTotalCount();
+        // Next, round up, but make sure to prevent <= 1 ulp inaccurancies in the above fp math from
+        // making us skip a count:
+        long countAtPercentile = (long)(Math.ceil(fpCountAtPercentile - Math.ulp(fpCountAtPercentile))); // round up
+
         countAtPercentile = Math.max(countAtPercentile, 1); // Make sure we at least reach the first recorded entry
         long totalToCurrentIndex = 0;
         for (int i = 0; i < countsArrayLength; i++) {
