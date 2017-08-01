@@ -34,6 +34,10 @@
             <name>Public Domain, per Creative Commons CC0</name>
             <url>http://creativecommons.org/publicdomain/zero/1.0/</url>
         </license>
+        <license>
+            <name>BSD-2-Clause</name>
+            <url>https://opensource.org/licenses/BSD-2-Clause</url>
+        </license>
     </licenses>
 
     <developers>
