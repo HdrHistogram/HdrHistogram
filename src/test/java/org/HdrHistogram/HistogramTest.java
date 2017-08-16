@@ -304,6 +304,54 @@ public class HistogramTest {
     }
 
     @Test
+    public void testValueAtPercentileMatchesPercentile() throws Exception {
+        Histogram histogram = new Histogram(1, Long.MAX_VALUE, 3);
+        long[] lengths = {1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000};
+
+
+        for (long length: lengths) {
+            histogram.reset();
+            for (long value = 1; value <= length; value++) {
+                histogram.recordValue(value);
+            }
+            
+            for (long value = 1; value <= length; value++) {
+                Double calculatedPercentile = 100.0 * ((double) value)/length;
+                long lookupValue = histogram.getValueAtPercentile(calculatedPercentile);
+                Assert.assertTrue("length:" + length + " value: " + value + " calculatedPercentile:" + calculatedPercentile +
+                        " getValueAtPercentile(" + calculatedPercentile + ") = " + lookupValue +
+                        " [should be " + value + "]",
+                        histogram.valuesAreEquivalent(value, lookupValue));
+            }
+        }
+    }
+
+    @Test
+    public void testValueAtPercentileMatchesPercentileIter() throws Exception {
+        Histogram histogram = new Histogram(1, Long.MAX_VALUE, 3);
+        long[] lengths = {1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000};
+
+
+        for (long length: lengths) {
+            histogram.reset();
+            for (long value = 1; value <= length; value++) {
+                histogram.recordValue(value);
+            }
+
+            int percentileTicksPerHalfDistance = 1000;
+            for (HistogramIterationValue v : histogram.percentiles(percentileTicksPerHalfDistance)) {
+                long calculatedValue = histogram.getValueAtPercentile(v.getPercentile());
+                long iterValue = v.getValueIteratedTo();
+                Assert.assertTrue("length:" + length + " percentile: " + v.getPercentile() +
+                                " calculatedValue:" + calculatedValue + " iterValue:" + iterValue +
+                                "[should be " + calculatedValue + "]",
+                        histogram.valuesAreEquivalent(calculatedValue, iterValue));
+                Assert.assertTrue(histogram.valuesAreEquivalent(calculatedValue, iterValue));
+            }
+        }
+    }
+
+    @Test
     public void testRecordValueWithExpectedInterval() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValueWithExpectedInterval(testValueLevel, testValueLevel/4);
