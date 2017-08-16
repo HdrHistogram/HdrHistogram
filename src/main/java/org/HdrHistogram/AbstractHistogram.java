@@ -1322,21 +1322,14 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * in the histogram are either larger than or equivalent to. Returns 0 if no recorded values exist.
      */
     public long getValueAtPercentile(final double percentile) {
-        final double requestedPercentile = Math.min(percentile, 100.0); // Truncate down to 100%
-        // round count up to nearest integer, to ensure that the largest value that the requested percentile
-        // of overall recorded values is actually included. However, this must be done with care:
-        //
-        // First, Compute fp value for count at the requested percentile. Note that fp may result end up
-        // being 1 ulp larger than the correct integer count for this percentile:
-        // [Note: the order of operations (doing the multiply before the divide) in the following
-        //  calculation has a subtle impact on the roundoff behavior and the ability to deal with
-        //  integeter-bundary overruns usin the 1 ulp difference allowance noted below]
-        double fpCountAtPercentile = (requestedPercentile * getTotalCount()) / 100.0;
-        // Next, round up, but make sure to prevent <= 1 ulp inaccurancies in the above fp math from
-        // making us skip a count (we use Math.nextAfter() instead of simply subtracting an ulp, in
-        // order to cover cases where ther ulp itself would change over the gap).
-        long countAtPercentile =
-                (long)(Math.ceil(Math.nextAfter(fpCountAtPercentile, Double.NEGATIVE_INFINITY))); // round up
+        // Truncate to 0..100%, and remove 1 ulp to avoid roundoff overruns into next bucket when we
+        // subsequently round up to the nearest integer:
+        double requestedPercentile =
+                Math.min(Math.max(Math.nextAfter(percentile, Double.NEGATIVE_INFINITY), 0.0D), 100.0D);
+        // derive the count at the requested percentile. We round up to nearest integer to ensure that the
+        // largest value that the requested percentile of overall recorded values is <= is actually included.
+        double fpCountAtPercentile = (requestedPercentile * getTotalCount()) / 100.0D;
+        long countAtPercentile = (long)(Math.ceil(fpCountAtPercentile)); // round up
 
         countAtPercentile = Math.max(countAtPercentile, 1); // Make sure we at least reach the first recorded entry
         long totalToCurrentIndex = 0;
