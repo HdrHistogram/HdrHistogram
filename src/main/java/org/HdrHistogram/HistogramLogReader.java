@@ -7,7 +7,6 @@
 
 package org.HdrHistogram;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -268,7 +267,7 @@ public class HistogramLogReader {
                 scanner.nextDouble(); // Skip maxTime field, as max time can be deduced from the histogram.
                 final String compressedPayloadString = scanner.next();
                 final ByteBuffer buffer = ByteBuffer.wrap(
-                        DatatypeConverter.parseBase64Binary(compressedPayloadString));
+                        Base64Helper.parseBase64Binary(compressedPayloadString));
 
                 EncodableHistogram histogram = EncodableHistogram.decodeFromCompressedByteBuffer(buffer, 0);
 

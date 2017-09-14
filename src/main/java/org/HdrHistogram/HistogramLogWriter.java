@@ -1,6 +1,5 @@
 package org.HdrHistogram;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.OutputStream;
@@ -127,7 +126,7 @@ public class HistogramLogWriter {
                     startTimeStampSec,
                     endTimeStampSec - startTimeStampSec,
                     histogram.getMaxValueAsDouble() / maxValueUnitRatio,
-                    DatatypeConverter.printBase64Binary(compressedArray)
+                    Base64Helper.printBase64Binary(compressedArray)
             );
         } else {
             containsDelimeterMatcher.reset(tag);
@@ -139,7 +138,7 @@ public class HistogramLogWriter {
                     startTimeStampSec,
                     endTimeStampSec - startTimeStampSec,
                     histogram.getMaxValueAsDouble() / maxValueUnitRatio,
-                    DatatypeConverter.printBase64Binary(compressedArray)
+                    Base64Helper.printBase64Binary(compressedArray)
             );
         }
     }
