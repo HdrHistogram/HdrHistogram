@@ -10,15 +10,20 @@ package org.HdrHistogram;
 import java.lang.reflect.Method;
 
 /**
- * Base64Helper exists to bridge gaps between Java SE platform support of Base64 encoding and decoding.
+ * Base64Helper exists to bridge inconsistencies in Java SE support of Base64 encoding and decoding.
  * Earlier Java SE platforms (up to and including Java SE 8) supported base64 encode/decode via the
  * javax.xml.bind.DatatypeConverter class, which was deprecated and eventually removed in Java SE 9.
- * Later Java SE platforms Java SE 8 and later support supported base64 encode/decode via the
+ * Later Java SE platforms (Java SE 8 and later) support base64 encode/decode via the
  * java.util.Base64 class (first introduced in Java SE 8, and not available on e.g. Java SE 6 or 7).
  *
+ * This makes it "hard" to write a single piece of source code that deals with base64 encodings and
+ * will compile and run on e.g. Java SE 7 AND Java SE 9. And such common source is a common need for
+ * libraries. This class is intended to encapsulate this "hard"-ness and hide the ugly pretzle-twising
+ * needed under the covers.
+ *
  * Base64Helper provides a common API that works across Java SE 6..9 (and beyond hopefully), and
- * uses late binding (Reflection) to avoid javac-compile-time dependencies on a specific Java SE
- * version (e.g. beyond 6 or before 9).
+ * uses late binding (Reflection) internally to avoid javac-compile-time dependencies on a specific
+ * Java SE version (e.g. beyond 7 or before 9).
  *
  */
 public class Base64Helper {
