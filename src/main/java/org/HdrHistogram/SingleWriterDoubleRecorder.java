@@ -20,7 +20,21 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterDoubleRecorder#recordValue} or
  * {@link SingleWriterDoubleRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT support concurrent recording calls.
- *
+ * <p>
+ * A common pattern for using a {@link SingleWriterDoubleRecorder} looks like this:
+ * <br><pre>
+ * </code>
+ * SingleWriterDoubleRecorder recorder = new Recorder(2); // Two decimal point accuracy
+ * DoubleHistogram intervalHistogram = null;
+ * ...
+ * [start of some loop construct that periodically wants to grab an interval histogram]
+ *   ...
+ *   // Get interval histogram, recycling previous interval histogram:
+ *   intervalHistogram = recorder.getIntervalHistogram(intervalHistogram);
+ *   histogramLogWriter.outputIntervalHistogram(intervalHistogram);
+ *   ...
+ * [end of loop construct]
+ * </code></pre>
  */
 
 public class SingleWriterDoubleRecorder {
@@ -123,7 +137,8 @@ public class SingleWriterDoubleRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link SingleWriterDoubleRecorder#getIntervalHistogram()} will reset
+     * Calling {
+     * @link SingleWriterDoubleRecorder#getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
@@ -244,7 +259,7 @@ public class SingleWriterDoubleRecorder {
         }
     }
 
-    void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;

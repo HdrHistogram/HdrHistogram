@@ -22,6 +22,21 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@link Recorder#recordValueWithExpectedInterval} calls.
  * Recording calls are wait-free on architectures that support atomic increment operations, and
  * are lock-free on architectures that do not.
+ * <p>
+ * A common pattern for using a {@link Recorder} looks like this:
+ * <br><pre>
+ * </code>
+ * Recorder recorder = new Recorder(2); // Two decimal point accuracy
+ * Histogram intervalHistogram = null;
+ * ...
+ * [start of some loop construct that periodically wants to grab an interval histogram]
+ *   ...
+ *   // Get interval histogram, recycling previous interval histogram:
+ *   intervalHistogram = recorder.getIntervalHistogram(intervalHistogram);
+ *   histogramLogWriter.outputIntervalHistogram(intervalHistogram);
+ *   ...
+ * [end of loop construct]
+ * </code></pre>
  *
  */
 
@@ -278,7 +293,7 @@ public class Recorder {
         }
     }
 
-    void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;

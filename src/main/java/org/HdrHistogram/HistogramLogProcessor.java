@@ -51,36 +51,35 @@ import java.util.*;
  */
 public class HistogramLogProcessor extends Thread {
 
-    public static final String versionString = "Histogram Log Processor version " + Version.version;
+    static final String versionString = "Histogram Log Processor version " + Version.version;
 
     private final HistogramLogProcessorConfiguration config;
 
     private HistogramLogReader logReader;
 
     private static class HistogramLogProcessorConfiguration {
-        public boolean verbose = false;
-        public String outputFileName = null;
-        public String inputFileName = null;
-        public String tag = null;
+        boolean verbose = false;
+        String outputFileName = null;
+        String inputFileName = null;
+        String tag = null;
 
-        public double rangeStartTimeSec = 0.0;
-        public double rangeEndTimeSec = Double.MAX_VALUE;
+        double rangeStartTimeSec = 0.0;
+        double rangeEndTimeSec = Double.MAX_VALUE;
 
-        public boolean logFormatCsv = false;
-        public boolean listTags = false;
-        public boolean allTags = false;
+        boolean logFormatCsv = false;
+        boolean listTags = false;
+        boolean allTags = false;
 
-        public boolean movingWindow = false;
-        public double movingWindowPercentileToReport = 99.0;
-        public long movingWindowLengthInMsec = 60000; // 1 minute
+        boolean movingWindow = false;
+        double movingWindowPercentileToReport = 99.0;
+        long movingWindowLengthInMsec = 60000; // 1 minute
 
-        public int percentilesOutputTicksPerHalf = 5;
-        public Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
+        int percentilesOutputTicksPerHalf = 5;
+        Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
 
-        public boolean error = false;
-        public String errorMessage = "";
+        String errorMessage = "";
 
-        public HistogramLogProcessorConfiguration(final String[] args) {
+        HistogramLogProcessorConfiguration(final String[] args) {
             boolean askedForHelp= false;
             try {
                 for (int i = 0; i < args.length; ++i) {
@@ -121,7 +120,6 @@ public class HistogramLogProcessor extends Thread {
                 }
 
             } catch (Exception e) {
-                error = true;
                 errorMessage = "Error: " + versionString + " launched with the following args:\n";
 
                 for (String arg : args) {
@@ -172,7 +170,7 @@ public class HistogramLogProcessor extends Thread {
                 startTime, (new Date((long) (startTime * 1000))).toString());
     }
 
-    int lineNumber = 0;
+    private int lineNumber = 0;
 
     private EncodableHistogram getIntervalHistogram() {
         EncodableHistogram histogram = null;
@@ -217,10 +215,8 @@ public class HistogramLogProcessor extends Thread {
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-//        EncodableHistogram[] movingWindow = new EncodableHistogram[config.movingWindowIntervalCount];
         EncodableHistogram movingWindowSumHistogram = null;
         Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
-        int movingWindowIndex = 0;
 
         if (config.listTags) {
             Set<String> tags = new TreeSet<String>();
@@ -420,7 +416,7 @@ public class HistogramLogProcessor extends Thread {
                                 ((DoubleHistogram) movingWindowSumHistogram).getTotalCount(),
                                 ((DoubleHistogram) movingWindowSumHistogram).getValueAtPercentile(config.movingWindowPercentileToReport) / config.outputValueUnitRatio,
                                 ((DoubleHistogram) movingWindowSumHistogram).getMaxValue() / config.outputValueUnitRatio
-                                );
+                        );
                     } else {
                         movingWindowLog.format(Locale.US, movingWindowLogFormat,
                                 ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
@@ -428,7 +424,7 @@ public class HistogramLogProcessor extends Thread {
                                 ((Histogram) movingWindowSumHistogram).getTotalCount(),
                                 ((Histogram) movingWindowSumHistogram).getValueAtPercentile(config.movingWindowPercentileToReport) / config.outputValueUnitRatio,
                                 ((Histogram) movingWindowSumHistogram).getMaxValue() / config.outputValueUnitRatio
-                                );
+                        );
                     }
 
                 }
@@ -465,6 +461,7 @@ public class HistogramLogProcessor extends Thread {
      * [-i logFileName]            File name of Histogram Log to process (default is standard input)
      * [-o outputFileName]         File name to output to (default is standard output)
      *                             (will replace occurrences of %pid and %date with appropriate information)
+     * [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n
      * [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)
      * [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)
      * [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units

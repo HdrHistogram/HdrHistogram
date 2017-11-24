@@ -22,7 +22,21 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@link DoubleRecorder#recordValueWithExpectedInterval} calls.
  * Recording calls are wait-free on architectures that support atomic increment operations, and
  * are lock-free on architectures that do not.
- *
+ * <p>
+ * A common pattern for using a {@link DoubleRecorder} looks like this:
+ * <br><pre>
+ * </code>
+ * DoubleRecorder recorder = new Recorder(2); // Two decimal point accuracy
+ * DoubleHistogram intervalHistogram = null;
+ * ...
+ * [start of some loop construct that periodically wants to grab an interval histogram]
+ *   ...
+ *   // Get interval histogram, recycling previous interval histogram:
+ *   intervalHistogram = recorder.getIntervalHistogram(intervalHistogram);
+ *   histogramLogWriter.outputIntervalHistogram(intervalHistogram);
+ *   ...
+ * [end of loop construct]
+ * </code></pre>
  */
 
 public class DoubleRecorder {
@@ -245,7 +259,7 @@ public class DoubleRecorder {
         }
     }
 
-    void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;

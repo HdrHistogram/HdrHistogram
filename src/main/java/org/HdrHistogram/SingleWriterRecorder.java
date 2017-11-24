@@ -21,6 +21,21 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterRecorder#recordValue} or
  * {@link SingleWriterRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT safely support concurrent recording calls.
+ *  * <p>
+ * A common pattern for using a {@link SingleWriterRecorder} looks like this:
+ * <br><pre>
+ * </code>
+ * SingleWriterRecorder recorder = new Recorder(2); // Two decimal point accuracy
+ * Histogram intervalHistogram = null;
+ * ...
+ * [start of some loop construct that periodically wants to grab an interval histogram]
+ *   ...
+ *   // Get interval histogram, recycling previous interval histogram:
+ *   intervalHistogram = recorder.getIntervalHistogram(intervalHistogram);
+ *   histogramLogWriter.outputIntervalHistogram(intervalHistogram);
+ *   ...
+ * [end of loop construct]
+ * </code></pre>
  */
 
 public class SingleWriterRecorder {
@@ -268,7 +283,7 @@ public class SingleWriterRecorder {
         }
     }
 
-    void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
