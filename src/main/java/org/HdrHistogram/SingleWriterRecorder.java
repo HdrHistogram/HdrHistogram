@@ -23,9 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * It DOES NOT safely support concurrent recording calls.
  *  * <p>
  * A common pattern for using a {@link SingleWriterRecorder} looks like this:
- * <br><pre>
- * </code>
- * SingleWriterRecorder recorder = new Recorder(2); // Two decimal point accuracy
+ * <br><pre><code>
+ * SingleWriterRecorder recorder = new SingleWriterRecorder(2); // Two decimal point accuracy
  * Histogram intervalHistogram = null;
  * ...
  * [start of some loop construct that periodically wants to grab an interval histogram]

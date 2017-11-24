@@ -24,8 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * are lock-free on architectures that do not.
  * <p>
  * A common pattern for using a {@link Recorder} looks like this:
- * <br><pre>
- * </code>
+ * <br><pre><code>
  * Recorder recorder = new Recorder(2); // Two decimal point accuracy
  * Histogram intervalHistogram = null;
  * ...

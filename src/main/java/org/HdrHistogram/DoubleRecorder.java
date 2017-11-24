@@ -24,9 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * are lock-free on architectures that do not.
  * <p>
  * A common pattern for using a {@link DoubleRecorder} looks like this:
- * <br><pre>
- * </code>
- * DoubleRecorder recorder = new Recorder(2); // Two decimal point accuracy
+ * <br><pre><code>
+ * DoubleRecorder recorder = new DoubleRecorder(2); // Two decimal point accuracy
  * DoubleHistogram intervalHistogram = null;
  * ...
  * [start of some loop construct that periodically wants to grab an interval histogram]
