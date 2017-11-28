@@ -281,7 +281,7 @@ public class SingleWriterRecorder {
         }
 
         if (bad) {
-            throw new IllegalArgumentException("replacement histogram must have been obtained via a previous" +
+            throw new IllegalArgumentException("replacement histogram must have been obtained via a previous " +
                     "getIntervalHistogram() call from this " + this.getClass().getName() +" instance");
         }
     }
