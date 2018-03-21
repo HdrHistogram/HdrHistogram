@@ -529,7 +529,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     private void handleRecordException(final long count, final long value, Exception ex) {
         if (!autoResize) {
-            throw new ArrayIndexOutOfBoundsException("value outside of histogram covered range. Caused by: " + ex);
+            throw new ArrayIndexOutOfBoundsException("value " + value + " outside of histogram covered range. Caused by: " + ex);
         }
         resize(value);
         int countsIndex = countsArrayIndex(value);
