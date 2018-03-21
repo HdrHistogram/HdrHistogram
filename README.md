@@ -7,8 +7,8 @@ HdrHistogram
 ----------------------------------------------------------------------------
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
-This respository currently includes Java implementations of
-HdrHistogram, C, C#/.NET, Python, Javascript, Rust, Erlang, and Go ports
+This respository currently includes a Java implementation of
+HdrHistogram. C, C#/.NET, Python, Javascript, Rust, Erlang, and Go ports
 can be found in other respositories. All of which share common concepts
 and data representation capabilities. Look at repositories under the
 [HdrHistogram organization](https://github.com/HdrHistogram) for various
