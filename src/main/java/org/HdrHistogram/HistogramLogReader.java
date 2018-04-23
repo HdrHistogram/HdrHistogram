@@ -63,6 +63,7 @@ public class HistogramLogReader {
     private boolean observedStartTime = false;
     private double baseTimeSec = 0.0;
     private boolean observedBaseTime = false;
+    private Double lastTimestampInSec = null;
 
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
@@ -229,6 +230,12 @@ public class HistogramLogReader {
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
 
                 final double logTimeStampInSec = scanner.nextDouble(); // Timestamp is expected to be in seconds
+
+                if (lastTimestampInSec != null && lastTimestampInSec > logTimeStampInSec)
+                {
+                    throw new IllegalArgumentException("Non-monotonic timestamp detected: " + logTimeStampInSec + " (last was: " + lastTimestampInSec + ")");
+                }
+                lastTimestampInSec = logTimeStampInSec;
 
                 if (!observedStartTime) {
                     // No explicit start time noted. Use 1st observed time:

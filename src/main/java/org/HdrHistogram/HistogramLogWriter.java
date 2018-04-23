@@ -5,10 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.IllegalFormatException;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,6 +53,7 @@ public class HistogramLogWriter {
     private ByteBuffer targetBuffer;
 
     private long baseTime = 0;
+    private Double lastStartTimeStampSec = null;
 
     /**
      * Constructs a new HistogramLogWriter around a newly created file with the specified file name.
@@ -112,6 +111,14 @@ public class HistogramLogWriter {
                                         final double endTimeStampSec,
                                         final EncodableHistogram histogram,
                                         final double maxValueUnitRatio) {
+        if (endTimeStampSec < startTimeStampSec) {
+            throw new IllegalArgumentException("endTimeStampSec < startTimeStampSec: " + endTimeStampSec + " < " + startTimeStampSec);
+        }
+        if (lastStartTimeStampSec != null && lastStartTimeStampSec > startTimeStampSec) {
+            throw new IllegalArgumentException("Trying to create non-monotonic timestamps: " + startTimeStampSec + " (last: " + lastStartTimeStampSec + ")");
+        }
+        lastStartTimeStampSec = startTimeStampSec;
+
         if ((targetBuffer == null) || targetBuffer.capacity() < histogram.getNeededByteBufferCapacity()) {
             targetBuffer = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity()).order(BIG_ENDIAN);
         }

@@ -7,8 +7,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class HistogramLogReaderWriterTest {
 
@@ -58,43 +56,45 @@ public class HistogramLogReaderWriterTest {
     }
 
     @Test
-    public void skipsHistogramsWithNonMonotonicTimestamps() throws Exception {
-        List<String> expectedTagOrder1 = new ArrayList<String>();
-        expectedTagOrder1.add("A");
-        expectedTagOrder1.add("A");
-        expectedTagOrder1.add("B");
-        expectedTagOrder1.add("B");
-        expectedTagOrder1.add("C");
-        expectedTagOrder1.add("C");
-
-        List<String> expectedTagOrder2 = new ArrayList<String>();
-        expectedTagOrder2.add("A");
-        expectedTagOrder2.add("A");
-        expectedTagOrder2.add("C");
-        expectedTagOrder2.add("C");
-
-        List<String> tagOrder1 = new ArrayList<String>();
-        List<String> tagOrder2 = new ArrayList<String>();
-
+    public void throwsWhenReadingNonMonotonicTimestamps() throws Exception {
         InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-non-monotonic.hlog");
         HistogramLogReader reader = new HistogramLogReader(readerStream);
-        EncodableHistogram encodeableHistogram;
-        while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
-            tagOrder1.add(encodeableHistogram.getTag());
+        try {
+            while ((reader.nextIntervalHistogram()) != null) {
+            }
+            Assert.fail("missing expected exception");
+        }
+        catch (Exception e) {
+            Assert.assertTrue(e.getMessage().contains("Non-monotonic timestamp detected"));
         }
         readerStream.close();
+    }
 
-        Assert.assertEquals(expectedTagOrder1, tagOrder1);
+    @Test
+    public void throwsWhenWritingNonMonotonicTimestamps() throws Exception {
+        File temp = File.createTempFile("hdrhistogramtestingnonmonotonic", "hlog");
+        FileOutputStream writerStream = new FileOutputStream(temp);
+        HistogramLogWriter writer = new HistogramLogWriter(writerStream);
+        writer.outputLogFormatVersion();
+        long startTimeWritten = 11000;
+        writer.outputStartTime(startTimeWritten);
+        writer.outputLogFormatVersion();
+        writer.outputLegend();
+        Histogram empty = new Histogram(2);
+        empty.setStartTimeStamp(12100);
+        empty.setEndTimeStamp(13100);
+        writer.outputIntervalHistogram(empty);
 
-        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-non-monotonic.hlog");
-        reader = new HistogramLogReader(readerStream);
-        // same call parameters but internal "absolute" parameter is now false
-        while ((encodeableHistogram = reader.nextIntervalHistogram(0, Long.MAX_VALUE * 1.0)) != null) {
-            tagOrder2.add(encodeableHistogram.getTag());
+        empty.setStartTimeStamp(12000);
+        empty.setEndTimeStamp(13000);
+        try {
+            writer.outputIntervalHistogram(empty);
+            Assert.fail("missing expected exception");
         }
-        readerStream.close();
-
-        Assert.assertEquals(expectedTagOrder2, tagOrder2);
+        catch (Exception e) {
+            Assert.assertTrue(e.getMessage().contains("Trying to create non-monotonic timestamps"));
+        }
+        writerStream.close();
     }
 
     @Test
