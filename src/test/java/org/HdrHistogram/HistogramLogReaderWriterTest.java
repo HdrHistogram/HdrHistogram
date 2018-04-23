@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HistogramLogReaderWriterTest {
 
@@ -53,6 +55,46 @@ public class HistogramLogReaderWriterTest {
         }
         Assert.assertEquals(32290, totalCount);
         Assert.assertEquals(accumulatedHistogramWithTagA, accumulatedHistogramWithNoTag);
+    }
+
+    @Test
+    public void skipsHistogramsWithNonMonotonicTimestamps() throws Exception {
+        List<String> expectedTagOrder1 = new ArrayList<String>();
+        expectedTagOrder1.add("A");
+        expectedTagOrder1.add("A");
+        expectedTagOrder1.add("B");
+        expectedTagOrder1.add("B");
+        expectedTagOrder1.add("C");
+        expectedTagOrder1.add("C");
+
+        List<String> expectedTagOrder2 = new ArrayList<String>();
+        expectedTagOrder2.add("A");
+        expectedTagOrder2.add("A");
+        expectedTagOrder2.add("C");
+        expectedTagOrder2.add("C");
+
+        List<String> tagOrder1 = new ArrayList<String>();
+        List<String> tagOrder2 = new ArrayList<String>();
+
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-non-monotonic.hlog");
+        HistogramLogReader reader = new HistogramLogReader(readerStream);
+        EncodableHistogram encodeableHistogram;
+        while ((encodeableHistogram = reader.nextIntervalHistogram()) != null) {
+            tagOrder1.add(encodeableHistogram.getTag());
+        }
+        readerStream.close();
+
+        Assert.assertEquals(expectedTagOrder1, tagOrder1);
+
+        readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-non-monotonic.hlog");
+        reader = new HistogramLogReader(readerStream);
+        // same call parameters but internal "absolute" parameter is now false
+        while ((encodeableHistogram = reader.nextIntervalHistogram(0, Long.MAX_VALUE * 1.0)) != null) {
+            tagOrder2.add(encodeableHistogram.getTag());
+        }
+        readerStream.close();
+
+        Assert.assertEquals(expectedTagOrder2, tagOrder2);
     }
 
     @Test
