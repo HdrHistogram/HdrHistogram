@@ -50,7 +50,7 @@ import java.util.zip.Deflater;
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
-public class DoubleHistogram extends EncodableHistogram implements Serializable {
+public class DoubleHistogram extends EncodableHistogram implements DoubleValueRecorder, Serializable {
     private static final double highestAllowedValueEver; // A value that will keep us from multiplying into infinity.
 
     private long configuredHighestToLowestValueRatio;
@@ -287,8 +287,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * Record a value in the histogram
      *
      * @param value The value to be recorded
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValue(final double value) throws ArrayIndexOutOfBoundsException {
         recordSingleValue(value);
     }
@@ -298,8 +299,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      *
      * @param value The value to be recorded
      * @param count The number of occurrences of this value to record
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
     }
@@ -323,8 +325,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValueWithExpectedInterval(final double value, final double expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
@@ -573,6 +576,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     /**
      * Reset the contents and stats of this histogram
      */
+    @Override
     public void reset() {
         integerValuesHistogram.clearCounts();
     }
