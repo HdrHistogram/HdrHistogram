@@ -8,7 +8,7 @@ public interface DoubleValueRecorder {
      * @param value The value to be recorded
      * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
-    void recordValue(double value);
+    void recordValue(double value) throws ArrayIndexOutOfBoundsException;
 
     /**
      * Record a value (adding to the value's current count)
