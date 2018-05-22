@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  */
 
-public class Recorder {
+public class Recorder implements ValueRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
@@ -107,6 +107,7 @@ public class Recorder {
      * @param value the value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValue(final long value) throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -123,6 +124,7 @@ public class Recorder {
      * @param count The number of occurrences of this value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -148,6 +150,7 @@ public class Recorder {
      *                                           than expectedIntervalBetweenValueSamples
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
@@ -261,6 +264,7 @@ public class Recorder {
     /**
      * Reset any value counts accumulated thus far.
      */
+    @Override
     public synchronized void reset() {
         // the currently inactive histogram is reset each time we flip. So flipping twice resets both:
         performIntervalSample();

@@ -95,7 +95,7 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
  * See package description for {@link org.HdrHistogram} for details.
  *
  */
-public abstract class AbstractHistogram extends AbstractHistogramBase implements Serializable {
+public abstract class AbstractHistogram extends AbstractHistogramBase implements ValueRecorder, Serializable {
 
     // "Hot" accessed fields (used in the the value recording code path) are bunched here, such
     // that they will have a good chance of ending up in the same cache line as the totalCounts and
@@ -422,6 +422,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param value The value to be recorded
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValue(final long value) throws ArrayIndexOutOfBoundsException {
         recordSingleValue(value);
     }
@@ -433,6 +434,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      * @param count The number of occurrences of this value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
     }
@@ -458,6 +460,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      *                                           than expectedIntervalBetweenValueSamples
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordSingleValueWithExpectedInterval(value, expectedIntervalBetweenValueSamples);
@@ -574,6 +577,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     /**
      * Reset the contents and stats of this histogram
      */
+    @Override
     public void reset() {
         clearCounts();
         resetMaxValue(0);

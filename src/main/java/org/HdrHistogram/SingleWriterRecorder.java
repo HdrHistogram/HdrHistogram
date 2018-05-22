@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * </code></pre>
  */
 
-public class SingleWriterRecorder {
+public class SingleWriterRecorder implements ValueRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
@@ -106,6 +106,7 @@ public class SingleWriterRecorder {
      * @param value the value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValue(final long value) {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -122,6 +123,7 @@ public class SingleWriterRecorder {
      * @param count The number of occurrences of this value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -147,6 +149,7 @@ public class SingleWriterRecorder {
      *                                           than expectedIntervalBetweenValueSamples
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
@@ -260,6 +263,7 @@ public class SingleWriterRecorder {
     /**
      * Reset any value counts accumulated thus far.
      */
+    @Override
     public synchronized void reset() {
         // the currently inactive histogram is reset each time we flip. So flipping twice resets both:
         performIntervalSample();
