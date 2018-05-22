@@ -169,13 +169,50 @@ public class SingleWriterDoubleRecorder {
      * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
      * counts for the next interval
      *
-     * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
+     * @param histogramToRecycle a previously returned interval histogram (from this instance of
+     *                           {@link SingleWriterDoubleRecorder}) that may be recycled to avoid allocation and
      *                           copy operations.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
+        return getIntervalHistogram(histogramToRecycle, true);
+    }
+
+    /**
+     * Get an interval histogram, which will include a stable, consistent view of all value counts
+     * accumulated since the last interval histogram was taken.
+     * <p>
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)}
+     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram()} and
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The
+     * provided {@code histogramToRecycle} must
+     * be either be null or an interval histogram returned by a previous call to
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)} or
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram()}.
+     * <p>
+     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
+     * the same interval histogram instance is recycled more than once, behavior is undefined.
+     * <p>
+     * Calling
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram(DoubleHistogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
+     * counts for the next interval
+     *
+     * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
+     *                           copy operations.
+     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     *                                 instance of {@link SingleWriterDoubleRecorder}. If false, will allow recycling histograms
+     *                                 previously returned by other instances of {@link SingleWriterDoubleRecorder}.
+     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
+     */
+    public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle,
+                                                             boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle);
+        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
         inactiveHistogram = (InternalDoubleHistogram) histogramToRecycle;
         performIntervalSample();
         DoubleHistogram sampledHistogram = inactiveHistogram;
@@ -257,15 +294,17 @@ public class SingleWriterDoubleRecorder {
         }
     }
 
-    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram,
+                                                   boolean enforeContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if ((replacementHistogram instanceof InternalDoubleHistogram)
                 &&
-                (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
+                ((!enforeContainingInstance) ||
+                        (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
                         activeHistogram.containingInstanceId)
-                ) {
+                )) {
             bad = false;
         }
 

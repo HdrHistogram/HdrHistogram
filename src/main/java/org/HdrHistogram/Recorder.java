@@ -194,13 +194,49 @@ public class Recorder {
      * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
      * counts for the next interval
      *
-     * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
+     * @param histogramToRecycle a previously returned interval histogram (from this instance of
+     *                           {@link Recorder}) that may be recycled to avoid allocation and
      *                           copy operations.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
+        return getIntervalHistogram(histogramToRecycle, true);
+    }
+
+    /**
+     * Get an interval histogram, which will include a stable, consistent view of all value counts
+     * accumulated since the last interval histogram was taken.
+     * <p>
+     * {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)}
+     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
+     * {@link Recorder#getIntervalHistogram()} and
+     * {@link Recorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
+     * {@code histogramToRecycle} must
+     * be either be null or an interval histogram returned by a previous call to
+     * {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)} or
+     * {@link Recorder#getIntervalHistogram()}.
+     * <p>
+     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
+     * the same interval histogram instance is recycled more than once, behavior is undefined.
+     * <p>
+     * Calling {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
+     * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
+     * counts for the next interval
+     *
+     * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
+     *                           copy operations.
+     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     *                                 instance of {@link Recorder}. If false, will allow recycling histograms
+     *                                 previously returned by other instances of {@link Recorder}.
+     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
+     */
+    public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle,
+                                                       boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle);
+        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
         inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         Histogram sampledHistogram = inactiveHistogram;
@@ -292,30 +328,34 @@ public class Recorder {
         }
     }
 
-    private void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
+    private void validateFitAsReplacementHistogram(Histogram replacementHistogram,
+                                                   boolean enforeContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if (replacementHistogram instanceof InternalAtomicHistogram) {
             if ((activeHistogram instanceof InternalAtomicHistogram)
                     &&
-                    (((InternalAtomicHistogram)replacementHistogram).containingInstanceId ==
-                            ((InternalAtomicHistogram)activeHistogram).containingInstanceId)
-                    ) {
+                    ((!enforeContainingInstance) ||
+                            (((InternalAtomicHistogram)replacementHistogram).containingInstanceId ==
+                                    ((InternalAtomicHistogram)activeHistogram).containingInstanceId)
+                    )) {
                 bad = false;
             }
         } else if (replacementHistogram instanceof InternalConcurrentHistogram) {
             if ((activeHistogram instanceof InternalConcurrentHistogram)
                     &&
-                    (((InternalConcurrentHistogram)replacementHistogram).containingInstanceId ==
-                            ((InternalConcurrentHistogram)activeHistogram).containingInstanceId)
-                    ) {
+                    ((!enforeContainingInstance) ||
+                            (((InternalConcurrentHistogram)replacementHistogram).containingInstanceId ==
+                                    ((InternalConcurrentHistogram)activeHistogram).containingInstanceId)
+                    )) {
                 bad = false;
             }
         }
         if (bad) {
             throw new IllegalArgumentException("replacement histogram must have been obtained via a previous" +
-                    " getIntervalHistogram() call from this " + this.getClass().getName() +" instance");
+                    " getIntervalHistogram() call from this " + this.getClass().getName() +
+                    (enforeContainingInstance ? " insatnce" : " class"));
         }
     }
 }
