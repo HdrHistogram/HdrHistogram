@@ -119,4 +119,135 @@ public class RecorderTest {
         Histogram histogram = recorder.getIntervalHistogram();
     }
 
+    // Recorder Recycling tests:
+
+    @Test
+    public void testRecycling() throws Exception {
+        Recorder recorder = new Recorder(3);
+        Histogram histogramA = recorder.getIntervalHistogram();
+        Histogram histogramB = recorder.getIntervalHistogram(histogramA);
+        Histogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRecyclingContainingClassEnforcement() throws Exception {
+        Histogram histToRecycle = new Histogram(3);
+        Recorder recorder = new Recorder(3);
+        Histogram histogramA = recorder.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRecyclingContainingInstanceEnforcement() throws Exception {
+        Recorder recorder1 = new Recorder(3);
+        Recorder recorder2 = new Recorder(3);
+        Histogram histToRecycle = recorder1.getIntervalHistogram();
+        Histogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test
+    public void testRecyclingContainingInstanceNonEnforcement() throws Exception {
+        Recorder recorder1 = new Recorder(3);
+        Recorder recorder2 = new Recorder(3);
+        Histogram histToRecycle = recorder1.getIntervalHistogram();
+        Histogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle, false);
+    }
+
+    // SingleWriterRecorder Recycling tests:
+
+    @Test
+    public void testSWRecycling() throws Exception {
+        SingleWriterRecorder recorder = new SingleWriterRecorder(3);
+        Histogram histogramA = recorder.getIntervalHistogram();
+        Histogram histogramB = recorder.getIntervalHistogram(histogramA);
+        Histogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSWRecyclingContainingClassEnforcement() throws Exception {
+        Histogram histToRecycle = new Histogram(3);
+        SingleWriterRecorder recorder = new SingleWriterRecorder(3);
+        Histogram histogramA = recorder.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSWRecyclingContainingInstanceEnforcement() throws Exception {
+        SingleWriterRecorder recorder1 = new SingleWriterRecorder(3);
+        SingleWriterRecorder recorder2 = new SingleWriterRecorder(3);
+        Histogram histToRecycle = recorder1.getIntervalHistogram();
+        Histogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test
+    public void testSWRecyclingContainingInstanceNonEnforcement() throws Exception {
+        SingleWriterRecorder recorder1 = new SingleWriterRecorder(3);
+        SingleWriterRecorder recorder2 = new SingleWriterRecorder(3);
+        Histogram histToRecycle = recorder1.getIntervalHistogram();
+        Histogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle, false);
+    }
+
+    // DoubleRecorder Recycling tests:
+
+    @Test
+    public void testDRecycling() throws Exception {
+        DoubleRecorder recorder = new DoubleRecorder(3);
+        DoubleHistogram histogramA = recorder.getIntervalHistogram();
+        DoubleHistogram histogramB = recorder.getIntervalHistogram(histogramA);
+        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testDRecyclingContainingClassEnforcement() throws Exception {
+        DoubleHistogram histToRecycle = new DoubleHistogram(3);
+        DoubleRecorder recorder = new DoubleRecorder(3);
+        DoubleHistogram histogramA = recorder.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testDRecyclingContainingInstanceEnforcement() throws Exception {
+        DoubleRecorder recorder1 = new DoubleRecorder(3);
+        DoubleRecorder recorder2 = new DoubleRecorder(3);
+        DoubleHistogram histToRecycle = recorder1.getIntervalHistogram();
+        DoubleHistogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test
+    public void testDRecyclingContainingInstanceNonEnforcement() throws Exception {
+        DoubleRecorder recorder1 = new DoubleRecorder(3);
+        DoubleRecorder recorder2 = new DoubleRecorder(3);
+        DoubleHistogram histToRecycle = recorder1.getIntervalHistogram();
+        DoubleHistogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle, false);
+    }
+
+    // SingleWriterDoubleRecorder Recycling tests:
+
+    @Test
+    public void testSWDRecycling() throws Exception {
+        SingleWriterDoubleRecorder recorder = new SingleWriterDoubleRecorder(3);
+        DoubleHistogram histogramA = recorder.getIntervalHistogram();
+        DoubleHistogram histogramB = recorder.getIntervalHistogram(histogramA);
+        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSWDRecyclingContainingClassEnforcement() throws Exception {
+        DoubleHistogram histToRecycle = new DoubleHistogram(3);
+        SingleWriterDoubleRecorder recorder = new SingleWriterDoubleRecorder(3);
+        DoubleHistogram histogramA = recorder.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSWDRecyclingContainingInstanceEnforcement() throws Exception {
+        SingleWriterDoubleRecorder recorder1 = new SingleWriterDoubleRecorder(3);
+        SingleWriterDoubleRecorder recorder2 = new SingleWriterDoubleRecorder(3);
+        DoubleHistogram histToRecycle = recorder1.getIntervalHistogram();
+        DoubleHistogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle);
+    }
+
+    @Test
+    public void testSWDRecyclingContainingInstanceNonEnforcement() throws Exception {
+        SingleWriterDoubleRecorder recorder1 = new SingleWriterDoubleRecorder(3);
+        SingleWriterDoubleRecorder recorder2 = new SingleWriterDoubleRecorder(3);
+        DoubleHistogram histToRecycle = recorder1.getIntervalHistogram();
+        DoubleHistogram histToRecycle2 = recorder2.getIntervalHistogram(histToRecycle, false);
+    }
 }
