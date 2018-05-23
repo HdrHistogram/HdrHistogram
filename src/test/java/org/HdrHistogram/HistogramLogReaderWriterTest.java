@@ -56,6 +56,48 @@ public class HistogramLogReaderWriterTest {
     }
 
     @Test
+    public void throwsWhenReadingNonMonotonicTimestamps() throws Exception {
+        InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("tagged-non-monotonic.hlog");
+        HistogramLogReader reader = new HistogramLogReader(readerStream);
+        try {
+            while ((reader.nextIntervalHistogram()) != null) {
+            }
+            Assert.fail("missing expected exception");
+        }
+        catch (Exception e) {
+            Assert.assertTrue(e.getMessage().contains("Non-monotonic timestamp detected"));
+        }
+        readerStream.close();
+    }
+
+    @Test
+    public void throwsWhenWritingNonMonotonicTimestamps() throws Exception {
+        File temp = File.createTempFile("hdrhistogramtestingnonmonotonic", "hlog");
+        FileOutputStream writerStream = new FileOutputStream(temp);
+        HistogramLogWriter writer = new HistogramLogWriter(writerStream);
+        writer.outputLogFormatVersion();
+        long startTimeWritten = 11000;
+        writer.outputStartTime(startTimeWritten);
+        writer.outputLogFormatVersion();
+        writer.outputLegend();
+        Histogram empty = new Histogram(2);
+        empty.setStartTimeStamp(12100);
+        empty.setEndTimeStamp(13100);
+        writer.outputIntervalHistogram(empty);
+
+        empty.setStartTimeStamp(12000);
+        empty.setEndTimeStamp(13000);
+        try {
+            writer.outputIntervalHistogram(empty);
+            Assert.fail("missing expected exception");
+        }
+        catch (Exception e) {
+            Assert.assertTrue(e.getMessage().contains("Trying to create non-monotonic timestamps"));
+        }
+        writerStream.close();
+    }
+
+    @Test
     public void jHiccupV2Log() throws Exception {
         InputStream readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
 
