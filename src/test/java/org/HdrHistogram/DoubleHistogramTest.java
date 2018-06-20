@@ -144,9 +144,17 @@ public class DoubleHistogramTest {
     public void testReset() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
+        histogram.recordValue(10);
+        histogram.recordValue(100);
+        Assert.assertEquals(histogram.getMinValue(), Math.min(10.0, testValueLevel), 1.0);
+        Assert.assertEquals(histogram.getMaxValue(), Math.max(100.0, testValueLevel), 1.0);
         histogram.reset();
         assertEquals(0L, histogram.getCountAtValue(testValueLevel));
         assertEquals(0L, histogram.getTotalCount());
+        histogram.recordValue(20);
+        histogram.recordValue(80);
+        Assert.assertEquals(histogram.getMinValue(), 20.0, 1.0);
+        Assert.assertEquals(histogram.getMaxValue(), 80.0, 1.0);
     }
 
     @Test

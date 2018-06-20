@@ -377,10 +377,18 @@ public class HistogramTest {
     public void testReset() throws Exception {
         Histogram histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
+        histogram.recordValue(10);
+        histogram.recordValue(100);
+        Assert.assertEquals(histogram.getMinValue(), Math.min(10, testValueLevel));
+        Assert.assertEquals(histogram.getMaxValue(), Math.max(100, testValueLevel));
         histogram.reset();
         Assert.assertEquals(0L, histogram.getCountAtValue(testValueLevel));
         Assert.assertEquals(0L, histogram.getTotalCount());
         verifyMaxValue(histogram);
+        histogram.recordValue(20);
+        histogram.recordValue(80);
+        Assert.assertEquals(histogram.getMinValue(), 20);
+        Assert.assertEquals(histogram.getMaxValue(), 80);
     }
 
     @Test
