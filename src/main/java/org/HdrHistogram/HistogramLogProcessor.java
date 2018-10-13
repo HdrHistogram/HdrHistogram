@@ -118,7 +118,6 @@ public class HistogramLogProcessor extends Thread {
                         throw new Exception("Invalid args: " + args[i]);
                     }
                 }
-
             } catch (Exception e) {
                 errorMessage = "Error: " + versionString + " launched with the following args:\n";
 
@@ -215,7 +214,6 @@ public class HistogramLogProcessor extends Thread {
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-        EncodableHistogram movingWindowSumHistogram = null;
         Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
 
         if (config.listTags) {
@@ -280,23 +278,23 @@ public class HistogramLogProcessor extends Thread {
 
             EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);
 
-            Histogram accumulatedRegularHistogram = null;
-            DoubleHistogram accumulatedDoubleHistogram = null;
+            Histogram accumulatedRegularHistogram = (intervalHistogram instanceof DoubleHistogram) ?
+                    new Histogram(3) :
+                    ((Histogram) intervalHistogram).copy();
+            accumulatedRegularHistogram.reset();
+            accumulatedRegularHistogram.setAutoResize(true);
 
-            if (intervalHistogram != null) {
-                // Shape the accumulated histogram like the histograms in the log file (but clear their contents):
-                if (intervalHistogram instanceof DoubleHistogram) {
-                    accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
-                    accumulatedDoubleHistogram.reset();
-                    accumulatedDoubleHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new DoubleHistogram(3);
-                } else {
-                    accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
-                    accumulatedRegularHistogram.reset();
-                    accumulatedRegularHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new Histogram(3);
-                }
-            }
+            DoubleHistogram accumulatedDoubleHistogram = (intervalHistogram instanceof DoubleHistogram) ?
+                    ((DoubleHistogram) intervalHistogram).copy() :
+                    new DoubleHistogram(3);
+            accumulatedDoubleHistogram.reset();
+            accumulatedDoubleHistogram.setAutoResize(true);
+
+
+            EncodableHistogram movingWindowSumHistogram = (intervalHistogram instanceof DoubleHistogram) ?
+                    new DoubleHistogram(3) :
+                    new Histogram(3);
+
 
             while (intervalHistogram != null) {
 
