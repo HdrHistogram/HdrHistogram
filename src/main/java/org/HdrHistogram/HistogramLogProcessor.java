@@ -92,25 +92,25 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-alltags")) {
                         allTags = true;
                     } else if (args[i].equals("-i")) {
-                        inputFileName = args[++i];
+                        inputFileName = args[++i];              // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-tag")) {
-                        tag = args[++i];
+                        tag = args[++i];                        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-mwp")) {
-                        movingWindowPercentileToReport = Double.parseDouble(args[++i]);
+                        movingWindowPercentileToReport = Double.parseDouble(args[++i]); // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-mwpl")) {
-                        movingWindowLengthInMsec = Long.parseLong(args[++i]);
+                        movingWindowLengthInMsec = Long.parseLong(args[++i]);   // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-start")) {
-                        rangeStartTimeSec = Double.parseDouble(args[++i]);
+                        rangeStartTimeSec = Double.parseDouble(args[++i]);      // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-end")) {
-                        rangeEndTimeSec = Double.parseDouble(args[++i]);
+                        rangeEndTimeSec = Double.parseDouble(args[++i]);        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-o")) {
-                        outputFileName = args[++i];
+                        outputFileName = args[++i];                             // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-percentilesOutputTicksPerHalf")) {
-                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);
+                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-outputValueUnitRatio")) {
-                        outputValueUnitRatio = Double.parseDouble(args[++i]);
+                        outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-h")) {
                         askedForHelp = true;
                         throw new Exception("Help: " + args[i]);
