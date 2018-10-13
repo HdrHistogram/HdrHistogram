@@ -211,7 +211,7 @@ public class HistogramLogProcessor extends Thread {
         PrintStream timeIntervalLog = null;
         PrintStream movingWindowLog = null;
         PrintStream histogramPercentileLog = System.out;
-        Double firstStartTime = 0.0;
+        double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
