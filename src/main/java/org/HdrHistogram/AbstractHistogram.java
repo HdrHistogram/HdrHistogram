@@ -1287,7 +1287,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
             totalValue += medianEquivalentValue(iterationValue.getValueIteratedTo())
-                    * iterationValue.getCountAtValueIteratedTo();
+                    * (double) iterationValue.getCountAtValueIteratedTo();
         }
         return (totalValue * 1.0) / getTotalCount();
     }
