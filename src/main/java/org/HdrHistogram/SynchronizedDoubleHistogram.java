@@ -265,6 +265,11 @@ public class SynchronizedDoubleHistogram extends DoubleHistogram {
     }
 
     @Override
+    public synchronized int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
     public synchronized long getTotalCount() {
         return super.getTotalCount();
     }
