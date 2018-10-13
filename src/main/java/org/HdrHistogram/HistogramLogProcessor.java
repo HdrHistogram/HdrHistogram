@@ -446,6 +446,9 @@ public class HistogramLogProcessor extends Thread {
             if (config.outputFileName != null) {
                 timeIntervalLog.close();
                 histogramPercentileLog.close();
+                if (config.movingWindow) {
+                    movingWindowLog.close();
+                }
             }
         }
     }

@@ -18,7 +18,7 @@ public class HistogramPerfTest {
     static final int numberOfSignificantValueDigits = 3;
     static final long testValueLevel = 12340;
     static final long warmupLoopLength = 50000;
-    static final long rawTimingLoopCount = 500000000L;
+    static final long rawTimingLoopCount = 800000000L;
     static final long rawDoubleTimingLoopCount = 300000000L;
     static final long singleWriterIntervalTimingLoopCount = 100000000L;
     static final long singleWriterDoubleIntervalTimingLoopCount = 100000000L;
@@ -26,6 +26,11 @@ public class HistogramPerfTest {
     static final long synchronizedTimingLoopCount = 180000000L;
     static final long atomicTimingLoopCount = 80000000L;
     static final long concurrentTimingLoopCount = 50000000L;
+
+    void recordLoop(AbstractHistogram histogram, long loopCount) {
+        for (long i = 0; i < loopCount; i++)
+            histogram.recordValue(testValueLevel + (i & 0x8000));
+    }
 
     void recordLoopWithExpectedInterval(AbstractHistogram histogram, long loopCount, long expectedInterval) {
         for (long i = 0; i < loopCount; i++)
@@ -72,6 +77,35 @@ public class HistogramPerfTest {
             sum += Long.numberOfLeadingZeros(val);
         }
         return sum;
+    }
+
+    public void testRawRecordingSpeedSingleValue(String label, AbstractHistogram histogram, long timingLoopCount) throws Exception {
+        System.out.println("\nTiming recording speed with single value per recording:");
+        // Warm up:
+        long startTime = System.nanoTime();
+        recordLoop(histogram, warmupLoopLength);
+        long endTime = System.nanoTime();
+        long deltaUsec = (endTime - startTime) / 1000L;
+        long rate = 1000000 * warmupLoopLength / deltaUsec;
+        System.out.println(label + "Warmup: " + warmupLoopLength + " value recordings completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+        histogram.reset();
+        // Wait a bit to make sure compiler had a cache to do it's stuff:
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+        startTime = System.nanoTime();
+        recordLoop(histogram, timingLoopCount);
+        endTime = System.nanoTime();
+        deltaUsec = (endTime - startTime) / 1000L;
+        rate = 1000000 * timingLoopCount / deltaUsec;
+        System.out.println(label + "Hot code timing:");
+        System.out.println(label + timingLoopCount + " value recordings completed in " +
+                deltaUsec + " usec, rate = " + rate + " value recording calls per sec.");
+        rate = 1000000 * histogram.getTotalCount() / deltaUsec;
+        System.out.println(label + histogram.getTotalCount() + " raw recorded entries completed in " +
+                deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
     }
 
     public void testRawRecordingSpeedAtExpectedInterval(String label, AbstractHistogram histogram,
@@ -256,6 +290,14 @@ public class HistogramPerfTest {
         rate = 1000000 * histogram.getTotalCount() / deltaUsec;
         System.out.println(label + histogram.getTotalCount() + " raw recorded entries completed in " +
                 deltaUsec + " usec, rate = " + rate + " recorded values per sec.");
+    }
+
+    @Test
+    public void testRawRecordingSpeedSingleValue() throws Exception {
+        AbstractHistogram histogram;
+        histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming Histogram:");
+        testRawRecordingSpeedSingleValue("Histogram: ", histogram, rawTimingLoopCount);
     }
 
     @Test
