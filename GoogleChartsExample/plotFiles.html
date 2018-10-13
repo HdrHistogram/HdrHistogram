@@ -375,7 +375,7 @@ Percentile range:
 <script type="text/javascript">
     function showValue(newValue) {
         var x = Math.pow(10, newValue);
-        percentile = 100.0 - (100.0 / x);
+        var percentile = 100.0 - (100.0 / x);
         document.getElementById("percentileRange").innerHTML=percentile + "%";
         maxPercentile = x;
         drawChart();
