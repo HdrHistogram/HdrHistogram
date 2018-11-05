@@ -138,7 +138,17 @@ public class HistogramLogReader implements Closeable {
 
         @Override
         public boolean onException(Throwable t) {
-            return false;
+            
+            // We ignore NoSuchElementException, but stop processing.
+            // Next call to nextIntervalHistogram may return null.
+            if (t instanceof java.util.NoSuchElementException){
+                return true;
+            }
+            // rethrow
+            if (t instanceof RuntimeException)
+                throw (RuntimeException)t;
+            else
+                throw new RuntimeException(t);
         }
     };
     
