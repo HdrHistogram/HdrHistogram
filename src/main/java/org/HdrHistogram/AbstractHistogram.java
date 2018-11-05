@@ -1012,9 +1012,25 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (getMinNonZeroValue() != that.getMinNonZeroValue()) {
             return false;
         }
-        for (int i = 0; i < countsArrayLength; i++) {
-            if (getCountAtIndex(i) != that.getCountAtIndex(i)) {
-                return false;
+        // 2 histograms may be equal but have different underlying array sizes. This can happen for instance due to
+        // resizing.
+        if (countsArrayLength == that.countsArrayLength) {
+            for (int i = 0; i < countsArrayLength; i++) {
+                if (getCountAtIndex(i) != that.getCountAtIndex(i)) {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            // Comparing the values is valid here because we have already confirmed the histograms have the same total
+            // count. It would not be correct otherwise.
+            for (HistogramIterationValue value : this.recordedValues()) {
+                long countAtValueIteratedTo = value.getCountAtValueIteratedTo();
+                long valueIteratedTo = value.getValueIteratedTo();
+                if (that.getCountAtValue(valueIteratedTo) != countAtValueIteratedTo) {
+                    return false;
+                }
             }
         }
         return true;

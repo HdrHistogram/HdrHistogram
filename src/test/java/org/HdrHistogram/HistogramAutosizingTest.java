@@ -29,6 +29,23 @@ public class HistogramAutosizingTest {
     }
 
     @Test
+    public void testHistogramEqualsAfterResizing() throws Exception {
+        Histogram histogram = new Histogram(3);
+        histogram.recordValue((1L << 62) - 1);
+        Assert.assertEquals(52, histogram.bucketCount);
+        Assert.assertEquals(54272, histogram.countsArrayLength);
+        histogram.recordValue(Long.MAX_VALUE);
+        Assert.assertEquals(53, histogram.bucketCount);
+        Assert.assertEquals(55296, histogram.countsArrayLength);
+        histogram.reset();
+        histogram.recordValue((1L << 62) - 1);
+        
+        Histogram histogram1 = new Histogram(3);
+        histogram1.recordValue((1L << 62) - 1);
+        Assert.assertEquals(histogram, histogram1);
+    }
+
+    @Test
     public void testDoubleHistogramAutoSizingEdges() throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(3);
         histogram.recordValue(1);
