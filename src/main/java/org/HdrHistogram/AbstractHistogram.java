@@ -70,10 +70,12 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
         return doubleToIntegerValueConversionRatio;
     }
 
-    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+    void nonConcurrentSetIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
         this.doubleToIntegerValueConversionRatio = 1.0/integerToDoubleValueConversionRatio;
     }
+
+    abstract void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio);
 }
 
 /**

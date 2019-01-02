@@ -81,6 +81,12 @@ public class IntCountsHistogram extends AbstractHistogram {
         this.normalizingIndexOffset = normalizingIndexOffset;
     }
 
+
+    @Override
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+        nonConcurrentSetIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
+    }
+
     @Override
     void shiftNormalizingIndexByOffset(int offsetToAdd,
                                        boolean lowestHalfBucketPopulated,
