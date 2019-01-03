@@ -81,6 +81,11 @@ public class ShortCountsHistogram extends AbstractHistogram {
     }
 
     @Override
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+        nonConcurrentSetIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
+    }
+
+    @Override
     void shiftNormalizingIndexByOffset(int offsetToAdd,
                                        boolean lowestHalfBucketPopulated,
                                        double newIntegerToDoubleValueConversionRatio) {

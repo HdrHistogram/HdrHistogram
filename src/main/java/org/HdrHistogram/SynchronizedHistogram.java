@@ -310,6 +310,11 @@ public class SynchronizedHistogram extends Histogram {
     }
 
     @Override
+    public synchronized int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
     public synchronized long getLowestDiscernibleValue() {
         return super.getLowestDiscernibleValue();
     }

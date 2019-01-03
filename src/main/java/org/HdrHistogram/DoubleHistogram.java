@@ -578,7 +578,9 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      */
     @Override
     public void reset() {
-        integerValuesHistogram.clearCounts();
+        integerValuesHistogram.reset();
+        double initialLowestValueInAutoRange = Math.pow(2.0, 800);
+        init(configuredHighestToLowestValueRatio, initialLowestValueInAutoRange, integerValuesHistogram);
     }
 
     //

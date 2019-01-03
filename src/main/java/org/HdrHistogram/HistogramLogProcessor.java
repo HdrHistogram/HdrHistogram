@@ -94,25 +94,25 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-alltags")) {
                         allTags = true;
                     } else if (args[i].equals("-i")) {
-                        inputFileName = args[++i];
+                        inputFileName = args[++i];              // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-tag")) {
-                        tag = args[++i];
+                        tag = args[++i];                        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-mwp")) {
-                        movingWindowPercentileToReport = Double.parseDouble(args[++i]);
+                        movingWindowPercentileToReport = Double.parseDouble(args[++i]); // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-mwpl")) {
-                        movingWindowLengthInMsec = Long.parseLong(args[++i]);
+                        movingWindowLengthInMsec = Long.parseLong(args[++i]);   // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-start")) {
-                        rangeStartTimeSec = Double.parseDouble(args[++i]);
+                        rangeStartTimeSec = Double.parseDouble(args[++i]);      // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-end")) {
-                        rangeEndTimeSec = Double.parseDouble(args[++i]);
+                        rangeEndTimeSec = Double.parseDouble(args[++i]);        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-o")) {
-                        outputFileName = args[++i];
+                        outputFileName = args[++i];                             // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-percentilesOutputTicksPerHalf")) {
-                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);
+                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-outputValueUnitRatio")) {
-                        outputValueUnitRatio = Double.parseDouble(args[++i]);
+                        outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
                         final String interval = args[++i];
                         try {
@@ -127,7 +127,6 @@ public class HistogramLogProcessor extends Thread {
                         throw new Exception("Invalid args: " + args[i]);
                     }
                 }
-
             } catch (Exception e) {
                 errorMessage = "Error: " + versionString + " launched with the following args:\n";
 
@@ -241,11 +240,10 @@ public class HistogramLogProcessor extends Thread {
         PrintStream timeIntervalLog = null;
         PrintStream movingWindowLog = null;
         PrintStream histogramPercentileLog = System.out;
-        Double firstStartTime = 0.0;
+        double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-        EncodableHistogram movingWindowSumHistogram = null;
         Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
 
         if (config.listTags) {
@@ -309,35 +307,36 @@ public class HistogramLogProcessor extends Thread {
             }
 
             EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);
+            boolean logUsesDoubleHistograms = (intervalHistogram instanceof DoubleHistogram);
 
-            Histogram accumulatedRegularHistogram = null;
-            DoubleHistogram accumulatedDoubleHistogram = null;
+            Histogram accumulatedRegularHistogram = logUsesDoubleHistograms ?
+                    new Histogram(3) :
+                    ((Histogram) intervalHistogram).copy();
+            accumulatedRegularHistogram.reset();
+            accumulatedRegularHistogram.setAutoResize(true);
 
-            if (intervalHistogram != null) {
-                // Shape the accumulated histogram like the histograms in the log file (but clear their contents):
-                if (intervalHistogram instanceof DoubleHistogram) {
-                    accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
-                    accumulatedDoubleHistogram.reset();
-                    accumulatedDoubleHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new DoubleHistogram(3);
-                } else {
-                    accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
-                    accumulatedRegularHistogram.reset();
-                    accumulatedRegularHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new Histogram(3);
-                }
-            }
+            DoubleHistogram accumulatedDoubleHistogram = logUsesDoubleHistograms ?
+                    ((DoubleHistogram) intervalHistogram).copy() :
+                    new DoubleHistogram(3);
+            accumulatedDoubleHistogram.reset();
+            accumulatedDoubleHistogram.setAutoResize(true);
+
+
+            EncodableHistogram movingWindowSumHistogram = logUsesDoubleHistograms ?
+                    new DoubleHistogram(3) :
+                    new Histogram(3);
+
 
             while (intervalHistogram != null) {
 
                 // handle accumulated histogram:
                 if (intervalHistogram instanceof DoubleHistogram) {
-                    if (accumulatedDoubleHistogram == null) {
+                    if (!logUsesDoubleHistograms) {
                         throw new IllegalStateException("Encountered a DoubleHistogram line in a log of Histograms.");
                     }
                     accumulatedDoubleHistogram.add((DoubleHistogram) intervalHistogram);
                 } else {
-                    if (accumulatedRegularHistogram == null) {
+                    if (logUsesDoubleHistograms) {
                         throw new IllegalStateException("Encountered a Histogram line in a log of DoubleHistograms.");
                     }
                     accumulatedRegularHistogram.add((Histogram) intervalHistogram);
@@ -392,7 +391,7 @@ public class HistogramLogProcessor extends Thread {
                         }
                     }
 
-                    if (intervalHistogram instanceof DoubleHistogram) {
+                    if (logUsesDoubleHistograms) {
                         timeIntervalLog.format(Locale.US, logFormat,
                                 ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
                                 // values recorded during the last reporting interval
@@ -462,21 +461,21 @@ public class HistogramLogProcessor extends Thread {
                 intervalHistogram = getIntervalHistogram(config.tag);
             }
 
-            if (accumulatedDoubleHistogram != null) {
+            if (logUsesDoubleHistograms) {
                 accumulatedDoubleHistogram.outputPercentileDistribution(histogramPercentileLog,
                         config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
             } else {
-                if (accumulatedRegularHistogram == null) {
-                    // If there were no histograms in the log file, we still need an empty histogram for the
-                    // one line output (shape/range doesn't matter because it is empty):
-                    accumulatedRegularHistogram = new Histogram(1000000L, 2);
-                }
                 accumulatedRegularHistogram.outputPercentileDistribution(histogramPercentileLog,
                         config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
             }
         } finally {
-            if (config.outputFileName != null) {
+            if (timeIntervalLog != null) {
                 timeIntervalLog.close();
+            }
+            if (movingWindowLog != null) {
+                movingWindowLog.close();
+            }
+            if (histogramPercentileLog != System.out) {
                 histogramPercentileLog.close();
             }
         }

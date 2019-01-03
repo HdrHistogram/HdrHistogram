@@ -70,10 +70,12 @@ abstract class AbstractHistogramBase extends EncodableHistogram {
         return doubleToIntegerValueConversionRatio;
     }
 
-    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+    void nonConcurrentSetIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
         this.integerToDoubleValueConversionRatio = integerToDoubleValueConversionRatio;
         this.doubleToIntegerValueConversionRatio = 1.0/integerToDoubleValueConversionRatio;
     }
+
+    abstract void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio);
 }
 
 /**
@@ -835,7 +837,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         long maxValueBeforeShift = maxValueUpdater.getAndSet(this, 0);
         long minNonZeroValueBeforeShift = minNonZeroValueUpdater.getAndSet(this, Long.MAX_VALUE);
 
-        boolean lowestHalfBucketPopulated = (minNonZeroValueBeforeShift < subBucketHalfCount);
+        boolean lowestHalfBucketPopulated = (minNonZeroValueBeforeShift < (subBucketHalfCount << unitMagnitude));
 
         // Perform the shift:
         shiftNormalizingIndexByOffset(shiftAmount, lowestHalfBucketPopulated, newIntegerToDoubleValueConversionRatio);
@@ -852,19 +854,27 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         // Save and clear the 0 value count:
         long zeroValueCount = getCountAtIndex(0);
         setCountAtIndex(0, 0);
+        int preShiftZeroIndex = normalizeIndex(0, getNormalizingIndexOffset(), countsArrayLength);
 
         setNormalizingIndexOffset(getNormalizingIndexOffset() + shiftAmount);
 
         // Deal with lower half bucket if needed:
         if (lowestHalfBucketPopulated) {
-            shiftLowestHalfBucketContentsLeft(shiftAmount);
+            if (shiftAmount <= 0) {
+                // Shifts with lowest half bucket populated can only be to the left.
+                // Any right shift logic calling this should have already verified that
+                // the lowest half bucket is not populated.
+                throw new ArrayIndexOutOfBoundsException(
+                        "Attempt to right-shift with already-recorded value counts that would underflow and lose precision");
+            }
+            shiftLowestHalfBucketContentsLeft(shiftAmount, preShiftZeroIndex);
         }
 
         // Restore the 0 value count:
         setCountAtIndex(0, zeroValueCount);
     }
 
-    private void shiftLowestHalfBucketContentsLeft(int shiftAmount) {
+    private void shiftLowestHalfBucketContentsLeft(int shiftAmount, int preShiftZeroIndex) {
         final int numberOfBinaryOrdersOfMagnitude = shiftAmount >> subBucketHalfCountMagnitude;
 
         // The lowest half-bucket (not including the 0 value) is special: unlike all other half
@@ -885,9 +895,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         for (int fromIndex = 1; fromIndex < subBucketHalfCount; fromIndex++) {
             long toValue = valueFromIndex(fromIndex) << numberOfBinaryOrdersOfMagnitude;
             int toIndex = countsArrayIndex(toValue);
-            long countAtFromIndex = getCountAtNormalizedIndex(fromIndex);
+            long countAtFromIndex = getCountAtNormalizedIndex(fromIndex + preShiftZeroIndex);
             setCountAtIndex(toIndex, countAtFromIndex);
-            setCountAtNormalizedIndex(fromIndex, 0);
+            setCountAtNormalizedIndex(fromIndex + preShiftZeroIndex, 0);
         }
 
         // Note that the above loop only creates O(N) work for histograms that have values in
@@ -1012,9 +1022,25 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (getMinNonZeroValue() != that.getMinNonZeroValue()) {
             return false;
         }
-        for (int i = 0; i < countsArrayLength; i++) {
-            if (getCountAtIndex(i) != that.getCountAtIndex(i)) {
-                return false;
+        // 2 histograms may be equal but have different underlying array sizes. This can happen for instance due to
+        // resizing.
+        if (countsArrayLength == that.countsArrayLength) {
+            for (int i = 0; i < countsArrayLength; i++) {
+                if (getCountAtIndex(i) != that.getCountAtIndex(i)) {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            // Comparing the values is valid here because we have already confirmed the histograms have the same total
+            // count. It would not be correct otherwise.
+            for (HistogramIterationValue value : this.recordedValues()) {
+                long countAtValueIteratedTo = value.getCountAtValueIteratedTo();
+                long valueIteratedTo = value.getValueIteratedTo();
+                if (that.getCountAtValue(valueIteratedTo) != countAtValueIteratedTo) {
+                    return false;
+                }
             }
         }
         return true;
@@ -1287,7 +1313,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         while (recordedValuesIterator.hasNext()) {
             HistogramIterationValue iterationValue = recordedValuesIterator.next();
             totalValue += medianEquivalentValue(iterationValue.getValueIteratedTo())
-                    * iterationValue.getCountAtValueIteratedTo();
+                    * (double) iterationValue.getCountAtValueIteratedTo();
         }
         return (totalValue * 1.0) / getTotalCount();
     }

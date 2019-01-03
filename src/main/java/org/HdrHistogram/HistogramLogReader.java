@@ -7,12 +7,7 @@
 
 package org.HdrHistogram;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.Locale;
-import java.util.Scanner;
+import java.io.*;
 import java.util.zip.DataFormatException;
 
 /**
@@ -56,13 +51,117 @@ import java.util.zip.DataFormatException;
  * that may be added to timestamps in the file to determine an absolute
  * timestamp (e.g. since the epoch) for each interval.
  */
-public class HistogramLogReader {
+public class HistogramLogReader implements Closeable {
 
-    private final Scanner scanner;
+    private final HistogramLogScanner scanner;
+    private final HistogramLogScanner.EventHandler handler = new HistogramLogScanner.EventHandler()
+    {
+        @Override
+        public boolean onComment(String comment)
+        {
+            return false;
+        }
+
+        @Override
+        public boolean onBaseTime(double secondsSinceEpoch)
+        {
+            baseTimeSec = secondsSinceEpoch; // base time represented as seconds since epoch
+            observedBaseTime = true;
+            return false;
+        }
+
+        @Override
+        public boolean onStartTime(double secondsSinceEpoch)
+        {
+            startTimeSec = secondsSinceEpoch; // start time represented as seconds since epoch
+            observedStartTime = true;
+            return false;
+        }
+
+        @Override
+        public boolean onHistogram(String tag, double timestamp, double length,
+            HistogramLogScanner.EncodableHistogramSupplier lazyReader) {
+            final double logTimeStampInSec = timestamp; // Timestamp is expected to be in seconds
+
+            if (!observedStartTime) {
+                // No explicit start time noted. Use 1st observed time:
+                startTimeSec = logTimeStampInSec;
+                observedStartTime = true;
+            }
+            if (!observedBaseTime) {
+                // No explicit base time noted. Deduce from 1st observed time (compared to start time):
+                if (logTimeStampInSec < startTimeSec - (365 * 24 * 3600.0)) {
+                    // Criteria Note: if log timestamp is more than a year in the past (compared to
+                    // StartTime), we assume that timestamps in the log are not absolute
+                    baseTimeSec = startTimeSec;
+                } else {
+                    // Timestamps are absolute
+                    baseTimeSec = 0.0;
+                }
+                observedBaseTime = true;
+            }
+
+            final double absoluteStartTimeStampSec = logTimeStampInSec + baseTimeSec;
+            final double offsetStartTimeStampSec = absoluteStartTimeStampSec - startTimeSec;
+
+            final double intervalLengthSec = length; // Timestamp length is expect to be in seconds
+            final double absoluteEndTimeStampSec = absoluteStartTimeStampSec + intervalLengthSec;
+
+            final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
+
+            if (startTimeStampToCheckRangeOn < rangeStartTimeSec) {
+                // keep on trucking
+                return false;
+            }
+
+            if (startTimeStampToCheckRangeOn > rangeEndTimeSec) {
+                // after limit we stop on each line
+                return true;
+            }
+            EncodableHistogram histogram;
+            try
+            {
+                histogram = lazyReader.read();
+            }
+            catch (DataFormatException e)
+            {
+                // stop after exception
+                return true;
+            }
+
+            histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
+            histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
+            histogram.setTag(tag);
+            nextHistogram = histogram;
+            return true;
+        }
+
+        @Override
+        public boolean onException(Throwable t) {
+            
+            // We ignore NoSuchElementException, but stop processing.
+            // Next call to nextIntervalHistogram may return null.
+            if (t instanceof java.util.NoSuchElementException){
+                return true;
+            }
+            // rethrow
+            if (t instanceof RuntimeException)
+                throw (RuntimeException)t;
+            else
+                throw new RuntimeException(t);
+        }
+    };
+    
     private double startTimeSec = 0.0;
     private boolean observedStartTime = false;
     private double baseTimeSec = 0.0;
     private boolean observedBaseTime = false;
+    
+    // scanner handling state
+    private boolean absolute;
+    private double rangeStartTimeSec;
+    private double rangeEndTimeSec;
+    private EncodableHistogram nextHistogram;
 
     /**
      * Constructs a new HistogramLogReader that produces intervals read from the specified file name.
@@ -70,8 +169,7 @@ public class HistogramLogReader {
      * @throws java.io.FileNotFoundException when unable to find inputFileName
      */
     public HistogramLogReader(final String inputFileName) throws FileNotFoundException {
-        scanner = new Scanner(new File(inputFileName));
-        initScanner();
+        scanner = new HistogramLogScanner(new File(inputFileName));
     }
 
     /**
@@ -79,8 +177,7 @@ public class HistogramLogReader {
      * @param inputStream The InputStream to read from
      */
     public HistogramLogReader(final InputStream inputStream) {
-        scanner = new Scanner(inputStream);
-        initScanner();
+        scanner = new HistogramLogScanner(inputStream);
     }
 
     /**
@@ -89,14 +186,7 @@ public class HistogramLogReader {
      * @throws java.io.FileNotFoundException when unable to find inputFile
      */
     public HistogramLogReader(final File inputFile) throws FileNotFoundException {
-        scanner = new Scanner(inputFile);
-        initScanner();
-    }
-
-
-    private void initScanner() {
-        scanner.useLocale(Locale.US);
-        scanner.useDelimiter("[, \\r\\n]");
+        scanner = new HistogramLogScanner(inputFile);
     }
 
     /**
@@ -195,105 +285,26 @@ public class HistogramLogReader {
 
     private EncodableHistogram nextIntervalHistogram(final double rangeStartTimeSec,
                                             final double rangeEndTimeSec, boolean absolute) {
-        while (scanner.hasNextLine()) {
-            try {
-                if (scanner.hasNext("\\#.*")) {
-                    // comment line.
-                    // Look for explicit start time or base time notes in comments:
-                    if (scanner.hasNext("#\\[StartTime:")) {
-                        scanner.next("#\\[StartTime:");
-                        if (scanner.hasNextDouble()) {
-                            startTimeSec = scanner.nextDouble(); // start time represented as seconds since epoch
-                            observedStartTime = true;
-                        }
-                    } else if (scanner.hasNext("#\\[BaseTime:")) {
-                        scanner.next("#\\[BaseTime:");
-                        if (scanner.hasNextDouble()) {
-                            baseTimeSec = scanner.nextDouble(); // base time represented as seconds since epoch
-                            observedBaseTime = true;
-                        }
-                    }
-                    continue;
-                }
-
-                if (scanner.hasNext("\"StartTimestamp\".*")) {
-                    // Legend line
-                    continue;
-                }
-
-                String tagString = null;
-                if (scanner.hasNext("Tag\\=.*")) {
-                    tagString = scanner.next("Tag\\=.*").substring(4);
-                }
-
-                // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
-
-                final double logTimeStampInSec = scanner.nextDouble(); // Timestamp is expected to be in seconds
-
-                if (!observedStartTime) {
-                    // No explicit start time noted. Use 1st observed time:
-                    startTimeSec = logTimeStampInSec;
-                    observedStartTime = true;
-                }
-                if (!observedBaseTime) {
-                    // No explicit base time noted. Deduce from 1st observed time (compared to start time):
-                    if (logTimeStampInSec < startTimeSec - (365 * 24 * 3600.0)) {
-                        // Criteria Note: if log timestamp is more than a year in the past (compared to
-                        // StartTime), we assume that timestamps in the log are not absolute
-                        baseTimeSec = startTimeSec;
-                    } else {
-                        // Timestamps are absolute
-                        baseTimeSec = 0.0;
-                    }
-                    observedBaseTime = true;
-                }
-
-                final double absoluteStartTimeStampSec = logTimeStampInSec + baseTimeSec;
-                final double offsetStartTimeStampSec = absoluteStartTimeStampSec - startTimeSec;
-
-                final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
-                final double absoluteEndTimeStampSec = absoluteStartTimeStampSec + intervalLengthSec;
-
-                final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
-
-                if (startTimeStampToCheckRangeOn < rangeStartTimeSec) {
-                    continue;
-                }
-
-                if (startTimeStampToCheckRangeOn > rangeEndTimeSec) {
-                    return null;
-                }
-
-                scanner.nextDouble(); // Skip maxTime field, as max time can be deduced from the histogram.
-                final String compressedPayloadString = scanner.next();
-                final ByteBuffer buffer = ByteBuffer.wrap(
-                        Base64Helper.parseBase64Binary(compressedPayloadString));
-
-                EncodableHistogram histogram = EncodableHistogram.decodeFromCompressedByteBuffer(buffer, 0);
-
-                histogram.setStartTimeStamp((long) (absoluteStartTimeStampSec * 1000.0));
-                histogram.setEndTimeStamp((long) (absoluteEndTimeStampSec * 1000.0));
-                histogram.setTag(tagString);
-
-                return histogram;
-
-            } catch (java.util.NoSuchElementException ex) {
-                return null;
-            } catch (DataFormatException ex) {
-                return null;
-            } finally {
-                scanner.nextLine(); // Move to next line.
-            }
-        }
-        return null;
+        this.rangeStartTimeSec = rangeStartTimeSec;
+        this.rangeEndTimeSec = rangeEndTimeSec;
+        this.absolute = absolute;
+        scanner.process(handler);
+        EncodableHistogram histogram = this.nextHistogram;
+        nextHistogram = null;
+        return histogram;
     }
 
     /**
-     * Indicates whther or not additional intervals may exist in the log
-     * @return ture if additional intervals may exist in the log
+     * Indicates whether or not additional intervals may exist in the log
+     * @return true if additional intervals may exist in the log
      */
     public boolean hasNext() {
         return scanner.hasNextLine();
     }
 
+    @Override
+    public void close()
+    {
+        scanner.close();
+    }
 }

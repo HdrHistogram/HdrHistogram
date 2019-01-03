@@ -211,6 +211,8 @@ public class ConcurrentHistogram extends Histogram {
             assert (countsArrayLength == activeCounts.length());
             assert (countsArrayLength == inactiveCounts.length());
 
+            assert (activeCounts.getNormalizingIndexOffset() == inactiveCounts.getNormalizingIndexOffset());
+
             if (normalizingIndexOffset == activeCounts.getNormalizingIndexOffset()) {
                 return; // Nothing to do.
             }
@@ -225,13 +227,13 @@ public class ConcurrentHistogram extends Histogram {
 
             // Handle the inactive lowest half bucket:
             if ((shiftedAmount > 0) && lowestHalfBucketPopulated) {
-                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount);
+                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount, zeroIndex);
             }
 
             // Restore the inactive 0 value count:
             zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
             inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
-            
+
             inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
 
             // switch active and inactive:
@@ -251,7 +253,7 @@ public class ConcurrentHistogram extends Histogram {
 
             // Handle the newly inactive lowest half bucket:
             if ((shiftedAmount > 0) && lowestHalfBucketPopulated) {
-                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount);
+                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount, zeroIndex);
             }
 
             // Restore the newly inactive 0 value count:
@@ -275,7 +277,7 @@ public class ConcurrentHistogram extends Histogram {
         }
     }
 
-    private void shiftLowestInactiveHalfBucketContentsLeft(final int shiftAmount) {
+    private void shiftLowestInactiveHalfBucketContentsLeft(final int shiftAmount, final int preShiftZeroIndex) {
         final int numberOfBinaryOrdersOfMagnitude = shiftAmount >> subBucketHalfCountMagnitude;
 
         // The lowest inactive half-bucket (not including the 0 value) is special: unlike all other half
@@ -298,9 +300,9 @@ public class ConcurrentHistogram extends Histogram {
             int toIndex = countsArrayIndex(toValue);
             int normalizedToIndex =
                     normalizeIndex(toIndex, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
-            long countAtFromIndex = inactiveCounts.get(fromIndex);
+            long countAtFromIndex = inactiveCounts.get(fromIndex + preShiftZeroIndex);
             inactiveCounts.lazySet(normalizedToIndex, countAtFromIndex);
-            inactiveCounts.lazySet(fromIndex, 0);
+            inactiveCounts.lazySet(fromIndex + preShiftZeroIndex, 0);
         }
 
         // Note that the above loop only creates O(N) work for histograms that have values in
@@ -344,34 +346,25 @@ public class ConcurrentHistogram extends Histogram {
                 return;
             }
 
-            int oldNormalizedZeroIndex =
-                    normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
-
-            // Resize the current inactiveCounts:
-            AtomicLongArray oldInactiveCounts = inactiveCounts;
-            inactiveCounts =
+            // Allocate both counts arrays here, so if one allocation fails, neither will "take":
+            AtomicLongArrayWithNormalizingOffset newInactiveCounts1 =
                     new AtomicLongArrayWithNormalizingOffset(
                             newArrayLength,
                             inactiveCounts.getNormalizingIndexOffset()
                     );
+            AtomicLongArrayWithNormalizingOffset newInactiveCounts2 =
+                    new AtomicLongArrayWithNormalizingOffset(
+                            newArrayLength,
+                            activeCounts.getNormalizingIndexOffset()
+                    );
+
+
+            // Resize the current inactiveCounts:
+            AtomicLongArrayWithNormalizingOffset oldInactiveCounts = inactiveCounts;
+            inactiveCounts = newInactiveCounts1;
+
             // Copy inactive contents to newly sized inactiveCounts:
-            for (int i = 0 ; i < oldInactiveCounts.length(); i++) {
-                inactiveCounts.lazySet(i, oldInactiveCounts.get(i));
-            }
-            if (oldNormalizedZeroIndex != 0) {
-                // We need to shift the stuff from the zero index and up to the end of the array:
-                int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
-                int lengthToCopy = (newArrayLength - countsDelta) - oldNormalizedZeroIndex;
-                int src, dst;
-                for (src = oldNormalizedZeroIndex, dst =  newNormalizedZeroIndex;
-                     src < oldNormalizedZeroIndex + lengthToCopy;
-                     src++, dst++) {
-                    inactiveCounts.lazySet(dst, oldInactiveCounts.get(src));
-                }
-                for (dst = oldNormalizedZeroIndex; dst < newNormalizedZeroIndex; dst++) {
-                    inactiveCounts.lazySet(dst, 0);
-                }
-            }
+            copyInactiveCountsContentsOnResize(oldInactiveCounts, countsDelta);
 
             // switch active and inactive:
             AtomicLongArrayWithNormalizingOffset tmp = activeCounts;
@@ -382,29 +375,10 @@ public class ConcurrentHistogram extends Histogram {
 
             // Resize the newly inactiveCounts:
             oldInactiveCounts = inactiveCounts;
-            inactiveCounts =
-                    new AtomicLongArrayWithNormalizingOffset(
-                            newArrayLength,
-                            inactiveCounts.getNormalizingIndexOffset()
-                    );
+            inactiveCounts = newInactiveCounts2;
+
             // Copy inactive contents to newly sized inactiveCounts:
-            for (int i = 0 ; i < oldInactiveCounts.length(); i++) {
-                inactiveCounts.lazySet(i, oldInactiveCounts.get(i));
-            }
-            if (oldNormalizedZeroIndex != 0) {
-                // We need to shift the stuff from the zero index and up to the end of the array:
-                int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
-                int lengthToCopy = (newArrayLength - countsDelta) - oldNormalizedZeroIndex;
-                int src, dst;
-                for (src = oldNormalizedZeroIndex, dst =  newNormalizedZeroIndex;
-                     src < oldNormalizedZeroIndex + lengthToCopy;
-                     src++, dst++) {
-                    inactiveCounts.lazySet(dst, oldInactiveCounts.get(src));
-                }
-                for (dst = oldNormalizedZeroIndex; dst < newNormalizedZeroIndex; dst++) {
-                    inactiveCounts.lazySet(dst, 0);
-                }
-            }
+            copyInactiveCountsContentsOnResize(oldInactiveCounts, countsDelta);
 
             // switch active and inactive again:
             tmp = activeCounts;
@@ -426,6 +400,34 @@ public class ConcurrentHistogram extends Histogram {
             wrp.readerUnlock();
         }
     }
+
+    private void copyInactiveCountsContentsOnResize(
+            AtomicLongArrayWithNormalizingOffset oldInactiveCounts, int countsDelta) {
+        int oldNormalizedZeroIndex =
+                normalizeIndex(0,
+                        oldInactiveCounts.getNormalizingIndexOffset(),
+                        oldInactiveCounts.length());
+
+        // Copy old inactive contents to (current) newly sized inactiveCounts:
+        for (int i = 0; i < oldInactiveCounts.length(); i++) {
+            inactiveCounts.lazySet(i, oldInactiveCounts.get(i));
+        }
+        if (oldNormalizedZeroIndex != 0) {
+            // We need to shift the stuff from the zero index and up to the end of the array:
+            int newNormalizedZeroIndex = oldNormalizedZeroIndex + countsDelta;
+            int lengthToCopy = (inactiveCounts.length() - countsDelta) - oldNormalizedZeroIndex;
+            int src, dst;
+            for (src = oldNormalizedZeroIndex, dst = newNormalizedZeroIndex;
+                 src < oldNormalizedZeroIndex + lengthToCopy;
+                 src++, dst++) {
+                inactiveCounts.lazySet(dst, oldInactiveCounts.get(src));
+            }
+            for (dst = oldNormalizedZeroIndex; dst < newNormalizedZeroIndex; dst++) {
+                inactiveCounts.lazySet(dst, 0);
+            }
+        }
+    }
+
 
     @Override
     public void setAutoResize(final boolean autoResize) {
