@@ -58,8 +58,6 @@ public class HistogramLogProcessor extends Thread {
     private HistogramLogReader logReader;
 
     private static class HistogramLogProcessorConfiguration {
-        Double expectedDoubleInterval = null;
-        Long expectedLongInterval = null;
         boolean verbose = false;
         String outputFileName = null;
         String inputFileName = null;
@@ -78,6 +76,8 @@ public class HistogramLogProcessor extends Thread {
 
         int percentilesOutputTicksPerHalf = 5;
         Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
+
+        double expectedIntervalForCoordinatedOmissionCorrection = 0.0;
 
         String errorMessage = "";
 
@@ -114,12 +114,7 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-outputValueUnitRatio")) {
                         outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
-                        final String interval = args[++i];
-                        try {
-                            expectedLongInterval = Long.parseLong(interval);
-                        } catch (NumberFormatException e) {
-                            expectedDoubleInterval = Double.parseDouble(interval);
-                        }
+                        expectedIntervalForCoordinatedOmissionCorrection = Double.parseDouble(args[++i]);
                     } else if (args[i].equals("-h")) {
                         askedForHelp = true;
                         throw new Exception("Help: " + args[i]);
@@ -156,7 +151,12 @@ public class HistogramLogProcessor extends Thread {
                             " [-end rangeEndTimeSec]                       The end time for the range in the file, in seconds (default is infinite)\n" +
                             " [-outputValueUnitRatio r]                    The scaling factor by which to divide histogram recorded values units\n" +
                             "                                              in output. [default = 1000000.0 (1 msec in nsec)]\n" +
-                            " [-correctLogWithKnownCoordinatedOmission i]  If larger than 0, add auto-generated value records as appropriate\n" +
+                            " [-correctLogWithKnownCoordinatedOmission i]  When the supplied expected interval i is than 0, performs coordinated\n" +
+                            "                                              omission corection on the input log's interval histograms by adding\n" +
+                            "                                              missing values as appropriate based on the supplied expected interval\n" +
+                            "                                              value i (in wahtever units the log histograms were recorded with). This\n" +
+                            "                                              feature should only be used when the input log is known to have been\n" +
+                            "                                              recorded with coordinated ommisions, and when an expected interval is known.\n" +
                             " [-listtags]                                  list all tags found on histogram lines the input file."
                 );
                 System.exit(1);
@@ -179,31 +179,32 @@ public class HistogramLogProcessor extends Thread {
                 startTime, (new Date((long) (startTime * 1000))).toString());
     }
 
+    EncodableHistogram copyCorrectedForCoordinatedOmission(final EncodableHistogram inputHistogram) {
+        EncodableHistogram histogram = inputHistogram;
+        if (histogram instanceof DoubleHistogram) {
+            if (config.expectedIntervalForCoordinatedOmissionCorrection > 0.0) {
+                histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(
+                        config.expectedIntervalForCoordinatedOmissionCorrection);
+            }
+        } else if (histogram instanceof Histogram) {
+            long expectedInterval = (long) config.expectedIntervalForCoordinatedOmissionCorrection;
+            if (expectedInterval > 0) {
+                histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
+            }
+        }
+        return histogram;
+    }
+
     private int lineNumber = 0;
 
     private EncodableHistogram getIntervalHistogram() {
         EncodableHistogram histogram = null;
         try {
             histogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
-            if (histogram != null) {
-                //handle Coordinated Omission correction on a log where the user knows that the problem exists
-                if (config.expectedDoubleInterval != null) {
-                    if (histogram instanceof DoubleHistogram) {
-                        histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(config.expectedDoubleInterval);
-                    } else if (histogram instanceof Histogram) {
-                        final long expectedInterval = config.expectedDoubleInterval.longValue();
-                        System.err.println("Found long based interval histogram at line number " + lineNumber + " with double -correctLogWithKnownCoordinatedOmission configuration: casting it into " + expectedInterval);
-                        histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
-                    }
-                } else if (config.expectedLongInterval != null) {
-                    if (histogram instanceof Histogram) {
-                        histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(config.expectedLongInterval);
-                    } else if (histogram instanceof DoubleHistogram) {
-                        final double expectedInterval = config.expectedLongInterval.doubleValue();
-                        System.err.println("Found double based interval histogram at line number " + lineNumber + " with long -correctLogWithKnownCoordinatedOmission configuration: casting it into " + expectedInterval);
-                        histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
-                    }
-                }
+            if (config.expectedIntervalForCoordinatedOmissionCorrection > 0.0) {
+                // Apply Coordinated Omission correction to log histograms when arguments indicate that
+                // such correction is desired, and an expected interval is provided.
+                histogram = copyCorrectedForCoordinatedOmission(histogram);
             }
         } catch (RuntimeException ex) {
             System.err.println("Log file parsing error at line number " + lineNumber +
@@ -493,7 +494,12 @@ public class HistogramLogProcessor extends Thread {
      * [-tag tag]                                                  The tag (default no tag) of the histogram lines to be processed\n
      * [-start rangeStartTimeSec]                                  The start time for the range in the file, in seconds (default 0.0)
      * [-end rangeEndTimeSec]                                      The end time for the range in the file, in seconds (default is infinite)
-     * [-correctLogWithKnownCoordinatedOmission expectedInterval]  If larger than 0, add auto-generated value records as appropriate
+     * [-correctLogWithKnownCoordinatedOmission expectedInterval]  When the supplied expected interval i is than 0, performs coordinated
+     *                                                             omission corection on the input log's interval histograms by adding
+     *                                                             missing values as appropriate based on the supplied expected interval
+     *                                                             value i (in wahtever units the log histograms were recorded with). This
+     *                                                             feature should only be used when the input log is known to have been
+     *                                                             recorded with coordinated ommisions, and when an expected interval is known.
      * [-outputValueUnitRatio r]                                   The scaling factor by which to divide histogram recorded values units
      *                                                             in output. [default = 1000000.0 (1 msec in nsec)]"
      * </pre>
