@@ -52,20 +52,17 @@ public class StripedWriterReaderPhaser {
     private final AtomicLongArray oddEndEpoch;
 
     private final ReentrantLock readerLock = new ReentrantLock();
-    private final long stride;
 
     public StripedWriterReaderPhaser(final int stripes) {
-        // stripes must be a power of 2.
-        assert stripes > 0 && (stripes & (stripes - 1)) == 0;
+        if (stripes <= 0 || (stripes & (stripes - 1)) != 0) {
+            throw new IllegalArgumentException("Stripes must be a power of 2, not " + stripes);
+        }
         this.stripes = stripes;
         startEpoch = new AtomicLongArray(stripes);
         evenEndEpoch = new AtomicLongArray(stripes);
         oddEndEpoch = new AtomicLongArray(stripes);
-        stride = 1 + Long.MAX_VALUE / stripes;
         for (int i=0; i<stripes; i++) {
-            startEpoch.set(i, i * stride);
-            evenEndEpoch.set(i, i * stride);
-            oddEndEpoch.set(i, Long.MIN_VALUE + i * stride);
+            oddEndEpoch.set(i, Long.MIN_VALUE);
         }
     }
 
@@ -158,19 +155,19 @@ public class StripedWriterReaderPhaser {
         if (nextPhaseIsEven) {
             initialStartValue = 0;
             for (int i=0; i<stripes; i++) {
-                evenEndEpoch.lazySet(i, initialStartValue + i * stride);
+                evenEndEpoch.lazySet(i, initialStartValue);
             }
         } else {
             initialStartValue = Long.MIN_VALUE;
             for (int i=0; i<stripes; i++) {
-                oddEndEpoch.lazySet(i, initialStartValue + i * stride);
+                oddEndEpoch.lazySet(i, initialStartValue);
             }
         }
 
         // Next, reset start value, indicating new phase, and retain value at flip:
         final long[] startValueAtFlip = new long[stripes];
         for (int i=0; i<stripes; i++) {
-            startValueAtFlip[i] = startEpoch.getAndSet(i, initialStartValue + i * stride);
+            startValueAtFlip[i] = startEpoch.getAndSet(i, initialStartValue);
         }
 
         // Now, spin until previous phase end value catches up with start value at flip:
