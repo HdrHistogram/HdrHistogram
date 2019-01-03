@@ -605,4 +605,96 @@ public class HistogramDataAccessTest {
 
         Assert.assertTrue("Histograms should be equal", histogram1.equals(histogram2));
     }
+    
+    @Test
+    public void testLinearIteratorVisitsBucketsWiderThanStepSizeMultipleTimes() {
+        Histogram h = new Histogram(1, Long.MAX_VALUE, 3);
+
+        h.recordValue(1);
+        h.recordValue(2047);
+        // bucket size 2
+        h.recordValue(2048);
+        h.recordValue(2049);
+        h.recordValue(4095);
+        // bucket size 4
+        h.recordValue(4096);
+        h.recordValue(4097);
+        h.recordValue(4098);
+        h.recordValue(4099);
+        // 2nd bucket in size 4
+        h.recordValue(4100);
+
+        // sadly verbose helper class to hang on to iteration information for later comparison
+        class IteratorValueSnapshot {
+            private final long value;
+            private final long count;
+
+            private IteratorValueSnapshot(HistogramIterationValue iv) {
+                this.value = iv.getValueIteratedTo();
+                this.count = iv.getCountAddedInThisIterationStep();
+            }
+            
+            private IteratorValueSnapshot(long value, long count) {
+                this.value = value;
+                this.count = count;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) { return true; }
+                if (o == null || getClass() != o.getClass()) { return false; }
+
+                IteratorValueSnapshot that = (IteratorValueSnapshot) o;
+
+                if (value != that.value) { return false; }
+                return count == that.count;
+            }
+
+            @Override
+            public int hashCode() {
+                int result = (int) (value ^ (value >>> 32));
+                result = 31 * result + (int) (count ^ (count >>> 32));
+                return result;
+            }
+
+            @Override
+            public String toString() {
+                return "IteratorValueSnapshot{" +
+                        "value=" + value +
+                        ", count=" + count +
+                        '}';
+            }
+        }
+
+        List<IteratorValueSnapshot> snapshots = new ArrayList<IteratorValueSnapshot>();
+
+        for (HistogramIterationValue iv : h.linearBucketValues(1)) {
+            snapshots.add(new IteratorValueSnapshot(iv));
+        }
+
+        // bucket size 1
+        Assert.assertEquals(new IteratorValueSnapshot(0, 0), snapshots.get(0));
+        Assert.assertEquals(new IteratorValueSnapshot(1, 1), snapshots.get(1));
+        Assert.assertEquals(new IteratorValueSnapshot(2046, 0), snapshots.get(2046));
+        Assert.assertEquals(new IteratorValueSnapshot(2047, 1), snapshots.get(2047));
+        // bucket size 2
+        Assert.assertEquals(new IteratorValueSnapshot(2048, 2), snapshots.get(2048));
+        Assert.assertEquals(new IteratorValueSnapshot(2049, 0), snapshots.get(2049));
+        Assert.assertEquals(new IteratorValueSnapshot(2050, 0), snapshots.get(2050));
+        Assert.assertEquals(new IteratorValueSnapshot(2051, 0), snapshots.get(2051));
+        Assert.assertEquals(new IteratorValueSnapshot(4094, 1), snapshots.get(4094));
+        Assert.assertEquals(new IteratorValueSnapshot(4095, 0), snapshots.get(4095));
+        // bucket size 4
+        Assert.assertEquals(new IteratorValueSnapshot(4096, 4), snapshots.get(4096));
+        Assert.assertEquals(new IteratorValueSnapshot(4097, 0), snapshots.get(4097));
+        Assert.assertEquals(new IteratorValueSnapshot(4098, 0), snapshots.get(4098));
+        Assert.assertEquals(new IteratorValueSnapshot(4099, 0), snapshots.get(4099));
+        // also size 4, last bucket
+        Assert.assertEquals(new IteratorValueSnapshot(4100, 1), snapshots.get(4100));
+        Assert.assertEquals(new IteratorValueSnapshot(4101, 0), snapshots.get(4101));
+        Assert.assertEquals(new IteratorValueSnapshot(4102, 0), snapshots.get(4102));
+        Assert.assertEquals(new IteratorValueSnapshot(4103, 0), snapshots.get(4103));
+
+        Assert.assertEquals(4104, snapshots.size());
+    }
 }
