@@ -114,7 +114,8 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-outputValueUnitRatio")) {
                         outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
-                        expectedIntervalForCoordinatedOmissionCorrection = Double.parseDouble(args[++i]);
+                        expectedIntervalForCoordinatedOmissionCorrection =
+                                Double.parseDouble(args[++i]);  // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-h")) {
                         askedForHelp = true;
                         throw new Exception("Help: " + args[i]);
