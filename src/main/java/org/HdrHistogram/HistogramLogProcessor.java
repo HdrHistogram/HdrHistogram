@@ -58,6 +58,8 @@ public class HistogramLogProcessor extends Thread {
     private HistogramLogReader logReader;
 
     private static class HistogramLogProcessorConfiguration {
+        Double expectedDoubleInterval = null;
+        Long expectedLongInterval = null;
         boolean verbose = false;
         String outputFileName = null;
         String inputFileName = null;
@@ -111,6 +113,13 @@ public class HistogramLogProcessor extends Thread {
                         percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-outputValueUnitRatio")) {
                         outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
+                    } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
+                        final String interval = args[++i];
+                        try {
+                            expectedLongInterval = Long.parseLong(interval);
+                        } catch (NumberFormatException e) {
+                            expectedDoubleInterval = Double.parseDouble(interval);
+                        }
                     } else if (args[i].equals("-h")) {
                         askedForHelp = true;
                         throw new Exception("Help: " + args[i]);
@@ -132,22 +141,23 @@ public class HistogramLogProcessor extends Thread {
                 final String validArgs =
                         "\"[-csv] [-v] [-i inputFileName] [-o outputFileName] [-tag tag] " +
                                 "[-start rangeStartTimeSec] [-end rangeEndTimeSec] " +
-                                "[-outputValueUnitRatio r] [-listtags]";
+                                "[-outputValueUnitRatio r] [-correctLogWithKnownCoordinatedOmission i] [-listtags]";
 
                 System.err.println("valid arguments = " + validArgs);
 
                 System.err.println(
-                        " [-h]                        help\n" +
-                                " [-v]                        Provide verbose error output\n" +
-                                " [-csv]                      Use CSV format for output log files\n" +
-                                " [-i logFileName]            File name of Histogram Log to process (default is standard input)\n" +
-                                " [-o outputFileName]         File name to output to (default is standard output)\n" +
-                                " [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n" +
-                                " [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)\n" +
-                                " [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)\n" +
-                                " [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units\n" +
-                                "                             in output. [default = 1000000.0 (1 msec in nsec)]\n" +
-                                " [-listtags]                 list all tags found on histogram lines the input file."
+                            " [-h]                                         help\n" +
+                            " [-v]                                         Provide verbose error output\n" +
+                            " [-csv]                                       Use CSV format for output log files\n" +
+                            " [-i logFileName]                             File name of Histogram Log to process (default is standard input)\n" +
+                            " [-o outputFileName]                          File name to output to (default is standard output)\n" +
+                            " [-tag tag]                                   The tag (default no tag) of the histogram lines to be processed\n" +
+                            " [-start rangeStartTimeSec]                   The start time for the range in the file, in seconds (default 0.0)\n" +
+                            " [-end rangeEndTimeSec]                       The end time for the range in the file, in seconds (default is infinite)\n" +
+                            " [-outputValueUnitRatio r]                    The scaling factor by which to divide histogram recorded values units\n" +
+                            "                                              in output. [default = 1000000.0 (1 msec in nsec)]\n" +
+                            " [-correctLogWithKnownCoordinatedOmission i]  If larger than 0, add auto-generated value records as appropriate\n" +
+                            " [-listtags]                                  list all tags found on histogram lines the input file."
                 );
                 System.exit(1);
             }
@@ -175,6 +185,26 @@ public class HistogramLogProcessor extends Thread {
         EncodableHistogram histogram = null;
         try {
             histogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+            if (histogram != null) {
+                //handle Coordinated Omission correction on a log where the user knows that the problem exists
+                if (config.expectedDoubleInterval != null) {
+                    if (histogram instanceof DoubleHistogram) {
+                        histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(config.expectedDoubleInterval);
+                    } else if (histogram instanceof Histogram) {
+                        final long expectedInterval = config.expectedDoubleInterval.longValue();
+                        System.err.println("Found long based interval histogram at line number " + lineNumber + " with double -correctLogWithKnownCoordinatedOmission configuration: casting it into " + expectedInterval);
+                        histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
+                    }
+                } else if (config.expectedLongInterval != null) {
+                    if (histogram instanceof Histogram) {
+                        histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(config.expectedLongInterval);
+                    } else if (histogram instanceof DoubleHistogram) {
+                        final double expectedInterval = config.expectedLongInterval.doubleValue();
+                        System.err.println("Found double based interval histogram at line number " + lineNumber + " with long -correctLogWithKnownCoordinatedOmission configuration: casting it into " + expectedInterval);
+                        histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
+                    }
+                }
+            }
         } catch (RuntimeException ex) {
             System.err.println("Log file parsing error at line number " + lineNumber +
                     ": line appears to be malformed.");
@@ -455,16 +485,17 @@ public class HistogramLogProcessor extends Thread {
      * Construct a {@link org.HdrHistogram.HistogramLogProcessor} with the given arguments
      * (provided in command line style).
      * <pre>
-     * [-h]                        help
-     * [-csv]                      Use CSV format for output log files
-     * [-i logFileName]            File name of Histogram Log to process (default is standard input)
-     * [-o outputFileName]         File name to output to (default is standard output)
-     *                             (will replace occurrences of %pid and %date with appropriate information)
-     * [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n
-     * [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)
-     * [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)
-     * [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units
-     *                             in output. [default = 1000000.0 (1 msec in nsec)]"
+     * [-h]                                                        help
+     * [-csv]                                                      Use CSV format for output log files
+     * [-i logFileName]                                            File name of Histogram Log to process (default is standard input)
+     * [-o outputFileName]                                         File name to output to (default is standard output)
+     *                                                             (will replace occurrences of %pid and %date with appropriate information)
+     * [-tag tag]                                                  The tag (default no tag) of the histogram lines to be processed\n
+     * [-start rangeStartTimeSec]                                  The start time for the range in the file, in seconds (default 0.0)
+     * [-end rangeEndTimeSec]                                      The end time for the range in the file, in seconds (default is infinite)
+     * [-correctLogWithKnownCoordinatedOmission expectedInterval]  If larger than 0, add auto-generated value records as appropriate
+     * [-outputValueUnitRatio r]                                   The scaling factor by which to divide histogram recorded values units
+     *                                                             in output. [default = 1000000.0 (1 msec in nsec)]"
      * </pre>
      * @param args command line arguments
      * @throws FileNotFoundException if specified input file is not found
