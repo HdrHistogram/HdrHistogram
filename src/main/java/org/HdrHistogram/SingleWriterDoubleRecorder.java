@@ -20,6 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterDoubleRecorder#recordValue} or
  * {@link SingleWriterDoubleRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT support concurrent recording calls.
+ * Recording calls are wait-free on architectures that support atomic increment operations, and
+ * are lock-free on architectures that do not.
  * <p>
  * A common pattern for using a {@link SingleWriterDoubleRecorder} looks like this:
  * <br><pre><code>
@@ -36,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * </code></pre>
  */
 
-public class SingleWriterDoubleRecorder {
+public class SingleWriterDoubleRecorder implements DoubleValueRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
