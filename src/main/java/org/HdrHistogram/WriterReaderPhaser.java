@@ -225,6 +225,7 @@ public class WriterReaderPhaser {
             throw new IllegalStateException("flipPhase() can only be called while holding the readerLock()");
         }
 
+        // Read the volatile 'startEpoch' exactly once
         boolean nextPhaseIsEven = (startEpoch < 0); // Current phase is odd...
 
         // First, clear currently unused [next] phase end epoch (to proper initial value for phase):
