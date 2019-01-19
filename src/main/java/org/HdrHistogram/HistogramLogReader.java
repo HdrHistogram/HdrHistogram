@@ -54,8 +54,7 @@ import java.util.zip.DataFormatException;
 public class HistogramLogReader implements Closeable {
 
     private final HistogramLogScanner scanner;
-    private final HistogramLogScanner.EventHandler handler = new HistogramLogScanner.EventHandler()
-    {
+    private final HistogramLogScanner.EventHandler handler = new HistogramLogScanner.EventHandler() {
         @Override
         public boolean onComment(String comment)
         {
@@ -119,12 +118,9 @@ public class HistogramLogReader implements Closeable {
                 return true;
             }
             EncodableHistogram histogram;
-            try
-            {
+            try {
                 histogram = lazyReader.read();
-            }
-            catch (DataFormatException e)
-            {
+            } catch (DataFormatException e) {
                 // stop after exception
                 return true;
             }
@@ -145,10 +141,11 @@ public class HistogramLogReader implements Closeable {
                 return true;
             }
             // rethrow
-            if (t instanceof RuntimeException)
-                throw (RuntimeException)t;
-            else
+            if (t instanceof RuntimeException) {
+                throw (RuntimeException) t;
+            } else {
                 throw new RuntimeException(t);
+            }
         }
     };
     

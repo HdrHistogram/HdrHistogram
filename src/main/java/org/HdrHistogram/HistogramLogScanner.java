@@ -16,16 +16,14 @@ import java.util.zip.DataFormatException;
 public class HistogramLogScanner implements Closeable {
 
     // can't use lambdas, and anyway we need to let the handler take the exception
-    public interface EncodableHistogramSupplier
-    {
+    public interface EncodableHistogramSupplier {
         EncodableHistogram read() throws DataFormatException;
     }
 
     /**
      * Handles log events, return true to stop processing.
      */
-    public interface EventHandler
-    {
+    public interface EventHandler {
         boolean onComment(String comment);
         boolean onBaseTime(double secondsSinceEpoch);
         boolean onStartTime(double secondsSinceEpoch);
@@ -38,7 +36,7 @@ public class HistogramLogScanner implements Closeable {
          * @param timestamp logged timestamp
          * @param length logged interval length
          * @param lazyReader to be called if the histogram needs to be deserialized, given the tag/timestamp etc.
-         * @return
+         * @return true to stop processing, false to continue.
          */
         boolean onHistogram(String tag, double timestamp, double length, EncodableHistogramSupplier lazyReader);
         boolean onException(Throwable t);
@@ -63,8 +61,9 @@ public class HistogramLogScanner implements Closeable {
         public EncodableHistogram read() throws DataFormatException
         {
             // prevent double calls to this method
-            if (gotIt)
+            if (gotIt) {
                 throw new IllegalStateException();
+            }
             gotIt = true;
             
             final String compressedPayloadString = scanner.next();
@@ -174,12 +173,14 @@ public class HistogramLogScanner implements Closeable {
                 scanner.nextDouble(); // Skip maxTime field, as max time can be deduced from the histogram.
                 
                 lazyReader.allowGet();
-                if (handler.onHistogram(tagString, logTimeStampInSec, intervalLengthSec, lazyReader))
+                if (handler.onHistogram(tagString, logTimeStampInSec, intervalLengthSec, lazyReader)) {
                     return;
+                }
 
             } catch (Throwable ex) {
-                if (handler.onException(ex))
+                if (handler.onException(ex)) {
                     return;
+                }
             } finally {
                 scanner.nextLine(); // Move to next line.
             }
