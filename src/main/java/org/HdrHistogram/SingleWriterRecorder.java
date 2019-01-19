@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterRecorder#recordValue} or
  * {@link SingleWriterRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT safely support concurrent recording calls.
+ * Recording calls are wait-free on architectures that support atomic increment operations, and
+ * re lock-free on architectures that do not.
  *  * <p>
  * A common pattern for using a {@link SingleWriterRecorder} looks like this:
  * <br><pre><code>
