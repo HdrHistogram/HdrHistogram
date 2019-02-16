@@ -52,7 +52,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
         long currentCount = counts[normalizedIndex];
         long newCount = (currentCount + value);
         if ((newCount < Short.MIN_VALUE) || (newCount > Short.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow integer count");
+            throw new IllegalStateException("would overflow short integer count");
         }
         counts[normalizedIndex] = (short) newCount;
     }
@@ -65,7 +65,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
     @Override
     void setCountAtNormalizedIndex(int index, long value) {
         if ((value < 0) || (value > Short.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow short integer count");
+            throw new IllegalStateException("would overflow short integer count");
         }
         counts[index] = (short) value;
     }
