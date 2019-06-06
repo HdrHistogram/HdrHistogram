@@ -61,8 +61,8 @@
         <h1>HdrHistogram</h1>
         <p>A High Dynamic Range (HDR) Histogram</p>
         <p class="view">
-             <a href="http://hdrhistogram.github.io/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/package-summary.html">
-            View the JavaDoc <small>hdrhistogram.github.com/HdrHistogram/JavaDoc</small></a>
+             <a href="http://www.javadoc.io/doc/org.hdrhistogram/HdrHistogram">
+            View the JavaDoc <small>www.javadoc.io/doc/org.hdrhistogram/HdrHistogram</small></a>
             <a href="http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.hdrhistogram%22">
             Find on Maven Central <small>org.hdrhistogram</small></a>
         </p>
@@ -119,13 +119,13 @@
         <p>
             For example, a <a href="http://hdrhistogram.github.com/HdrHistogram/JavaDoc/index.html?org/HdrHistogram/Histogram.html">
             Histogram </a> could be configured to track the counts of observed integer values between
-            0 and 3,600,000,000 while maintaining a value precision of 3 significant digits across that range.
+            0 and 3,600,000,000,000 while maintaining a value precision of 3 significant digits across that range.
             Value quantization within the range will thus be no larger than 1/1,000th (or 0.1%) of any value.
             This example Histogram could be used to track and analyze the counts of observed response times
-            ranging between 1 microsecond and 1 hour in magnitude, while maintaining a value resolution of
-            1 microsecond up to 1 millisecond, a resolution of 1 millisecond (or better) up to one second,
-            and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked value (1 hour),
-            it would still maintain a resolution of 3.6 seconds (or better).</p>
+            ranging between 1 nanosecond and 1 hour in magnitude, while maintaining a value resolution of
+            1 nanosecond up to 1 microsecond, a resolution of 1 microsecond up to 1 millisecond, a resolution
+            of 1 millisecond (or better) up to one second, and a resolution of 1 second (or better) up to 1,000
+            seconds. At it's maximum tracked value (1 hour), it would still maintain a resolution of 3.6 seconds.</p>
         <p>
             HDR Histogram is designed for recoding histograms of value measurements in latency and performance
             sensitive applications. Measurements show value recording times as low as 3-6 nanoseconds on modern
@@ -140,7 +140,7 @@
 
         <p>
             HdrHistogram was originally authored by Gil Tene (<a href="https://github.com/giltene" class="user-mention">@giltene</a>)
-            (Java) and placed in the public domain, as explained at
+            and placed in the public domain, as explained at
             <a href="http://creativecommons.org/publicdomain/zero/1.0/">http://creativecommons.org/publicdomain/zero/1.0/</a>,
             with ports by Mike Barker (<a href="https://github.com/mikeb01" class="user-mention">@mikeb01</a>) (C),
             Matt Warren (<a href="https://github.com/mattwarren" class="user-mention">@mattwarren</a>) (C#),
