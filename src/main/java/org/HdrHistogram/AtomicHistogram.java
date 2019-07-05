@@ -10,7 +10,6 @@ package org.HdrHistogram;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.util.concurrent.atomic.*;
 import java.util.zip.DataFormatException;
 
