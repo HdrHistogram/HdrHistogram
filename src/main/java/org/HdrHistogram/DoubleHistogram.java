@@ -215,13 +215,8 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             // Set our double tracking range and internal histogram:
             init(highestToLowestValueRatio, initialLowestValueInAutoRange, valuesHistogram);
 
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (IllegalAccessException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InstantiationException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InvocationTargetException ex) {
+        } catch (NoSuchMethodException | IllegalAccessException |
+                InstantiationException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
         }
     }
