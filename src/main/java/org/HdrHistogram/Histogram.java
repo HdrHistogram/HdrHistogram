@@ -245,7 +245,7 @@ public class Histogram extends AbstractHistogram {
      */
     public static Histogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                  final long minBarForHighestTrackableValue) {
-        return (Histogram) decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -256,7 +256,8 @@ public class Histogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static Histogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                           final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                           final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
     }
 

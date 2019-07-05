@@ -141,7 +141,8 @@ public class ConcurrentHistogram extends Histogram {
             activeCounts.lazySet(
                     normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), value);
             inactiveCounts.lazySet(
-                    normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length()), 0);
+                    normalizeIndex(index, inactiveCounts.getNormalizingIndexOffset(),
+                            inactiveCounts.length()), 0);
         } finally {
             wrp.readerUnlock();
         }
@@ -176,7 +177,8 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    public void recordConvertedDoubleValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
+    public void recordConvertedDoubleValueWithCount(final double value, final long count)
+            throws ArrayIndexOutOfBoundsException {
         long criticalValue = wrp.writerCriticalSectionEnter();
         try {
             long integerValue = (long) (value * activeCounts.doubleToIntegerValueConversionRatio);
@@ -197,7 +199,8 @@ public class ConcurrentHistogram extends Histogram {
 
     @Override
     void setNormalizingIndexOffset(final int normalizingIndexOffset) {
-        setNormalizingIndexOffset(normalizingIndexOffset, 0, false, getIntegerToDoubleValueConversionRatio());
+        setNormalizingIndexOffset(normalizingIndexOffset, 0,
+                false, getIntegerToDoubleValueConversionRatio());
     }
 
     private void setNormalizingIndexOffset(
@@ -218,7 +221,8 @@ public class ConcurrentHistogram extends Histogram {
             }
 
             // Save and clear the inactive 0 value count:
-            int zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+            int zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(),
+                    inactiveCounts.length());
             long inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
             inactiveCounts.lazySet(zeroIndex, 0);
 
@@ -503,8 +507,8 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     /**
-     * Construct a ConcurrentHistogram given the Highest value to be tracked and a number of significant decimal digits. The
-     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
+     * Construct a ConcurrentHistogram given the Highest value to be tracked and a number of significant decimal
+     * digits. The histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
@@ -560,8 +564,7 @@ public class ConcurrentHistogram extends Histogram {
      */
     public static ConcurrentHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                            final long minBarForHighestTrackableValue) {
-        return (ConcurrentHistogram) decodeFromByteBuffer(buffer, ConcurrentHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, ConcurrentHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -572,9 +575,9 @@ public class ConcurrentHistogram extends Histogram {
      * @throws java.util.zip.DataFormatException on error parsing/decompressing the buffer
      */
     public static ConcurrentHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                     final long minBarForHighestTrackableValue) throws DataFormatException {
-        return (ConcurrentHistogram) decodeFromCompressedByteBuffer(buffer, ConcurrentHistogram.class,
-                minBarForHighestTrackableValue);
+                                                                     final long minBarForHighestTrackableValue)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(buffer, ConcurrentHistogram.class, minBarForHighestTrackableValue);
     }
 
     private void readObject(final ObjectInputStream o)

@@ -169,8 +169,8 @@ public class ShortCountsHistogram extends AbstractHistogram {
     }
     
     /**
-     * Construct a ShortCountsHistogram given the Highest value to be tracked and a number of significant decimal digits. The
-     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
+     * Construct a ShortCountsHistogram given the Highest value to be tracked and a number of significant decimal
+     * digits. The histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
@@ -224,8 +224,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
      */
     public static ShortCountsHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                       final long minBarForHighestTrackableValue) {
-        return (ShortCountsHistogram) decodeFromByteBuffer(buffer, ShortCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, ShortCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -236,7 +235,8 @@ public class ShortCountsHistogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static ShortCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                                final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, ShortCountsHistogram.class, minBarForHighestTrackableValue);
     }
 

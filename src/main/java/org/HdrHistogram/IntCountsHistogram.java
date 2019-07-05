@@ -227,8 +227,7 @@ public class IntCountsHistogram extends AbstractHistogram {
      */
     public static IntCountsHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                     final long minBarForHighestTrackableValue) {
-        return (IntCountsHistogram) decodeFromByteBuffer(buffer, IntCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, IntCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -239,7 +238,8 @@ public class IntCountsHistogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static IntCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                              final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                              final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, IntCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
