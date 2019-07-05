@@ -244,9 +244,4 @@ public class ShortCountsHistogram extends AbstractHistogram {
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asShortBuffer().get(counts, 0, length);
-    }
 }

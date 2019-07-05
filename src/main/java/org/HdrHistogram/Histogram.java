@@ -264,9 +264,4 @@ public class Histogram extends AbstractHistogram {
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asLongBuffer().get(counts, 0, length);
-    }
 }

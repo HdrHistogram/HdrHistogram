@@ -1823,8 +1823,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return (relevantLength * wordSizeInBytes);
     }
 
-    abstract void fillCountsArrayFromBuffer(ByteBuffer buffer, int length);
-
     private static final int V0EncodingCookieBase = 0x1c849308;
     private static final int V0CompressedEncodingCookieBase = 0x1c849309;
 

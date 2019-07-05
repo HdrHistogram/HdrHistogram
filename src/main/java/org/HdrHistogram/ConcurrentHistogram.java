@@ -584,15 +584,6 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        LongBuffer logbuffer = buffer.asLongBuffer();
-        for (int i = 0; i < length; i++) {
-            inactiveCounts.lazySet(i, logbuffer.get());
-            activeCounts.lazySet(i, 0);
-        }
-    }
-
-    @Override
     synchronized void fillBufferFromCountsArray(final ByteBuffer buffer) {
         try {
             wrp.readerLock();
