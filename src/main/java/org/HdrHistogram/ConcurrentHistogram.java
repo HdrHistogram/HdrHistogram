@@ -203,7 +203,7 @@ public class ConcurrentHistogram extends Histogram {
     }
 
     private void setNormalizingIndexOffset(
-            final int normalizingIndexOffset,
+            final int newNormalizingIndexOffset,
             final int shiftedAmount,
             final boolean lowestHalfBucketPopulated,
             final double newIntegerToDoubleValueConversionRatio) {
@@ -215,29 +215,12 @@ public class ConcurrentHistogram extends Histogram {
 
             assert (activeCounts.getNormalizingIndexOffset() == inactiveCounts.getNormalizingIndexOffset());
 
-            if (normalizingIndexOffset == activeCounts.getNormalizingIndexOffset()) {
+            if (newNormalizingIndexOffset == activeCounts.getNormalizingIndexOffset()) {
                 return; // Nothing to do.
             }
 
-            // Save and clear the inactive 0 value count:
-            int zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(),
-                    inactiveCounts.length());
-            long inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
-            inactiveCounts.lazySet(zeroIndex, 0);
-
-            // Change the normalizingIndexOffset on the current inactiveCounts:
-            inactiveCounts.setNormalizingIndexOffset(normalizingIndexOffset);
-
-            // Handle the inactive lowest half bucket:
-            if ((shiftedAmount > 0) && lowestHalfBucketPopulated) {
-                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount, zeroIndex);
-            }
-
-            // Restore the inactive 0 value count:
-            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
-            inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
-
-            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
+            setNormalizingIndexOffsetForInactive(newNormalizingIndexOffset, shiftedAmount,
+                    lowestHalfBucketPopulated, newIntegerToDoubleValueConversionRatio);
 
             // switch active and inactive:
             AtomicLongArrayWithNormalizingOffset tmp = activeCounts;
@@ -246,24 +229,8 @@ public class ConcurrentHistogram extends Histogram {
 
             wrp.flipPhase();
 
-            // Save and clear the newly inactive 0 value count:
-            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
-            inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
-            inactiveCounts.lazySet(zeroIndex, 0);
-
-            // Change the normalizingIndexOffset on the newly inactiveCounts:
-            inactiveCounts.setNormalizingIndexOffset(normalizingIndexOffset);
-
-            // Handle the newly inactive lowest half bucket:
-            if ((shiftedAmount > 0) && lowestHalfBucketPopulated) {
-                shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount, zeroIndex);
-            }
-
-            // Restore the newly inactive 0 value count:
-            zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
-            inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
-
-            inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
+            setNormalizingIndexOffsetForInactive(newNormalizingIndexOffset, shiftedAmount,
+                    lowestHalfBucketPopulated, newIntegerToDoubleValueConversionRatio);
 
             // switch active and inactive again:
             tmp = activeCounts;
@@ -278,6 +245,34 @@ public class ConcurrentHistogram extends Histogram {
         } finally {
             wrp.readerUnlock();
         }
+    }
+
+    private void setNormalizingIndexOffsetForInactive(final int newNormalizingIndexOffset,
+                                                      final int shiftedAmount,
+                                                      final boolean lowestHalfBucketPopulated,
+                                                      final double newIntegerToDoubleValueConversionRatio) {
+        int zeroIndex;
+        long inactiveZeroValueCount;
+
+        // Save and clear the inactive 0 value count:
+        zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(),
+                inactiveCounts.length());
+        inactiveZeroValueCount = inactiveCounts.get(zeroIndex);
+        inactiveCounts.lazySet(zeroIndex, 0);
+
+        // Change the normalizingIndexOffset on the current inactiveCounts:
+        inactiveCounts.setNormalizingIndexOffset(newNormalizingIndexOffset);
+
+        // Handle the inactive lowest half bucket:
+        if ((shiftedAmount > 0) && lowestHalfBucketPopulated) {
+            shiftLowestInactiveHalfBucketContentsLeft(shiftedAmount, zeroIndex);
+        }
+
+        // Restore the inactive 0 value count:
+        zeroIndex = normalizeIndex(0, inactiveCounts.getNormalizingIndexOffset(), inactiveCounts.length());
+        inactiveCounts.lazySet(zeroIndex, inactiveZeroValueCount);
+
+        inactiveCounts.doubleToIntegerValueConversionRatio = 1.0 / newIntegerToDoubleValueConversionRatio;
     }
 
     private void shiftLowestInactiveHalfBucketContentsLeft(final int shiftAmount, final int preShiftZeroIndex) {
