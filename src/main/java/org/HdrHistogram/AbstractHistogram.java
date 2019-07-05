@@ -288,7 +288,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         this.autoResize = source.autoResize;
     }
 
-    @SuppressWarnings("deprecation")
     private void init(final long lowestDiscernibleValue,
                       final long highestTrackableValue,
                       final int numberOfSignificantValueDigits,
@@ -510,8 +509,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int countsIndex = countsArrayIndex(value);
         try {
             addToCountAtIndex(countsIndex, count);
-        } catch (ArrayIndexOutOfBoundsException ex) {
-            handleRecordException(count, value, ex);
         } catch (IndexOutOfBoundsException ex) {
             handleRecordException(count, value, ex);
         }
@@ -523,8 +520,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         int countsIndex = countsArrayIndex(value);
         try {
             incrementCountAtIndex(countsIndex);
-        } catch (ArrayIndexOutOfBoundsException ex) {
-            handleRecordException(1, value, ex);
         } catch (IndexOutOfBoundsException ex) {
             handleRecordException(1, value, ex);
         }
@@ -1109,7 +1104,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
      */
     public long sizeOfEquivalentValueRange(final long value) {
         final int bucketIndex = getBucketIndex(value);
-        final int subBucketIndex = getSubBucketIndex(value, bucketIndex);
         long distanceToNextValue = 1L << (unitMagnitude + bucketIndex);
         return distanceToNextValue;
     }
@@ -1521,6 +1515,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         /**
          * @return A {@link PercentileIterator}{@literal <}{@link HistogramIterationValue}{@literal >}
          */
+        @Override
         public Iterator<HistogramIterationValue> iterator() {
             return new PercentileIterator(histogram, percentileTicksPerHalfDistance);
         }
@@ -2018,19 +2013,13 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
         // Construct histogram:
         try {
-            @SuppressWarnings("unchecked")
             Constructor<T> constructor = histogramClass.getConstructor(constructorArgsTypes);
             histogram = constructor.newInstance(lowestTrackableUnitValue, highestTrackableValue,
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
             histogram.setNormalizingIndexOffset(normalizingIndexOffset);
-        } catch (IllegalAccessException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InstantiationException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InvocationTargetException ex) {
+        } catch (IllegalAccessException | NoSuchMethodException |
+                InstantiationException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
         }
 
