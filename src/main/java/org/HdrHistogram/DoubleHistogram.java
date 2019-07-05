@@ -334,23 +334,57 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
     }
 
     private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
-            // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
-            // with it on the slow path...
-            autoAdjustRangeForValue(value);
+        int throwCount = 0;
+        while (true) {
+            if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
+                // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
+                // with it on the slow path...
+                autoAdjustRangeForValue(value);
+            }
+            try {
+                integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
+                return;
+            } catch (ArrayIndexOutOfBoundsException ex) {
+                // A race that would pass the auto-range check above and would still take an AIOOB
+                // can only occur due to a value that would have been valid becoming invalid due
+                // to a concurrent adjustment operation. Such adjustment operations can happen no
+                // more than 64 times in the entire lifetime of the Histogram, which makes it safe
+                // to retry with no fear of live-locking.
+                if (++throwCount > 64) {
+                    // For the retry check to not detect an out of range attempt after 64 retries
+                    // should be  theoretically impossible, and would indicate a bug.
+                    throw new ArrayIndexOutOfBoundsException(
+                            "BUG: Unexpected non-transient AIOOB Exception caused by:\n" + ex);
+                }
+            }
         }
-
-        integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
     }
 
     private void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
-            // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
-            // with it on the slow path...
-            autoAdjustRangeForValue(value);
+        int throwCount = 0;
+        while (true) {
+            if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
+                // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
+                // with it on the slow path...
+                autoAdjustRangeForValue(value);
+            }
+            try {
+                integerValuesHistogram.recordConvertedDoubleValue(value);
+                return;
+            } catch (ArrayIndexOutOfBoundsException ex) {
+                // A race that would pass the auto-range check above and would still take an AIOOB
+                // can only occur due to a value that would have been valid becoming invalid due
+                // to a concurrent adjustment operation. Such adjustment operations can happen no
+                // more than 64 times in the entire lifetime of the Histogram, which makes it safe
+                // to retry with no fear of live-locking.
+                if (++throwCount > 64) {
+                    // For the retry check to not detect an out of range attempt after 64 retries
+                    // should be  theoretically impossible, and would indicate a bug.
+                    throw new ArrayIndexOutOfBoundsException(
+                            "BUG: Unexpected non-transient AIOOB Exception caused by:\n" + ex);
+                }
+            }
         }
-
-        integerValuesHistogram.recordConvertedDoubleValue(value);
     }
 
     private void recordValueWithCountAndExpectedInterval(final double value, final long count,
