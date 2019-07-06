@@ -1513,6 +1513,8 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
     }
 
+    private static final Class[] constructorArgTypes = {long.class, int.class, Class.class, AbstractHistogram.class};
+
     static <T extends DoubleHistogram> T constructHistogramFromBuffer(
             int cookie,
             final ByteBuffer buffer,
@@ -1533,7 +1535,6 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         }
 
         try {
-            final Class[] constructorArgTypes = {long.class, int.class, Class.class, AbstractHistogram.class};
             Constructor<T> doubleHistogramConstructor =
                     doubleHistogramClass.getDeclaredConstructor(constructorArgTypes);
 
