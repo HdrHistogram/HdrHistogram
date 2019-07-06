@@ -7,6 +7,9 @@
 
 package org.HdrHistogram;
 
+import java.nio.ByteBuffer;
+import java.util.zip.DataFormatException;
+
 /**
  * <h3>A floating point values High Dynamic Range (HDR) Histogram that supports safe concurrent recording
  * operations.</h3>
@@ -87,5 +90,50 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
      */
     public ConcurrentDoubleHistogram(final DoubleHistogram source) {
         super(source);
+    }
+
+
+    /**
+     * Construct a new ConcurrentDoubleHistogram by decoding it from a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
+     * @return The newly constructed ConcurrentDoubleHistogram
+     */
+    public static ConcurrentDoubleHistogram decodeFromByteBuffer(
+            final ByteBuffer buffer,
+            final long minBarForHighestToLowestValueRatio) {
+        try {
+            int cookie = buffer.getInt();
+            if (!isNonCompressedDoubleHistogramCookie(cookie)) {
+                throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
+            }
+            ConcurrentDoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                    ConcurrentDoubleHistogram.class, ConcurrentHistogram.class,
+                    minBarForHighestToLowestValueRatio);
+            return histogram;
+        } catch (DataFormatException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+
+    /**
+     * Construct a new ConcurrentDoubleHistogram by decoding it from a compressed form in a ByteBuffer.
+     * @param buffer The buffer to decode from
+     * @param minBarForHighestToLowestValueRatio Force highestTrackableValue to be set at least this high
+     * @return The newly constructed ConcurrentDoubleHistogram
+     * @throws DataFormatException on error parsing/decompressing the buffer
+     */
+    public static ConcurrentDoubleHistogram decodeFromCompressedByteBuffer(
+            final ByteBuffer buffer,
+            final long minBarForHighestToLowestValueRatio) throws DataFormatException {
+        int cookie = buffer.getInt();
+        if (!isCompressedDoubleHistogramCookie(cookie)) {
+            throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
+        }
+        ConcurrentDoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                ConcurrentDoubleHistogram.class, ConcurrentHistogram.class,
+                minBarForHighestToLowestValueRatio);
+        return histogram;
     }
 }

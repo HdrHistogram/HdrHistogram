@@ -1461,11 +1461,11 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         return isCompressedDoubleHistogramCookie(cookie) || isNonCompressedDoubleHistogramCookie(cookie);
     }
 
-    private static boolean isCompressedDoubleHistogramCookie(int cookie) {
+    static boolean isCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_compressedEncodingCookie);
     }
 
-    private static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
+    static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_encodingCookie);
     }
 
@@ -1513,9 +1513,10 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
     }
 
-    private static DoubleHistogram constructHistogramFromBuffer(
+    static <T extends DoubleHistogram> T constructHistogramFromBuffer(
             int cookie,
             final ByteBuffer buffer,
+            final Class<T> doubleHistogramClass,
             final Class<? extends AbstractHistogram> histogramClass,
             final long minBarForHighestToLowestValueRatio) throws DataFormatException {
         int numberOfSignificantValueDigits = buffer.getInt();
@@ -1528,16 +1529,26 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             valuesHistogram =
                     AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
         } else {
-            throw new IllegalStateException("The buffer does not contain a DoubleHistogram");
+            throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
         }
-        DoubleHistogram histogram =
-                new DoubleHistogram(
-                        configuredHighestToLowestValueRatio,
-                        numberOfSignificantValueDigits,
-                        histogramClass,
-                        valuesHistogram
-                );
-        return histogram;
+
+        try {
+            final Class[] constructorArgTypes = {long.class, int.class, Class.class, AbstractHistogram.class};
+            Constructor<T> doubleHistogramConstructor =
+                    doubleHistogramClass.getDeclaredConstructor(constructorArgTypes);
+
+            T histogram =
+                    doubleHistogramConstructor.newInstance(
+                            configuredHighestToLowestValueRatio,
+                            numberOfSignificantValueDigits,
+                            histogramClass,
+                            valuesHistogram
+                    );
+            return histogram;
+        } catch (NoSuchMethodException | InstantiationException |
+                IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Unable to construct DoubleHistogram of type " + doubleHistogramClass);
+        }
     }
 
     /**
@@ -1572,7 +1583,8 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             if (!isNonCompressedDoubleHistogramCookie(cookie)) {
                 throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
             }
-            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                    DoubleHistogram.class, internalCountsHistogramClass,
                     minBarForHighestToLowestValueRatio);
             return histogram;
         } catch (DataFormatException ex) {
@@ -1613,7 +1625,8 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         if (!isCompressedDoubleHistogramCookie(cookie)) {
             throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
-        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                DoubleHistogram.class, internalCountsHistogramClass,
                 minBarForHighestToLowestValueRatio);
         return histogram;
     }
