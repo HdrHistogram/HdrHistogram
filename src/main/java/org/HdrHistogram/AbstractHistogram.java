@@ -812,7 +812,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (numberOfBinaryOrdersOfMagnitude < 0) {
             throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
         }
-
         if (numberOfBinaryOrdersOfMagnitude == 0) {
             return;
         }
@@ -923,7 +922,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         if (numberOfBinaryOrdersOfMagnitude < 0) {
             throw new IllegalArgumentException("Cannot shift by a negative number of magnitudes");
         }
-
         if (numberOfBinaryOrdersOfMagnitude == 0) {
             return;
         }
