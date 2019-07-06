@@ -223,7 +223,7 @@ public class DoubleRecorder implements DoubleValueRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@code getIntervalHistogramInto}(targetHistogram) will reset
+     * Calling {@code getIntervalHistogramInto(targetHistogram)} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
