@@ -134,7 +134,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         this(highestToLowestValueRatio, numberOfSignificantValueDigits, internalCountsHistogramClass, null);
     }
 
-    private DoubleHistogram(final long highestToLowestValueRatio,
+    DoubleHistogram(final long highestToLowestValueRatio,
                             final int numberOfSignificantValueDigits,
                             final Class<? extends AbstractHistogram> internalCountsHistogramClass,
                             AbstractHistogram internalCountsHistogram) {

@@ -574,6 +574,21 @@ public class ConcurrentHistogram extends Histogram {
         return decodeFromCompressedByteBuffer(buffer, ConcurrentHistogram.class, minBarForHighestTrackableValue);
     }
 
+    /**
+     * Construct a new ConcurrentHistogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A ConcurrentHistogram decoded from the string
+     * @throws DataFormatException
+     */
+    public static ConcurrentHistogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
+    }
+
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
