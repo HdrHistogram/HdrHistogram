@@ -7,14 +7,8 @@
 
 package org.HdrHistogram;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
 
 /**
  * <h3>A floating point values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
