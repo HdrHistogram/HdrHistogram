@@ -116,6 +116,17 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
         }
     }
 
+    ConcurrentDoubleHistogram(final long highestToLowestValueRatio,
+                            final int numberOfSignificantValueDigits,
+                            final Class<? extends AbstractHistogram> internalCountsHistogramClass,
+                            AbstractHistogram internalCountsHistogram) {
+        super(
+                highestToLowestValueRatio,
+                numberOfSignificantValueDigits,
+                internalCountsHistogramClass,
+                internalCountsHistogram
+        );
+    }
 
     /**
      * Construct a new ConcurrentDoubleHistogram by decoding it from a compressed form in a ByteBuffer.
