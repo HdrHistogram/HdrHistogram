@@ -246,10 +246,10 @@ public class HistogramLogProcessor extends Thread {
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-        Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
+        Queue<EncodableHistogram> movingWindowQueue = new LinkedList<>();
 
         if (config.listTags) {
-            Set<String> tags = new TreeSet<String>();
+            Set<String> tags = new TreeSet<>();
             EncodableHistogram histogram;
             boolean nullTagFound = false;
             while ((histogram = getIntervalHistogram()) != null) {
@@ -347,22 +347,24 @@ public class HistogramLogProcessor extends Thread {
                 long windowCutOffTimeStamp = intervalHistogram.getEndTimeStamp() - config.movingWindowLengthInMsec;
                 // handle moving window:
                 if (config.movingWindow) {
-
                     // Add the current interval histogram to the moving window sums:
-                    if (movingWindowSumHistogram instanceof DoubleHistogram) {
+                    if ((movingWindowSumHistogram instanceof DoubleHistogram) &&
+                            (intervalHistogram instanceof DoubleHistogram)){
                         ((DoubleHistogram) movingWindowSumHistogram).add((DoubleHistogram) intervalHistogram);
-                    } else {
+                    } else if ((movingWindowSumHistogram instanceof Histogram) &&
+                            (intervalHistogram instanceof Histogram)){
                         ((Histogram) movingWindowSumHistogram).add((Histogram) intervalHistogram);
                     }
                     // Remove previous, now-out-of-window interval histograms from moving window:
-                    while ((movingWindowQueue.peek() != null) &&
-                            (movingWindowQueue.peek().getEndTimeStamp() <= windowCutOffTimeStamp)) {
+                    EncodableHistogram head;
+                    while (((head = movingWindowQueue.peek()) != null) &&
+                            (head.getEndTimeStamp() <= windowCutOffTimeStamp)) {
                         EncodableHistogram prevHist = movingWindowQueue.remove();
                         if (movingWindowSumHistogram instanceof DoubleHistogram) {
                             if (prevHist != null) {
                                 ((DoubleHistogram) movingWindowSumHistogram).subtract((DoubleHistogram) prevHist);
                             }
-                        } else {
+                        } else if (movingWindowSumHistogram instanceof Histogram) {
                             if (prevHist != null) {
                                 ((Histogram) movingWindowSumHistogram).subtract((Histogram) prevHist);
                             }
