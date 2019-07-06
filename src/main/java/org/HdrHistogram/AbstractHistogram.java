@@ -2014,6 +2014,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                     numberOfSignificantValueDigits);
             histogram.setIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
             histogram.setNormalizingIndexOffset(normalizingIndexOffset);
+            histogram.setAutoResize(true);
         } catch (IllegalAccessException | NoSuchMethodException |
                 InstantiationException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);

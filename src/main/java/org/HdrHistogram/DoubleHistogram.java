@@ -1545,6 +1545,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
                             histogramClass,
                             valuesHistogram
                     );
+            histogram.setAutoResize(true);
             return histogram;
         } catch (NoSuchMethodException | InstantiationException |
                 IllegalAccessException | InvocationTargetException ex) {
