@@ -153,7 +153,7 @@ public class WriterReaderPhaser {
      * This call is wait-free on architectures that support wait free atomic increment operations,
      * and is lock-free on architectures that do not.
      * <p>
-     * {@link WriterReaderPhaser#writerCriticalSectionEnter()} must be matched with a subsequent
+     * {@code writerCriticalSectionEnter()} must be matched with a subsequent
      * {@link WriterReaderPhaser#writerCriticalSectionExit(long)} in order for CriticalSectionPhaser
      * synchronization to function properly.
      *
@@ -170,7 +170,7 @@ public class WriterReaderPhaser {
      * This call is wait-free on architectures that support wait free atomic increment operations,
      * and is lock-free on architectures that do not.
      * <p>
-     * {@link WriterReaderPhaser#writerCriticalSectionExit(long)} must be matched with a preceding
+     * {@code writerCriticalSectionExit(long)} must be matched with a preceding
      * {@link WriterReaderPhaser#writerCriticalSectionEnter()} call, and must be provided with the
      * matching {@link WriterReaderPhaser#writerCriticalSectionEnter()} call's return value, in
      * order for CriticalSectionPhaser synchronization to function properly.
@@ -243,23 +243,24 @@ public class WriterReaderPhaser {
                 try {
                     TimeUnit.NANOSECONDS.sleep(yieldTimeNsec);
                 } catch (InterruptedException ex) {
+                    // nothing to do here, we just woke up earlier that expected.
                 }
             }
         }
     }
 
     /**
-     * Flip a phase in the {@link WriterReaderPhaser} instance, {@link WriterReaderPhaser#flipPhase()}
+     * Flip a phase in the {@link WriterReaderPhaser} instance, {@code flipPhase()}
      * can only be called while holding the {@link WriterReaderPhaser#readerLock() readerLock}.
-     * {@link WriterReaderPhaser#flipPhase()} will return only after all writer critical sections (protected by
+     * {@code flipPhase()} will return only after all writer critical sections (protected by
      * {@link WriterReaderPhaser#writerCriticalSectionEnter() writerCriticalSectionEnter} and
      * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionEnter}) that may have been
-     * in flight when the {@link WriterReaderPhaser#flipPhase()} call were made had completed.
+     * in flight when the {@code flipPhase()} call were made had completed.
      * <p>
-     * No actual writer critical section activity is required for {@link WriterReaderPhaser#flipPhase()} to
+     * No actual writer critical section activity is required for {@code flipPhase()} to
      * succeed.
      * <p>
-     * However, {@link WriterReaderPhaser#flipPhase()} is lock-free with respect to calls to
+     * However, {@code flipPhase()} is lock-free with respect to calls to
      * {@link WriterReaderPhaser#writerCriticalSectionEnter()} and
      * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}. It may spin-wait
      * or for active writer critical section code to complete.
