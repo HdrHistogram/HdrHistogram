@@ -264,4 +264,19 @@ public class Histogram extends AbstractHistogram {
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
     }
+
+    /**
+     * Construct a new Histogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A Histogream decoded from the string
+     * @throws DataFormatException
+     */
+    public static Histogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
+    }
 }
