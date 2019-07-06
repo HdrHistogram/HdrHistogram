@@ -185,7 +185,6 @@ public class HistogramLogScanner implements Closeable {
                 scanner.nextLine(); // Move to next line.
             }
         }
-        return;
     }
 
     /**
