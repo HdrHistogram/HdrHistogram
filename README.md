@@ -268,13 +268,13 @@ random, uncoordinated request would have experienced.
 Footprint estimation
 ----------------------------------------------
 
-Due to it's dynamic range representation, Histogram is relatively efficient
+Due to its dynamic range representation, Histogram is relatively efficient
 in memory space requirements given the accuracy and dynamic range it covers.
 Still, it is useful to be able to estimate the memory footprint involved
 for a given highestTrackableValue and numberOfSignificantValueDigits
 combination. Beyond a relatively small fixed-size footprint used for internal
 fields and stats (which can be estimated as "fixed at well less than 1KB"),
-the bulk of a Histogram's storage is taken up by it's data value recording
+the bulk of a Histogram's storage is taken up by its data value recording
 counts array. The total footprint can be conservatively estimated by:
 
 ``` java
