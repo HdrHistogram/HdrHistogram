@@ -22,9 +22,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, macOS-10.14, windows-2016]
-        java: [ '1.7', '1.8', '9', '10', '11.0.3', '12.0.2']
+        java: [1.7, 1.8, 9, 10, 11.0.3, 12.0.2, 13]
       fail-fast: false
-    name: Test Java ${{ matrix.java }}, ${{ matrix.os }}
+    name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v1
