@@ -19,12 +19,16 @@ jobs:
   test:
 
     runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        java: [ '1.6', '1.7', '1.8', '9.0.x', '10.0.x', '11.0.3', '12.0.2', '13' ]
+    name: Java ${{ matrix.java }} Test
 
     steps:
     - uses: actions/checkout@v1
-    - name: Set up JDK 1.8
+    - name: Set up JDK ${{ matrix.java }}
       uses: actions/setup-java@v1
       with:
-        java-version: 1.8
-    - name: Build with Maven
+        java-version: ${{ matrix.java }}
+    - name: Test with Maven
       run: mvn test --file pom.xml
