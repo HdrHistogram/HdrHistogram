@@ -1706,6 +1706,24 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         }
     }
 
+    //   ########  ######## ########   ######  ######## ##    ## ######## #### ##       ########
+    //   ##     ## ##       ##     ## ##    ## ##       ###   ##    ##     ##  ##       ##
+    //   ##     ## ##       ##     ## ##       ##       ####  ##    ##     ##  ##       ##
+    //   ########  ######   ########  ##       ######   ## ## ##    ##     ##  ##       ######
+    //   ##        ##       ##   ##   ##       ##       ##  ####    ##     ##  ##       ##
+    //   ##        ##       ##    ##  ##    ## ##       ##   ###    ##     ##  ##       ##
+    //   ##        ######## ##     ##  ######  ######## ##    ##    ##    #### ######## ########
+    //
+    //    #######  ##     ## ######## ########  ##     ## ########
+    //   ##     ## ##     ##    ##    ##     ## ##     ##    ##
+    //   ##     ## ##     ##    ##    ##     ## ##     ##    ##
+    //   ##     ## ##     ##    ##    ########  ##     ##    ##
+    //   ##     ## ##     ##    ##    ##        ##     ##    ##
+    //   ##     ## ##     ##    ##    ##        ##     ##    ##
+    //    #######   #######     ##    ##         #######     ##
+    //
+    // Textual percentile output support:
+    //
 
     /**
      * Produce textual representation of the value distribution of histogram data by percentile. The distribution is
@@ -1721,25 +1739,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                                              final Double outputValueUnitScalingRatio) {
         outputPercentileDistribution(printStream, 5, outputValueUnitScalingRatio);
     }
-
-    //   ########  ######## ########   ######  ######## ##    ## ######## #### ##       ########
-    //   ##     ## ##       ##     ## ##    ## ##       ###   ##    ##     ##  ##       ##
-    //   ##     ## ##       ##     ## ##       ##       ####  ##    ##     ##  ##       ##
-    //   ########  ######   ########  ##       ######   ## ## ##    ##     ##  ##       ######
-    //   ##        ##       ##   ##   ##       ##       ##  ####    ##     ##  ##       ##
-    //   ##        ##       ##    ##  ##    ## ##       ##   ###    ##     ##  ##       ##
-    //   ##        ######## ##     ##  ######  ######## ##    ##    ##    #### ######## ######## 
-    //
-    //    #######  ##     ## ######## ########  ##     ## ########
-    //   ##     ## ##     ##    ##    ##     ## ##     ##    ##
-    //   ##     ## ##     ##    ##    ##     ## ##     ##    ##
-    //   ##     ## ##     ##    ##    ########  ##     ##    ##
-    //   ##     ## ##     ##    ##    ##        ##     ##    ##
-    //   ##     ## ##     ##    ##    ##        ##     ##    ##    
-    //    #######   #######     ##    ##         #######     ##
-    //
-    // Textual percentile output support:
-    //
 
     /**
      * Produce textual representation of the value distribution of histogram data by percentile. The distribution is
