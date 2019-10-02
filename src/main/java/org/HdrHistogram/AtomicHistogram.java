@@ -232,7 +232,7 @@ public class AtomicHistogram extends Histogram {
      *
      * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
      * @return A AtomicHistogram decoded from the string
-     * @throws DataFormatException
+     * @throws DataFormatException on error parsing/decompressing the input
      */
     public static AtomicHistogram fromString(final String base64CompressedHistogramString)
             throws DataFormatException {

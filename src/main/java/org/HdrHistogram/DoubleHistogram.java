@@ -1639,7 +1639,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      *
      * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
      * @return A DoubleHistogram decoded from the string
-     * @throws DataFormatException
+     * @throws DataFormatException on error parsing/decompressing the input
      */
     public static DoubleHistogram fromString(final String base64CompressedHistogramString)
             throws DataFormatException {

@@ -117,7 +117,7 @@ public class SynchronizedHistogram extends Histogram {
      *
      * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
      * @return A SynchronizedHistogram decoded from the string
-     * @throws DataFormatException
+     * @throws DataFormatException on error parsing/decompressing the input
      */
     public static SynchronizedHistogram fromString(final String base64CompressedHistogramString)
             throws DataFormatException {
@@ -160,6 +160,7 @@ public class SynchronizedHistogram extends Histogram {
     /**
      * @deprecated
      */
+    @SuppressWarnings("deprecation")
     @Override
     public synchronized void recordValue(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
@@ -187,11 +188,13 @@ public class SynchronizedHistogram extends Histogram {
     }
 
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public void copyInto(final AbstractHistogram targetHistogram) {
         // Synchronize copyInto(). Avoid deadlocks by synchronizing in order of construction identity count.
         if (identity < targetHistogram.identity) {
             synchronized (this) {
+                //noinspection SynchronizationOnLocalVariableOrMethodParameter
                 synchronized (targetHistogram) {
                     super.copyInto(targetHistogram);
                 }
@@ -205,6 +208,7 @@ public class SynchronizedHistogram extends Histogram {
         }
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public void copyIntoCorrectedForCoordinatedOmission(final AbstractHistogram targetHistogram,
                                                         final long expectedIntervalBetweenValueSamples) {
@@ -225,6 +229,7 @@ public class SynchronizedHistogram extends Histogram {
         }
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public void add(final AbstractHistogram otherHistogram) {
         // Synchronize add(). Avoid deadlocks by synchronizing in order of construction identity count.
@@ -243,6 +248,7 @@ public class SynchronizedHistogram extends Histogram {
         }
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public void subtract(final AbstractHistogram otherHistogram)
             throws ArrayIndexOutOfBoundsException, IllegalArgumentException {
@@ -262,6 +268,7 @@ public class SynchronizedHistogram extends Histogram {
         }
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public void addWhileCorrectingForCoordinatedOmission(final AbstractHistogram fromHistogram,
                                                          final long expectedIntervalBetweenValueSamples) {
@@ -291,6 +298,7 @@ public class SynchronizedHistogram extends Histogram {
         super.shiftValuesRight(numberOfBinaryOrdersOfMagnitude);
     }
 
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
     @Override
     public boolean equals(final Object other){
         if ( this == other ) {

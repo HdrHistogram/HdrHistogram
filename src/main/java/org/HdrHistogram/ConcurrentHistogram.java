@@ -580,7 +580,7 @@ public class ConcurrentHistogram extends Histogram {
      *
      * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
      * @return A ConcurrentHistogram decoded from the string
-     * @throws DataFormatException
+     * @throws DataFormatException on error parsing/decompressing the input
      */
     public static ConcurrentHistogram fromString(final String base64CompressedHistogramString)
             throws DataFormatException {
