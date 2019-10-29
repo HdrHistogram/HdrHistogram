@@ -20,8 +20,8 @@ import java.util.zip.Deflater;
  * <p>
  * It is important to note that {@link DoubleHistogram} is not thread-safe, and does not support safe concurrent
  * recording by multiple threads. If concurrent operation is required, consider usings
- * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram}, or(recommended)
- * {@link DoubleRecorder}, which are intended for this purpose.
+ * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram},
+ * or (recommended) {@link DoubleRecorder} or {@link SingleWriterDoubleRecorder} which are intended for this purpose.
  * <p>
  * {@link DoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.
