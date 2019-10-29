@@ -25,7 +25,7 @@ import java.util.zip.DataFormatException;
  * potentially concurrent, multi-threaded updates that would safely work in the presence of queries, copies, or
  * additions of histogram objects should either take care to externally synchronize and/or order their access,
  * use the {@link SynchronizedDoubleHistogram} variant, or (recommended) use the {@link DoubleRecorder}
- * class, which is intended for this purpose.
+ * or {@link SingleWriterDoubleRecorder} which are intended for this purpose.
  * <p>
  * {@link ConcurrentDoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.
@@ -80,7 +80,7 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
      *                                       separation. Must be a non-negative integer between 0 and 5.
      */
     public ConcurrentDoubleHistogram(final long highestToLowestValueRatio, final int numberOfSignificantValueDigits) {
-        super(highestToLowestValueRatio, numberOfSignificantValueDigits, ConcurrentHistogram.class);
+        this(highestToLowestValueRatio, numberOfSignificantValueDigits, ConcurrentHistogram.class);
     }
 
     /**
@@ -92,6 +92,23 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
         super(source);
     }
 
+    ConcurrentDoubleHistogram(final long highestToLowestValueRatio,
+                              final int numberOfSignificantValueDigits,
+                              final Class<? extends AbstractHistogram> internalCountsHistogramClass) {
+        super(highestToLowestValueRatio, numberOfSignificantValueDigits, internalCountsHistogramClass);
+    }
+
+    ConcurrentDoubleHistogram(final long highestToLowestValueRatio,
+                    final int numberOfSignificantValueDigits,
+                    final Class<? extends AbstractHistogram> internalCountsHistogramClass,
+                    AbstractHistogram internalCountsHistogram) {
+        super(
+                highestToLowestValueRatio,
+                numberOfSignificantValueDigits,
+                internalCountsHistogramClass,
+                internalCountsHistogram
+        );
+    }
 
     /**
      * Construct a new ConcurrentDoubleHistogram by decoding it from a ByteBuffer.
@@ -114,18 +131,6 @@ public class ConcurrentDoubleHistogram extends DoubleHistogram {
         } catch (DataFormatException ex) {
             throw new RuntimeException(ex);
         }
-    }
-
-    ConcurrentDoubleHistogram(final long highestToLowestValueRatio,
-                            final int numberOfSignificantValueDigits,
-                            final Class<? extends AbstractHistogram> internalCountsHistogramClass,
-                            AbstractHistogram internalCountsHistogram) {
-        super(
-                highestToLowestValueRatio,
-                numberOfSignificantValueDigits,
-                internalCountsHistogramClass,
-                internalCountsHistogram
-        );
     }
 
     /**
