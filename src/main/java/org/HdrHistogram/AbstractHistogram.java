@@ -2317,6 +2317,29 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     // Internal helper methods:
     //
 
+    private String recordedValuesToString() {
+        String output = "";
+        try {
+            for (int i = 0; i < countsArrayLength; i++) {
+                if (getCountAtIndex(i) != 0) {
+                    output += String.format("[%d] : %d\n", i, getCountAtIndex(i));
+                }
+            }
+            return output;
+        } catch(Exception ex) {
+            output += "!!! Exception thown in value iteration...\n";
+        }
+        return output;
+    }
+
+    @Override
+    public String toString() {
+        String output = "AbstractHistogram:\n";
+        output += super.toString();
+        output += recordedValuesToString();
+        return output;
+    }
+
     void establishInternalTackingValues() {
         establishInternalTackingValues(countsArrayLength);
     }
