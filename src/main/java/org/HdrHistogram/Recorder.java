@@ -64,7 +64,7 @@ public class Recorder implements ValueRecorder {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      * @param packed Specifies whether the recorder will uses a packed internal representation or not.
      */
-    Recorder(final int numberOfSignificantValueDigits, boolean packed) {
+    public Recorder(final int numberOfSignificantValueDigits, boolean packed) {
         activeHistogram = packed ?
                 new InternalPackedConcurrentHistogram(instanceId, numberOfSignificantValueDigits) :
                 new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
