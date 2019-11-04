@@ -114,7 +114,7 @@ public class ConcurrentHistogram extends Histogram {
     void incrementCountAtIndex(final int index) {
         long criticalValue = wrp.writerCriticalSectionEnter();
         try {
-            activeCounts.incrementAndGet(
+            activeCounts.atomicIncrement(
                     normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()));
         } finally {
             wrp.writerCriticalSectionExit(criticalValue);
@@ -125,7 +125,7 @@ public class ConcurrentHistogram extends Histogram {
     void addToCountAtIndex(final int index, final long value) {
         long criticalValue = wrp.writerCriticalSectionEnter();
         try {
-            activeCounts.addAndGet(
+            activeCounts.atomicAdd(
                     normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), value);
         } finally {
             wrp.writerCriticalSectionExit(criticalValue);
@@ -167,7 +167,7 @@ public class ConcurrentHistogram extends Histogram {
         try {
             long integerValue = (long) (value * activeCounts.getDoubleToIntegerValueConversionRatio());
             int index = countsArrayIndex(integerValue);
-            activeCounts.incrementAndGet(
+            activeCounts.atomicIncrement(
                     normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()));
             updateMinAndMax(integerValue);
             incrementTotalCount();
@@ -183,7 +183,7 @@ public class ConcurrentHistogram extends Histogram {
         try {
             long integerValue = (long) (value * activeCounts.getDoubleToIntegerValueConversionRatio());
             int index = countsArrayIndex(integerValue);
-            activeCounts.addAndGet(
+            activeCounts.atomicAdd(
                     normalizeIndex(index, activeCounts.getNormalizingIndexOffset(), activeCounts.length()), count);
             updateMinAndMax(integerValue);
             addToTotalCount(count);
@@ -633,9 +633,9 @@ public class ConcurrentHistogram extends Histogram {
 
         long get(int index);
 
-        long incrementAndGet(int index);
+        void atomicIncrement(int index);
 
-        long addAndGet(int index, long valueToAdd);
+        void atomicAdd(int index, long valueToAdd);
 
         void lazySet(int index, long newValue);
 
@@ -676,5 +676,16 @@ public class ConcurrentHistogram extends Histogram {
         public int getEstimatedFootprintInBytes() {
             return 256 + (8 * this.length());
         }
+
+        @Override
+        public void atomicIncrement(int index) {
+            incrementAndGet(index);
+        }
+
+        @Override
+        public void atomicAdd(int index, long valueToAdd) {
+            addAndGet(index, valueToAdd);
+        }
+
     }
 }
