@@ -183,8 +183,8 @@ public class WriterReaderPhaser {
     }
 
     /**
-     * Enter to a critical section containing a read operation (mutually excludes against other
-     * {@link WriterReaderPhaser#readerLock} calls).
+     * Enter to a critical section containing a read operation (reentrant, mutually excludes against
+     * {@link WriterReaderPhaser#readerLock} calls by other threads).
      * <p>
      * {@link WriterReaderPhaser#readerLock} DOES NOT provide synchronization
      * against {@link WriterReaderPhaser#writerCriticalSectionEnter()} calls. Use {@link WriterReaderPhaser#flipPhase()}

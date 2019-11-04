@@ -44,8 +44,32 @@ public class DoubleRecorder implements DoubleValueRecorder {
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile InternalConcurrentDoubleHistogram activeHistogram;
-    private InternalConcurrentDoubleHistogram inactiveHistogram;
+    private volatile ConcurrentDoubleHistogram activeHistogram;
+    private ConcurrentDoubleHistogram inactiveHistogram;
+
+    /**
+     * Construct an auto-resizing {@link DoubleRecorder} using a precision stated as a number
+     * of significant decimal digits.
+     * <p>
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link DoubleRecorder} can be configuired to
+     * track value counts in a packed internal representation optimized for typical histogram recoded values are
+     * sparse in the value range and tend to be incremented in small unit counts. This packed representation tends
+     * to require significantly smaller amounts of stoarge when compared to unpacked representations, but can incur
+     * additional recording cost due to resizing and repacking operations that may
+     * occur as previously unrecorded values are encountered.
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     */
+    public DoubleRecorder(final int numberOfSignificantValueDigits, boolean packed) {
+        activeHistogram = packed ?
+                new PackedInternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits) :
+                new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+    }
 
     /**
      * Construct an auto-resizing {@link DoubleRecorder} using a precision stated as a number
@@ -56,9 +80,7 @@ public class DoubleRecorder implements DoubleValueRecorder {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public DoubleRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalConcurrentDoubleHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = null;
-        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+        this(numberOfSignificantValueDigits, false);
     }
 
     /**
@@ -212,7 +234,7 @@ public class DoubleRecorder implements DoubleValueRecorder {
                                                              boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
-        inactiveHistogram = (InternalConcurrentDoubleHistogram) histogramToRecycle;
+        inactiveHistogram = (ConcurrentDoubleHistogram) histogramToRecycle;
         performIntervalSample();
         DoubleHistogram sampledHistogram = inactiveHistogram;
         inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
@@ -249,13 +271,21 @@ public class DoubleRecorder implements DoubleValueRecorder {
 
             // Make sure we have an inactive version to flip in:
             if (inactiveHistogram == null) {
-                inactiveHistogram = new InternalConcurrentDoubleHistogram(activeHistogram);
+                if (activeHistogram instanceof InternalConcurrentDoubleHistogram) {
+                    inactiveHistogram = new InternalConcurrentDoubleHistogram(
+                            (InternalConcurrentDoubleHistogram) activeHistogram);
+                } else if (activeHistogram instanceof PackedInternalConcurrentDoubleHistogram) {
+                    inactiveHistogram = new PackedInternalConcurrentDoubleHistogram(
+                            instanceId, activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    throw new IllegalStateException("Unexpected internal histogram type for activeHistogram");
+                }
             }
 
             inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
-            final InternalConcurrentDoubleHistogram tempHistogram = inactiveHistogram;
+            final ConcurrentDoubleHistogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -273,7 +303,7 @@ public class DoubleRecorder implements DoubleValueRecorder {
         }
     }
 
-    private class InternalConcurrentDoubleHistogram extends ConcurrentDoubleHistogram {
+    private static class InternalConcurrentDoubleHistogram extends ConcurrentDoubleHistogram {
         private final long containingInstanceId;
 
         private InternalConcurrentDoubleHistogram(long id, int numberOfSignificantValueDigits) {
@@ -294,6 +324,15 @@ public class DoubleRecorder implements DoubleValueRecorder {
         }
     }
 
+    private static class PackedInternalConcurrentDoubleHistogram extends PackedConcurrentDoubleHistogram {
+        private final long containingInstanceId;
+
+        private PackedInternalConcurrentDoubleHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+    }
+
     private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram,
                                                    boolean enforeContainingInstance) {
         boolean bad = true;
@@ -303,7 +342,14 @@ public class DoubleRecorder implements DoubleValueRecorder {
                 &&
                 ((!enforeContainingInstance) ||
                         (((InternalConcurrentDoubleHistogram) replacementHistogram).containingInstanceId ==
-                                activeHistogram.containingInstanceId)
+                                ((InternalConcurrentDoubleHistogram) activeHistogram).containingInstanceId)
+                )) {
+            bad = false;
+        } else if ((replacementHistogram instanceof PackedInternalConcurrentDoubleHistogram)
+                &&
+                ((!enforeContainingInstance) ||
+                        (((PackedInternalConcurrentDoubleHistogram) replacementHistogram).containingInstanceId ==
+                                ((PackedInternalConcurrentDoubleHistogram) activeHistogram).containingInstanceId)
                 )) {
             bad = false;
         }

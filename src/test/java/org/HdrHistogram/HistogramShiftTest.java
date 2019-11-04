@@ -10,6 +10,10 @@ package org.HdrHistogram;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.HdrHistogram.HistogramTestUtils.constructHistogram;
 
 /**
  * JUnit test for {@link Histogram}
@@ -17,46 +21,27 @@ import org.junit.Test;
 public class HistogramShiftTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
 
-    @Test
-    public void testHistogramShift() throws Exception {
-        Histogram histogram = new Histogram(highestTrackableValue, 3);
+    static final Class[] histogramClassesNoAtomic = {
+            Histogram.class, ConcurrentHistogram.class,
+            SynchronizedHistogram.class,
+            PackedHistogram.class, PackedConcurrentHistogram.class
+    };
+
+    @ParameterizedTest
+    @ValueSource(classes = {
+            Histogram.class,
+            ConcurrentHistogram.class,
+            SynchronizedHistogram.class,
+            PackedHistogram.class,
+            PackedConcurrentHistogram.class,
+            IntCountsHistogram.class,
+            ShortCountsHistogram.class,
+    })
+    public void testHistogramShift(Class histoClass) throws Exception {
+        // Histogram h = new Histogram(1L, 1L << 32, 3);
+        AbstractHistogram histogram = constructHistogram(histoClass, highestTrackableValue, 3);
         testShiftLowestBucket(histogram);
         testShiftNonLowestBucket(histogram);
-    }
-
-    @Test
-    public void testIntHistogramShift() throws Exception {
-        IntCountsHistogram intCountsHistogram = new IntCountsHistogram(highestTrackableValue, 3);
-        testShiftLowestBucket(intCountsHistogram);
-        testShiftNonLowestBucket(intCountsHistogram);
-    }
-
-    @Test
-    public void testShortHistogramShift() throws Exception {
-        ShortCountsHistogram shortCountsHistogram = new ShortCountsHistogram(highestTrackableValue, 3);
-        testShiftLowestBucket(shortCountsHistogram);
-        testShiftNonLowestBucket(shortCountsHistogram);
-    }
-
-    @Test
-    public void testSynchronizedHistogramShift() throws Exception {
-        SynchronizedHistogram synchronizedHistogram = new SynchronizedHistogram(highestTrackableValue, 3);
-        testShiftLowestBucket(synchronizedHistogram);
-        testShiftNonLowestBucket(synchronizedHistogram);
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testAtomicHistogramShift() throws Exception {
-        AtomicHistogram atomicHistogram = new AtomicHistogram(highestTrackableValue, 3);
-        testShiftLowestBucket(atomicHistogram);
-        testShiftNonLowestBucket(atomicHistogram);
-    }
-
-    @Test
-    public void testConcurrentHistogramShift() throws Exception {
-        ConcurrentHistogram concurrentHistogram = new ConcurrentHistogram(highestTrackableValue, 3);
-        testShiftLowestBucket(concurrentHistogram);
-        testShiftNonLowestBucket(concurrentHistogram);
     }
 
     void testShiftLowestBucket(AbstractHistogram histogram) {

@@ -26,7 +26,7 @@ import java.lang.reflect.Method;
  * Java SE version (e.g. beyond 7 or before 9).
  *
  */
-public class Base64Helper {
+class Base64Helper {
 
     /**
      * Converts an array of bytes into a Base64 string.

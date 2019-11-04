@@ -9,7 +9,9 @@
 package org.HdrHistogram;
 
 import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Random;
 import java.util.concurrent.Semaphore;
@@ -25,12 +27,8 @@ public class ConcurrentHistogramTest {
 
     @Test
     public void testConcurrentAutoSizedRecording() throws Exception {
-        doConcurrentRecordValues();
-    }
-
-    public void doConcurrentRecordValues() throws Exception {
         ConcurrentHistogram histogram = new ConcurrentHistogram(2);
-        ValueRecorder valueRecorders[] = new ValueRecorder[24];
+        ValueRecorder valueRecorders[] = new ValueRecorder[64];
         doRun = true;
         waitToGo = true;
         for (int i = 0; i < valueRecorders.length; i++) {
@@ -40,7 +38,7 @@ public class ConcurrentHistogramTest {
 
         long sumOfCounts;
 
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 1000; i++) {
 
             // Ready:
             sumOfCounts = 0;
@@ -62,7 +60,7 @@ public class ConcurrentHistogramTest {
                 v.setSem.release();
             }
 
-            Thread.sleep(1);
+            Thread.sleep(2);
 
             // Go! :
             waitToGo = false;
