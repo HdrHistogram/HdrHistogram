@@ -145,10 +145,15 @@ abstract class AbstractPackedArrayContext implements Serializable {
     static final int MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY = 16;
     static final int MAX_SUPPORTED_PACKED_COUNTS_ARRAY_LENGTH = (Short.MAX_VALUE / 4);
 
+    private final boolean isPacked;
+    private int physicalLength;
     private int virtualLength = 0;
     private int topLevelShift = Integer.MAX_VALUE; // Make it non-sensical until properly initialized.
 
-    AbstractPackedArrayContext() {}
+    AbstractPackedArrayContext(final int initialPhysicalLength) {
+        physicalLength = Math.max(initialPhysicalLength, MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
+        isPacked = (physicalLength <= AbstractPackedArrayContext.MAX_SUPPORTED_PACKED_COUNTS_ARRAY_LENGTH);
+    }
 
     void init(final int virtualLength) {
         if (!isPacked()) {
@@ -195,8 +200,6 @@ abstract class AbstractPackedArrayContext implements Serializable {
     abstract void clearContents();
 
     abstract void resizeArray(int newLength);
-
-    abstract boolean isPacked();
 
     abstract long getAtUnpackedIndex(int index);
 
@@ -937,6 +940,14 @@ abstract class AbstractPackedArrayContext implements Serializable {
     //  ##    ##  ##   ##      ##          ##   ##      ##    ## ##     ##  ##  ##          ##
     //   ######  #### ######## ########     ####  ##     ######  ##     ## #### ##          ##
     //
+
+    boolean isPacked() {
+        return isPacked;
+    }
+
+    int getPhysicalLength() {
+        return physicalLength;
+    }
 
     int getVirtualLength() {
         return virtualLength;

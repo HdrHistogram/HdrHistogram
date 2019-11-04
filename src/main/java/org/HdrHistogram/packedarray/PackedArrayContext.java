@@ -7,25 +7,27 @@ import java.util.Arrays;
  */
 class PackedArrayContext extends AbstractPackedArrayContext {
 
+    PackedArrayContext(final int initialPhysicalLength) {
+        super(initialPhysicalLength);
+    }
+
     PackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
-        int physicalLength = Math.max(initialPhysicalLength, MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
-        array = new long[physicalLength];
-        isPacked = (physicalLength <= AbstractPackedArrayContext.MAX_SUPPORTED_PACKED_COUNTS_ARRAY_LENGTH);
+        this(initialPhysicalLength);
+        array = new long[getPhysicalLength()];
         init(virtualLength);
     }
 
     PackedArrayContext(final int virtualLength,
-                       final PackedArrayContext from,
+                       final AbstractPackedArrayContext from,
                        final int newPhysicalArrayLength) {
         this(virtualLength, newPhysicalArrayLength);
-        if (isPacked) {
+        if (isPacked()) {
             populateEquivalentEntriesWithZerosFromOther(from);
         }
     }
 
     private long[] array;
     private int populatedShortLength = 0;
-    private final boolean isPacked;
 
     @Override
     int length() {
@@ -76,11 +78,6 @@ class PackedArrayContext extends AbstractPackedArrayContext {
     @Override
     void resizeArray(int newLength) {
         array = Arrays.copyOf(array, newLength);
-    }
-
-    @Override
-    boolean isPacked() {
-        return isPacked;
     }
 
     @Override

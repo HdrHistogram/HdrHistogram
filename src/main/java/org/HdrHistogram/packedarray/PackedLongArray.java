@@ -6,28 +6,22 @@ package org.HdrHistogram.packedarray;
  */
 public class PackedLongArray extends AbstractPackedLongArray {
 
+    PackedLongArray() {}
 
     public PackedLongArray(final int virtualLength) {
         this(virtualLength, AbstractPackedArrayContext.MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
     }
 
     public PackedLongArray(final int virtualLength, final int initialPhysicalLength) {
-        arrayContext = new PackedArrayContext(virtualLength, initialPhysicalLength);
-    }
-
-    private PackedArrayContext arrayContext;
-
-    @Override
-    PackedArrayContext getStorageArrayContext() {
-        return arrayContext;
+        setArrayContext(new PackedArrayContext(virtualLength, initialPhysicalLength));
     }
 
     @Override
     void resizeStorageArray(int newPhysicalLengthInLongs) {
+        AbstractPackedArrayContext oldArrayContext = getArrayContext();
         PackedArrayContext newArrayContext =
-                new PackedArrayContext(arrayContext.getVirtualLength(), arrayContext, newPhysicalLengthInLongs);
-        PackedArrayContext oldArrayContext = arrayContext;
-        arrayContext = newArrayContext;
+                new PackedArrayContext(oldArrayContext.getVirtualLength(), oldArrayContext, newPhysicalLengthInLongs);
+        setArrayContext(newArrayContext);
         for (IterationValue v : oldArrayContext.nonZeroValues()) {
             set(v.getIndex(), v.getValue());
         }
@@ -40,15 +34,16 @@ public class PackedLongArray extends AbstractPackedLongArray {
                     "Cannot set virtual length, as requested length " + newVirtualArrayLength +
                             " is smaller than the current virtual length " + length());
         }
-        if (arrayContext.isPacked() &&
-                (arrayContext.determineTopLevelShiftForVirtualLength(newVirtualArrayLength) ==
-                arrayContext.getTopLevelShift())) {
+        AbstractPackedArrayContext currentArrayContext = getArrayContext();
+        if (currentArrayContext.isPacked() &&
+                (currentArrayContext.determineTopLevelShiftForVirtualLength(newVirtualArrayLength) ==
+                        currentArrayContext.getTopLevelShift())) {
             // No changes to the array context contents is needed. Just change the virtual length.
-            arrayContext.setVirtualLength(newVirtualArrayLength);
+            currentArrayContext.setVirtualLength(newVirtualArrayLength);
             return;
         }
-        PackedArrayContext oldArrayContext = arrayContext;
-        arrayContext = new PackedArrayContext(newVirtualArrayLength, oldArrayContext, oldArrayContext.length());
+        AbstractPackedArrayContext oldArrayContext = currentArrayContext;
+        setArrayContext(new PackedArrayContext(newVirtualArrayLength, oldArrayContext, oldArrayContext.length()));
         for (IterationValue v : oldArrayContext.nonZeroValues()) {
             set(v.getIndex(), v.getValue());
         }
@@ -56,7 +51,7 @@ public class PackedLongArray extends AbstractPackedLongArray {
 
     @Override
     void clearContents() {
-        arrayContext.clearContents();
+        getArrayContext().clearContents();
     }
 
     @Override

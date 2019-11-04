@@ -17,37 +17,34 @@ import java.io.ObjectInputStream;
  * array that is not at rest.
  * </p>
  */
-public class ConcurrentPackedLongArray extends AbstractPackedLongArray {
+public class ConcurrentPackedLongArray extends PackedLongArray {
 
     public ConcurrentPackedLongArray(final int virtualLength) {
         this(virtualLength, AbstractPackedArrayContext.MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
     }
 
     public ConcurrentPackedLongArray(final int virtualLength, final int initialPhysicalLength) {
-        arrayContext = new ConcurrentPackedArrayContext(virtualLength, initialPhysicalLength);
+        super();
+        setArrayContext(new ConcurrentPackedArrayContext(virtualLength, initialPhysicalLength));
     }
 
     transient WriterReaderPhaser wrp = new WriterReaderPhaser();
 
-    private ConcurrentPackedArrayContext arrayContext;
-
-    @Override
-    ConcurrentPackedArrayContext getStorageArrayContext() {
-        return arrayContext;
-    }
-
     @Override
     void resizeStorageArray(int newPhysicalLengthInLongs) {
-        ConcurrentPackedArrayContext inactiveArrayContext;
+        AbstractPackedArrayContext inactiveArrayContext;
         try {
             wrp.readerLock();
 
             ConcurrentPackedArrayContext newArrayContext =
-                    new ConcurrentPackedArrayContext(arrayContext.getVirtualLength(), arrayContext, newPhysicalLengthInLongs);
+                    new ConcurrentPackedArrayContext(
+                            getArrayContext().getVirtualLength(),
+                            getArrayContext(), newPhysicalLengthInLongs
+                    );
 
             // Flip the current live array context and the newly created one:
-            inactiveArrayContext = arrayContext;
-            arrayContext = newArrayContext;
+            inactiveArrayContext = getArrayContext();
+            setArrayContext(newArrayContext);
 
             wrp.flipPhase();
 
@@ -76,19 +73,24 @@ public class ConcurrentPackedLongArray extends AbstractPackedLongArray {
                     "Cannot set virtual length, as requested length " + newVirtualArrayLength +
                             " is smaller than the current virtual length " + length());
         }
-        ConcurrentPackedArrayContext inactiveArrayContext;
+        AbstractPackedArrayContext inactiveArrayContext;
         try {
             wrp.readerLock();
-            if (arrayContext.isPacked() &&
-                    (arrayContext.determineTopLevelShiftForVirtualLength(newVirtualArrayLength) ==
-                    arrayContext.getTopLevelShift())) {
+            AbstractPackedArrayContext currentArrayContext = getArrayContext();
+            if (currentArrayContext.isPacked() &&
+                    (currentArrayContext.determineTopLevelShiftForVirtualLength(newVirtualArrayLength) ==
+                            currentArrayContext.getTopLevelShift())) {
                 // No changes to the array context contents is needed. Just change the virtual length.
-                arrayContext.setVirtualLength(newVirtualArrayLength);
+                currentArrayContext.setVirtualLength(newVirtualArrayLength);
                 return;
             }
-            inactiveArrayContext = arrayContext;
-            arrayContext = new ConcurrentPackedArrayContext(
-                    newVirtualArrayLength, inactiveArrayContext, inactiveArrayContext.length());
+            inactiveArrayContext = currentArrayContext;
+            setArrayContext(
+                    new ConcurrentPackedArrayContext(
+                            newVirtualArrayLength,
+                            inactiveArrayContext,
+                            inactiveArrayContext.length()
+                    ));
 
             wrp.flipPhase();
 
@@ -110,7 +112,7 @@ public class ConcurrentPackedLongArray extends AbstractPackedLongArray {
     void clearContents() {
         try {
             wrp.readerLock();
-            arrayContext.clearContents();
+            getArrayContext().clearContents();
         } finally {
             wrp.readerUnlock();
         }
@@ -125,8 +127,6 @@ public class ConcurrentPackedLongArray extends AbstractPackedLongArray {
     void criticalSectionExit(long criticalValueAtEnter) {
         wrp.writerCriticalSectionExit(criticalValueAtEnter);
     }
-
-    /////
 
     @Override
     public String toString() {

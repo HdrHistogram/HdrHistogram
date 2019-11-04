@@ -19,13 +19,21 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
 
     private static final int NUMBER_OF_SETS = 8;
 
+    private AbstractPackedArrayContext arrayContext;
+
+    AbstractPackedArrayContext getArrayContext() {
+        return arrayContext;
+    }
+
+    void setArrayContext(AbstractPackedArrayContext newArrayContext) {
+        arrayContext = newArrayContext;
+    }
+
     /**
      * Set a new virtual length for the array.
      * @param newVirtualArrayLength the
      */
     abstract public void setVirtualLength(final int newVirtualArrayLength);
-
-    abstract AbstractPackedArrayContext getStorageArrayContext();
 
     abstract void resizeStorageArray(int newPhysicalLengthInLongs);
 
@@ -39,7 +47,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
     @Override
     public String toString() {
         String output = "PackedArray:\n";
-        AbstractPackedArrayContext arrayContext = getStorageArrayContext();
+        AbstractPackedArrayContext arrayContext = getArrayContext();
         output += arrayContext.toString();
         return output;
     }
@@ -59,7 +67,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                 long criticalValue = criticalSectionEnter();
                 try {
                     // Establish context within: critical section
-                    AbstractPackedArrayContext arrayContext = getStorageArrayContext();
+                    AbstractPackedArrayContext arrayContext = getArrayContext();
                     // Deal with unpacked context:
                     if (!arrayContext.isPacked()) {
                         return arrayContext.getAtUnpackedIndex(index);
@@ -114,7 +122,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                     final long criticalValue = criticalSectionEnter();
                     try {
                         // Establish context within: critical section
-                        AbstractPackedArrayContext arrayContext = getStorageArrayContext();
+                        AbstractPackedArrayContext arrayContext = getArrayContext();
                         // Deal with unpacked context:
                         if (!arrayContext.isPacked()) {
                             arrayContext.addAndGetAtUnpackedIndex(index, remainingValueToAdd);
@@ -163,7 +171,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                     long criticalValue = criticalSectionEnter();
                     try {
                         // Establish context within: critical section
-                        AbstractPackedArrayContext arrayContext = getStorageArrayContext();
+                        AbstractPackedArrayContext arrayContext = getArrayContext();
                         // Deal with unpacked context:
                         if (!arrayContext.isPacked()) {
                             arrayContext.setAtUnpackedIndex(index, value);
@@ -214,7 +222,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
      * @return the current physical length (in longs) of the array's current backing storage
      */
     public int getPhysicalLength() {
-        return getStorageArrayContext().length();
+        return getArrayContext().length();
     }
 
     /**
@@ -222,7 +230,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
      * @return the (virtual) length of the array
      */
     public int length() {
-        return getStorageArrayContext().getVirtualLength();
+        return getArrayContext().getVirtualLength();
     }
 
     // Regular array iteration (iterates over all virtrual indexes, zero-value or not:
@@ -264,7 +272,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
      * @return an Iterator over all non-Zero values in the array
      */
     public Iterable<IterationValue> nonZeroValues() {
-        return getStorageArrayContext().nonZeroValues();
+        return getArrayContext().nonZeroValues();
     }
 
 }

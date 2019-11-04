@@ -4,27 +4,29 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongArray;
 
 
-class ConcurrentPackedArrayContext extends AbstractPackedArrayContext {
+class ConcurrentPackedArrayContext extends PackedArrayContext {
+
+    ConcurrentPackedArrayContext(final int initialPhysicalLength) {
+        super(initialPhysicalLength);
+    }
 
     public ConcurrentPackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
-        int physicalLength = Math.max(initialPhysicalLength, MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
-        array = new AtomicLongArray(physicalLength);
-        isPacked = (physicalLength <= AbstractPackedArrayContext.MAX_SUPPORTED_PACKED_COUNTS_ARRAY_LENGTH);
+        this(initialPhysicalLength);
+        array = new AtomicLongArray(getPhysicalLength());
         init(virtualLength);
     }
 
-    public ConcurrentPackedArrayContext(int newVirtualCountsArraySize,
-                                        final ConcurrentPackedArrayContext from,
-                                        final int arrayLength) {
+    ConcurrentPackedArrayContext(int newVirtualCountsArraySize,
+                                 final AbstractPackedArrayContext from,
+                                 final int arrayLength) {
         this(newVirtualCountsArraySize, arrayLength);
-        if (isPacked) {
+        if (isPacked()) {
             populateEquivalentEntriesWithZerosFromOther(from);
         }
     }
 
     private AtomicLongArray array;
     private volatile int populatedShortLength;
-    private final boolean isPacked;
 
     private static final AtomicIntegerFieldUpdater<ConcurrentPackedArrayContext> populatedShortLengthUpdater =
             AtomicIntegerFieldUpdater.newUpdater(ConcurrentPackedArrayContext.class, "populatedShortLength");
@@ -83,11 +85,6 @@ class ConcurrentPackedArrayContext extends AbstractPackedArrayContext {
             newArray.lazySet(i, array.get(i));
         }
         array = newArray;
-    }
-
-    @Override
-    boolean isPacked() {
-        return isPacked;
     }
 
     @Override
