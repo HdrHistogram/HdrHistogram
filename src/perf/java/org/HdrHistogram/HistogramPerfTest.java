@@ -8,7 +8,7 @@
 
 package org.HdrHistogram;
 
-import org.junit.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * JUnit test for {@link org.HdrHistogram.Histogram}
@@ -306,6 +306,22 @@ public class HistogramPerfTest {
         histogram = new Histogram(highestTrackableValue, numberOfSignificantValueDigits);
         System.out.println("\n\nTiming Histogram:");
         testRawRecordingSpeedAtExpectedInterval("Histogram: ", histogram, 1000000000, rawTimingLoopCount);
+    }
+
+    @Test
+    public void testRawPackedRecordingSpeedSingleValue() throws Exception {
+        AbstractHistogram histogram;
+        histogram = new PackedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming PackedHistogram:");
+        testRawRecordingSpeedSingleValue("PackedHistogram: ", histogram, rawTimingLoopCount);
+    }
+
+    @Test
+    public void testRawPackedRecordingSpeed() throws Exception {
+        AbstractHistogram histogram;
+        histogram = new PackedHistogram(highestTrackableValue, numberOfSignificantValueDigits);
+        System.out.println("\n\nTiming PackedHistogram:");
+        testRawRecordingSpeedAtExpectedInterval("PackedHistogram: ", histogram, 1000000000, rawTimingLoopCount);
     }
 
     @Test

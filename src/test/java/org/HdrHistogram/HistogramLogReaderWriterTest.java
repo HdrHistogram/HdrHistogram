@@ -1,7 +1,7 @@
 package org.HdrHistogram;
 
 import junit.framework.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.FileInputStream;

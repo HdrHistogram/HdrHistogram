@@ -8,13 +8,20 @@
 
 package org.HdrHistogram;
 
+import static org.HdrHistogram.HistogramTestUtils.constructHistogram;
 import static org.junit.Assert.*;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.*;
 import java.util.zip.Deflater;
+
+import static org.HdrHistogram.HistogramTestUtils.constructDoubleHistogram;
 
 /**
  * JUnit test for {@link Histogram}
@@ -25,27 +32,77 @@ public class DoubleHistogramTest {
     // static final long testValueLevel = 12340;
     static final double testValueLevel = 4.0;
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testTrackableValueRangeMustBeGreaterThanTwo() throws Exception
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testTrackableValueRangeMustBeGreaterThanTwo(final Class histoClass) throws Exception
     {
-        new DoubleHistogram(1, numberOfSignificantValueDigits);
+        Assertions.assertThrows(IllegalArgumentException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        DoubleHistogram histogram =
+                                constructDoubleHistogram(histoClass, 1, numberOfSignificantValueDigits);
+                    }
+                });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testNumberOfSignificantValueDigitsMustBeLessThanSix() throws Exception
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testNumberOfSignificantValueDigitsMustBeLessThanSix(final Class histoClass) throws Exception
     {
-        new DoubleHistogram(trackableValueRangeSize, 6);
+        Assertions.assertThrows(IllegalArgumentException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        DoubleHistogram histogram =
+                                constructDoubleHistogram(histoClass, trackableValueRangeSize, 6);
+                    }
+                });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testNumberOfSignificantValueDigitsMustBePositive() throws Exception
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testNumberOfSignificantValueDigitsMustBePositive(final Class histoClass) throws Exception
     {
-        new DoubleHistogram(trackableValueRangeSize, -1);
+        Assertions.assertThrows(IllegalArgumentException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        DoubleHistogram histogram =
+                                constructDoubleHistogram(histoClass, trackableValueRangeSize, -1);
+                    }
+                });
     }
 
-    @Test
-    public void testConstructionArgumentGets() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testConstructionArgumentGets(Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         // Record 1.0, and verify that the range adjust to it:
         histogram.recordValue(Math.pow(2.0, 20));
         histogram.recordValue(1.0);
@@ -53,21 +110,31 @@ public class DoubleHistogramTest {
         assertEquals(trackableValueRangeSize, histogram.getHighestToLowestValueRatio());
         assertEquals(numberOfSignificantValueDigits, histogram.getNumberOfSignificantValueDigits());
 
-        DoubleHistogram histogram2 = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        DoubleHistogram histogram2 =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         // Record a larger value, and verify that the range adjust to it too:
         histogram2.recordValue(2048.0 * 1024.0 * 1024.0);
         assertEquals(2048.0 * 1024.0 * 1024.0, histogram2.getCurrentLowestTrackableNonZeroValue(), 0.001);
 
-        DoubleHistogram histogram3 = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        DoubleHistogram histogram3 =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         // Record a value that is 1000x outside of the initially set range, which should scale us by 1/1024x:
         histogram3.recordValue(1/1000.0);
         assertEquals(1.0/1024, histogram3.getCurrentLowestTrackableNonZeroValue(), 0.001);
     }
 
-    @Test
-    public void testDataRange() {
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testDataRange(Class histoClass) {
         // A trackableValueRangeSize histigram
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(0.0);  // Include a zero value to make sure things are handled right.
         assertEquals(1L, histogram.getCountAtValue(0.0));
 
@@ -82,7 +149,7 @@ public class DoubleHistogramTest {
         assertEquals(1L << 33, topValue, 0.00001);
         assertEquals(1L, histogram.getCountAtValue(0.0));
 
-        histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        histogram = constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(0.0); // Include a zero value to make sure things are handled right.
 
         double bottomValue = 1L << 33;
@@ -101,27 +168,58 @@ public class DoubleHistogramTest {
         assertEquals(1L, histogram.getCountAtValue(0.0));
     }
 
-    @Test
-    public void testRecordValue() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testRecordValue(Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         assertEquals(1L, histogram.getCountAtValue(testValueLevel));
         assertEquals(1L, histogram.getTotalCount());
     }
 
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    public void testRecordValue_Overflow_ShouldThrowException() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
-        histogram.recordValue(trackableValueRangeSize * 3);
-        histogram.recordValue(1.0);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testRecordValue_Overflow_ShouldThrowException(final Class histoClass) throws Exception {
+        Assertions.assertThrows(ArrayIndexOutOfBoundsException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        DoubleHistogram histogram =
+                                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
+                        histogram.recordValue(trackableValueRangeSize * 3);
+                        histogram.recordValue(1.0);
+                    }
+                });
     }
 
-    @Test
-    public void testRecordValueWithExpectedInterval() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testRecordValueWithExpectedInterval(Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(0);
         histogram.recordValueWithExpectedInterval(testValueLevel, testValueLevel/4);
-        DoubleHistogram rawHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+        DoubleHistogram rawHistogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         rawHistogram.recordValue(0);
         rawHistogram.recordValue(testValueLevel);
         // The raw data will not include corrected samples:
@@ -140,9 +238,17 @@ public class DoubleHistogramTest {
         assertEquals(5L, histogram.getTotalCount());
     }
 
-    @Test
-    public void testReset() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testReset(final Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(10);
         histogram.recordValue(100);
@@ -157,10 +263,19 @@ public class DoubleHistogramTest {
         Assert.assertEquals(histogram.getMaxValue(), 80.0, 1.0);
     }
 
-    @Test
-    public void testAdd() throws Exception {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
-        DoubleHistogram other = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testAdd(final Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
+        DoubleHistogram other =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
 
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 1000);
@@ -171,7 +286,8 @@ public class DoubleHistogramTest {
         assertEquals(2L, histogram.getCountAtValue(testValueLevel * 1000));
         assertEquals(4L, histogram.getTotalCount());
 
-        DoubleHistogram biggerOther = new DoubleHistogram(trackableValueRangeSize * 2, numberOfSignificantValueDigits);
+        DoubleHistogram biggerOther =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize * 2, numberOfSignificantValueDigits);
         biggerOther.recordValue(testValueLevel);
         biggerOther.recordValue(testValueLevel * 1000);
 
@@ -203,9 +319,16 @@ public class DoubleHistogramTest {
         }
     }
 
-    @Test
-    public void testAddWithAutoResize() {
-        DoubleHistogram histo1 = new DoubleHistogram(3);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testAddWithAutoResize(final Class histoClass) {
+        DoubleHistogram histo1 = constructDoubleHistogram(histoClass, 3);
         histo1.setAutoResize(true);
         histo1.recordValue(6.0);
         histo1.recordValue(1.0);
@@ -213,16 +336,16 @@ public class DoubleHistogramTest {
         histo1.recordValue(8.0);
         histo1.recordValue(3.0);
         histo1.recordValue(7.0);
-        DoubleHistogram histo2 = new DoubleHistogram(3);
+        DoubleHistogram histo2 = constructDoubleHistogram(histoClass, 3);
         histo2.setAutoResize(true);
         histo2.recordValue(9.0);
-        DoubleHistogram histo3 = new DoubleHistogram(3);
+        DoubleHistogram histo3 = constructDoubleHistogram(histoClass, 3);
         histo3.setAutoResize(true);
         histo3.recordValue(4.0);
         histo3.recordValue(2.0);
         histo3.recordValue(10.0);
 
-        DoubleHistogram merged = new DoubleHistogram(3);
+        DoubleHistogram merged = constructDoubleHistogram(histoClass, 3);
         merged.setAutoResize(true);
         merged.add(histo1);
         merged.add(histo2);
@@ -234,9 +357,17 @@ public class DoubleHistogramTest {
         assertEquals(10.0, merged.getMaxValue(), 0.01);
     }
 
-    @Test
-    public void testSizeOfEquivalentValueRange() {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testSizeOfEquivalentValueRange(final Class histoClass) {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
         assertEquals("Size of equivalent range for value 1 is 1",
                 1.0/1024.0, histogram.sizeOfEquivalentValueRange(1), 0.001);
@@ -250,9 +381,17 @@ public class DoubleHistogramTest {
                 8, histogram.sizeOfEquivalentValueRange(10000), 0.001);
     }
 
-    @Test
-    public void testLowestEquivalentValue() {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testLowestEquivalentValue(final Class histoClass) {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
         assertEquals("The lowest equivalent value to 10007 is 10000",
                 10000, histogram.lowestEquivalentValue(10007), 0.001);
@@ -260,9 +399,17 @@ public class DoubleHistogramTest {
                 10008, histogram.lowestEquivalentValue(10009), 0.001);
     }
 
-    @Test
-    public void testHighestEquivalentValue() {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testHighestEquivalentValue(final Class histoClass) {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
         assertEquals("The highest equivalent value to 8180 is 8183",
                 8183.99999, histogram.highestEquivalentValue(8180), 0.001);
@@ -278,9 +425,17 @@ public class DoubleHistogramTest {
                 10015.99999, histogram.highestEquivalentValue(10008), 0.001);
     }
 
-    @Test
-    public void testMedianEquivalentValue() {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testMedianEquivalentValue(final Class histoClass) {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(1.0);
         assertEquals("The median equivalent value to 4 is 4",
                 4.002, histogram.medianEquivalentValue(4), 0.001);
@@ -294,9 +449,17 @@ public class DoubleHistogramTest {
                 10004, histogram.medianEquivalentValue(10007), 0.001);
     }
 
-    @Test
-    public void testNextNonEquivalentValue() {
-        DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testNextNonEquivalentValue(final Class histoClass) {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
         assertNotSame(null, histogram);
     }
 
@@ -356,27 +519,53 @@ public class DoubleHistogramTest {
         synchronizedDoubleHistogram.equals(other);
     }
 
-    @Test
-    public void testSerialization() throws Exception {
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testSerialization(final Class histoClass) throws Exception {
         DoubleHistogram histogram =
-                new DoubleHistogram(trackableValueRangeSize, 3);
+                constructDoubleHistogram(histoClass,trackableValueRangeSize, 3);
+        testDoubleHistogramSerialization(histogram);
+        histogram = constructDoubleHistogram(histoClass,trackableValueRangeSize, 2);
+        testDoubleHistogramSerialization(histogram);
+    }
+
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+    })
+    public void testSerializationWithInternals(final Class histoClass) throws Exception {
+        DoubleHistogram histogram =
+                constructDoubleHistogram(histoClass,trackableValueRangeSize, 3);
         testDoubleHistogramSerialization(histogram);
         DoubleHistogram withIntHistogram =
-                new DoubleHistogram(trackableValueRangeSize, 3, IntCountsHistogram.class);
+                constructDoubleHistogram(histoClass,trackableValueRangeSize, 3, IntCountsHistogram.class);
         testDoubleHistogramSerialization(withIntHistogram);
         DoubleHistogram withShortHistogram =
-                new DoubleHistogram(trackableValueRangeSize, 3, ShortCountsHistogram.class);
+                constructDoubleHistogram(histoClass,trackableValueRangeSize, 3, ShortCountsHistogram.class);
         testDoubleHistogramSerialization(withShortHistogram);
-        histogram = new DoubleHistogram(trackableValueRangeSize, 2, Histogram.class);
+        histogram = constructDoubleHistogram(histoClass,trackableValueRangeSize, 2, Histogram.class);
         testDoubleHistogramSerialization(histogram);
-        withIntHistogram = new DoubleHistogram(trackableValueRangeSize, 2, IntCountsHistogram.class);
+        withIntHistogram = constructDoubleHistogram(histoClass,trackableValueRangeSize, 2, IntCountsHistogram.class);
         testDoubleHistogramSerialization(withIntHistogram);
-        withShortHistogram = new DoubleHistogram(trackableValueRangeSize, 2, ShortCountsHistogram.class);
+        withShortHistogram = constructDoubleHistogram(histoClass,trackableValueRangeSize, 2, ShortCountsHistogram.class);
         testDoubleHistogramSerialization(withShortHistogram);
     }
 
-    @Test
-    public void testCopy() throws Exception {
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testCopy(final Class histoClass) throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
@@ -422,8 +611,15 @@ public class DoubleHistogramTest {
         assertEqual(withSyncHistogram, withSyncHistogram.copy());
     }
 
-    @Test
-    public void testCopyInto() throws Exception {
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testCopyInto(final Class histoClass) throws Exception {
         DoubleHistogram histogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         DoubleHistogram targetHistogram = new DoubleHistogram(trackableValueRangeSize, numberOfSignificantValueDigits);
         histogram.recordValue(testValueLevel);
@@ -565,13 +761,31 @@ public class DoubleHistogramTest {
         Assert.assertEquals(9.0, h.getValueAtPercentile(100), 0.1d);
     }
 
-    @Test
-    public void testResize() {
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testResize(final Class histoClass) {
         // Verify resize behvaior for various underlying internal integer histogram implementations:
-        genericResizeTest(new DoubleHistogram(2));
-        genericResizeTest(new DoubleHistogram(2, IntCountsHistogram.class));
-        genericResizeTest(new DoubleHistogram(2, ShortCountsHistogram.class));
-        genericResizeTest(new DoubleHistogram(2, ConcurrentHistogram.class));
-        genericResizeTest(new DoubleHistogram(2, SynchronizedHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass, 2));
+    }
+
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+    })
+    public void testResizeInternals(final Class histoClass) {
+        // Verify resize behvaior for various underlying internal integer histogram implementations:
+        genericResizeTest(constructDoubleHistogram(histoClass, 2));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, IntCountsHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, ShortCountsHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, ConcurrentHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, SynchronizedHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, PackedHistogram.class));
+        genericResizeTest(constructDoubleHistogram(histoClass,2, PackedConcurrentHistogram.class));
     }
 }
