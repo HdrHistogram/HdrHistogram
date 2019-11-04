@@ -1,6 +1,6 @@
 package org.HdrHistogram;
 
-import junit.framework.Assert;
+import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -27,7 +27,7 @@ public class HistogramLogReaderWriterTest {
         HistogramLogReader reader = new HistogramLogReader(readerStream);
         EncodableHistogram histogram = reader.nextIntervalHistogram();
         Assert.assertNull(histogram);
-        Assert.assertEquals(1.0, reader.getStartTimeSec());
+        Assert.assertEquals(1.0, reader.getStartTimeSec(), 0.000001);
     }
 
     @Test
@@ -75,7 +75,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(48761, totalCount);
         Assert.assertEquals(1745879039, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(1796210687, accumulatedHistogram.getMaxValue());
-        Assert.assertEquals(1441812279.474, reader.getStartTimeSec());
+        Assert.assertEquals(1441812279.474, reader.getStartTimeSec(), 0.000001);
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.7S.logV2.hlog");
         reader = new HistogramLogReader(readerStream);
@@ -129,7 +129,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(65964, totalCount);
         Assert.assertEquals(1829765119, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(1888485375, accumulatedHistogram.getMaxValue());
-        Assert.assertEquals(1438867590.285, reader.getStartTimeSec());
+        Assert.assertEquals(1438867590.285, reader.getStartTimeSec(), 0.000001);
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.6.logV1.hlog");
         reader = new HistogramLogReader(readerStream);
@@ -183,7 +183,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(61256, totalCount);
         Assert.assertEquals(1510998015, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(1569718271, accumulatedHistogram.getMaxValue());
-        Assert.assertEquals(1438869961.225, reader.getStartTimeSec());
+        Assert.assertEquals(1438869961.225, reader.getStartTimeSec(), 0.000001);
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("jHiccup-2.0.1.logV0.hlog");
         reader = new HistogramLogReader(readerStream);
@@ -237,7 +237,7 @@ public class HistogramLogReaderWriterTest {
         Assert.assertEquals(300056, totalCount);
         Assert.assertEquals(1214463, accumulatedHistogram.getValueAtPercentile(99.9));
         Assert.assertEquals(1546239, accumulatedHistogram.getMaxValue());
-        Assert.assertEquals(1438613579.295, reader.getStartTimeSec());
+        Assert.assertEquals(1438613579.295, reader.getStartTimeSec(), 0.000001);
 
         readerStream = HistogramLogReaderWriterTest.class.getResourceAsStream("ycsb.logV1.hlog");
         reader = new HistogramLogReader(readerStream);
@@ -296,7 +296,7 @@ public class HistogramLogReaderWriterTest {
         FileInputStream readerStream = new FileInputStream(temp);
         HistogramLogReader reader = new HistogramLogReader(readerStream);
         Histogram histogram = (Histogram) reader.nextIntervalHistogram();
-        Assert.assertEquals(11.0, reader.getStartTimeSec());
+        Assert.assertEquals(11.0, reader.getStartTimeSec(), 0.000001);
         Assert.assertNotNull(histogram);
         Assert.assertEquals(0, histogram.getTotalCount());
         Assert.assertEquals(11100, histogram.getStartTimeStamp());
@@ -313,7 +313,7 @@ public class HistogramLogReaderWriterTest {
         reader = new HistogramLogReader(readerStream);
         // relative read from the file, should include both histograms
         histogram = (Histogram) reader.nextIntervalHistogram(0.0, 4.0);
-        Assert.assertEquals(11.0, reader.getStartTimeSec());
+        Assert.assertEquals(11.0, reader.getStartTimeSec(), 0.000001);
         Assert.assertNotNull(histogram);
         Assert.assertEquals(0, histogram.getTotalCount());
         Assert.assertEquals(11100, histogram.getStartTimeStamp());
@@ -330,7 +330,7 @@ public class HistogramLogReaderWriterTest {
         reader = new HistogramLogReader(readerStream);
         // relative read from the file, should skip first histogram
         histogram = (Histogram) reader.nextIntervalHistogram(1.0, 4.0);
-        Assert.assertEquals(11.0, reader.getStartTimeSec());
+        Assert.assertEquals(11.0, reader.getStartTimeSec(), 0.000001);
         Assert.assertNotNull(histogram);
         Assert.assertEquals(0, histogram.getTotalCount());
         Assert.assertEquals(12100, histogram.getStartTimeStamp());
