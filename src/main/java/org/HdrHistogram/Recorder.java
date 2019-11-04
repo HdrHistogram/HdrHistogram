@@ -51,15 +51,37 @@ public class Recorder implements ValueRecorder {
     /**
      * Construct an auto-resizing {@link Recorder} with a lowest discernible value of
      * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
+     * <p>
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link Recorder} can be configuired to
+     * track value counts in a packed internal representation optimized for typical histogram recoded values are
+     * sparse in the value range and tend to be incremented in small unit counts. This packed representation tends
+     * to require significantly smaller amounts of stoarge when compared to unpacked representations, but can incur
+     * additional recording cost due to resizing and repacking operations that may
+     * occur as previously unrecorded values are encountered.
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     */
+    Recorder(final int numberOfSignificantValueDigits, boolean packed) {
+        activeHistogram = packed ?
+                new InternalPackedConcurrentHistogram(instanceId, numberOfSignificantValueDigits) :
+                new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+    }
+
+    /**
+     * Construct an auto-resizing {@link Recorder} with a lowest discernible value of
+     * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      *
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public Recorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalConcurrentHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = null;
-        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+        this(numberOfSignificantValueDigits, false);
     }
 
     /**
@@ -280,10 +302,16 @@ public class Recorder implements ValueRecorder {
                             activeHistogram.getLowestDiscernibleValue(),
                             activeHistogram.getHighestTrackableValue(),
                             activeHistogram.getNumberOfSignificantValueDigits());
-                } else {
+                } else if (activeHistogram instanceof InternalConcurrentHistogram) {
                     inactiveHistogram = new InternalConcurrentHistogram(
                             instanceId,
                             activeHistogram.getNumberOfSignificantValueDigits());
+                } else if (activeHistogram instanceof InternalPackedConcurrentHistogram) {
+                    inactiveHistogram = new InternalPackedConcurrentHistogram(
+                            instanceId,
+                            activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    throw new IllegalStateException("Unexpected internal histogram type for activeHistogram");
                 }
             }
 
@@ -308,7 +336,7 @@ public class Recorder implements ValueRecorder {
         }
     }
 
-    private class InternalAtomicHistogram extends AtomicHistogram {
+    private static class InternalAtomicHistogram extends AtomicHistogram {
         private final long containingInstanceId;
 
         private InternalAtomicHistogram(long id,
@@ -320,10 +348,19 @@ public class Recorder implements ValueRecorder {
         }
     }
 
-    private class InternalConcurrentHistogram extends ConcurrentHistogram {
+    private static class InternalConcurrentHistogram extends ConcurrentHistogram {
         private final long containingInstanceId;
 
         private InternalConcurrentHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+    }
+
+    private static class InternalPackedConcurrentHistogram extends PackedConcurrentHistogram {
+        private final long containingInstanceId;
+
+        private InternalPackedConcurrentHistogram(long id, int numberOfSignificantValueDigits) {
             super(numberOfSignificantValueDigits);
             this.containingInstanceId = id;
         }
@@ -349,6 +386,15 @@ public class Recorder implements ValueRecorder {
                     ((!enforeContainingInstance) ||
                             (((InternalConcurrentHistogram)replacementHistogram).containingInstanceId ==
                                     ((InternalConcurrentHistogram)activeHistogram).containingInstanceId)
+                    )) {
+                bad = false;
+            }
+        } else if (replacementHistogram instanceof InternalPackedConcurrentHistogram) {
+            if ((activeHistogram instanceof InternalPackedConcurrentHistogram)
+                    &&
+                    ((!enforeContainingInstance) ||
+                            (((InternalPackedConcurrentHistogram)replacementHistogram).containingInstanceId ==
+                                    ((InternalPackedConcurrentHistogram)activeHistogram).containingInstanceId)
                     )) {
                 bad = false;
             }

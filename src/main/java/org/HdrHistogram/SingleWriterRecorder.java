@@ -45,8 +45,32 @@ public class SingleWriterRecorder implements ValueRecorder {
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile InternalHistogram activeHistogram;
-    private InternalHistogram inactiveHistogram;
+    private volatile Histogram activeHistogram;
+    private Histogram inactiveHistogram;
+
+    /**
+     * Construct an auto-resizing {@link SingleWriterRecorder} with a lowest discernible value of
+     * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
+     * <p>
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterRecorder} can be configuired to
+     * track value counts in a packed internal representation optimized for typical histogram recoded values are
+     * sparse in the value range and tend to be incremented in small unit counts. This packed representation tends
+     * to require significantly smaller amounts of stoarge when compared to unpacked representations, but can incur
+     * additional recording cost due to resizing and repacking operations that may
+     * occur as previously unrecorded values are encountered.
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     */
+    public SingleWriterRecorder(final int numberOfSignificantValueDigits, final boolean packed) {
+        activeHistogram = packed ?
+                new PackedInternalHistogram(instanceId, numberOfSignificantValueDigits) :
+                new InternalHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+    }
 
     /**
      * Construct an auto-resizing {@link SingleWriterRecorder} with a lowest discernible value of
@@ -57,9 +81,7 @@ public class SingleWriterRecorder implements ValueRecorder {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public SingleWriterRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = null;
-        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+        this(numberOfSignificantValueDigits, false);
     }
 
     /**
@@ -238,7 +260,7 @@ public class SingleWriterRecorder implements ValueRecorder {
                                                        boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
         validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
-        inactiveHistogram = (InternalHistogram) histogramToRecycle;
+        inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         Histogram sampledHistogram = inactiveHistogram;
         inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
@@ -275,13 +297,20 @@ public class SingleWriterRecorder implements ValueRecorder {
 
             // Make sure we have an inactive version to flip in:
             if (inactiveHistogram == null) {
-                inactiveHistogram = new InternalHistogram(activeHistogram);
+                if (activeHistogram instanceof InternalHistogram) {
+                    inactiveHistogram = new InternalHistogram((InternalHistogram) activeHistogram);
+                } else if (activeHistogram instanceof PackedInternalHistogram) {
+                    inactiveHistogram = new PackedInternalHistogram(
+                            instanceId, activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    throw new IllegalStateException("Unexpected internal histogram type for activeHistogram");
+                }
             }
 
             inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
-            final InternalHistogram tempHistogram = inactiveHistogram;
+            final Histogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -299,7 +328,7 @@ public class SingleWriterRecorder implements ValueRecorder {
         }
     }
 
-    private class InternalHistogram extends Histogram {
+    private static class InternalHistogram extends Histogram {
         private final long containingInstanceId;
 
         private InternalHistogram(long id, int numberOfSignificantValueDigits) {
@@ -321,6 +350,15 @@ public class SingleWriterRecorder implements ValueRecorder {
         }
     }
 
+    private static class PackedInternalHistogram extends PackedHistogram {
+        private final long containingInstanceId;
+
+        private PackedInternalHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+    }
+
     private void validateFitAsReplacementHistogram(Histogram replacementHistogram,
                                                    boolean enforeContainingInstance) {
         boolean bad = true;
@@ -330,7 +368,14 @@ public class SingleWriterRecorder implements ValueRecorder {
                 &&
                 ((!enforeContainingInstance) ||
                         (((InternalHistogram) replacementHistogram).containingInstanceId ==
-                                activeHistogram.containingInstanceId)
+                                ((InternalHistogram) activeHistogram).containingInstanceId)
+                )) {
+            bad = false;
+        } else if ((replacementHistogram instanceof PackedInternalHistogram)
+                &&
+                ((!enforeContainingInstance) ||
+                        (((PackedInternalHistogram) replacementHistogram).containingInstanceId ==
+                                ((PackedInternalHistogram) activeHistogram).containingInstanceId)
                 )) {
             bad = false;
         }
