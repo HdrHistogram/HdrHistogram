@@ -8,6 +8,8 @@ jobs:
     strategy:
       matrix:
         java: [ 8, 8.0.192, 9, 10, 11, 11.0.3, 12, 13 ]
+      fail-fast: false
+      max-parallel: 5
     name: Java ${{ matrix.java }} Test
 
     steps:
