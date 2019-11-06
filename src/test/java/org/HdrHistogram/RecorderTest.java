@@ -8,6 +8,8 @@
 
 package org.HdrHistogram;
 
+import org.HdrHistogram.packedarray.PackedArrayRecorder;
+import org.HdrHistogram.packedarray.PackedLongArray;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,8 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 public class RecorderTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
+    static final int packedArrayLength = 300 * 10000 * 2;
+    static final int nonPackedPhysicalLength = 128 * 1024;
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
@@ -35,7 +39,8 @@ public class RecorderTest {
                 new DoubleRecorder(3, usePacked);
         DoubleRecorder doubleRecorder2 =
                 new DoubleRecorder(3, usePacked);
-
+        PackedLongArray array1 = new PackedLongArray(packedArrayLength);
+        PackedArrayRecorder arrayRecorder1 = new PackedArrayRecorder(packedArrayLength);
 
         for (int i = 0; i < 10000; i++) {
             histogram.recordValue(3000 * i);
@@ -47,6 +52,8 @@ public class RecorderTest {
             doubleHistogram.recordValue(0.001); // Makes some internal shifts happen.
             doubleRecorder1.recordValue(0.001); // Makes some internal shifts happen.
             doubleRecorder2.recordValue(0.001); // Makes some internal shifts happen.
+            array1.increment(300 * i);
+            arrayRecorder1.increment(300 * i);
         }
 
         Histogram histogram2 = recorder1.getIntervalHistogram();
@@ -61,6 +68,10 @@ public class RecorderTest {
         doubleRecorder2.getIntervalHistogramInto(doubleHistogram2);
         Assert.assertEquals(doubleHistogram, doubleHistogram2);
 
+        PackedLongArray array2 = arrayRecorder1.getIntervalArray();
+        boolean arraysAreEqual = array1.equals(array2);
+        Assert.assertEquals(arraysAreEqual, true);
+
         for (int i = 0; i < 5000; i++) {
             histogram.recordValue(3000 * i);
             recorder1.recordValue(3000 * i);
@@ -71,6 +82,8 @@ public class RecorderTest {
             doubleHistogram.recordValue(0.001);
             doubleRecorder1.recordValue(0.001);
             doubleRecorder2.recordValue(0.001);
+            array1.increment(300 * i);
+            arrayRecorder1.increment(300 * i);
         }
 
         Histogram histogram3 = recorder1.getIntervalHistogram();
@@ -85,6 +98,13 @@ public class RecorderTest {
         sumDoubleHistogram.add(doubleHistogram3);
         Assert.assertEquals(doubleHistogram, sumDoubleHistogram);
 
+        PackedLongArray array3 = arrayRecorder1.getIntervalArray();
+
+        PackedLongArray sumArray = array2.copy();
+        sumArray.add(array3);
+        arraysAreEqual = array1.equals(sumArray);
+        Assert.assertEquals(arraysAreEqual, true);
+
         recorder2.getIntervalHistogram();
         doubleRecorder2.getIntervalHistogram();
 
@@ -98,6 +118,8 @@ public class RecorderTest {
             doubleHistogram.recordValue(0.001);
             doubleRecorder1.recordValue(0.001);
             doubleRecorder2.recordValue(0.001);
+            array1.increment(300 * i);
+            arrayRecorder1.increment(300 * i);
         }
 
         Histogram histogram4 = recorder1.getIntervalHistogram();
@@ -116,6 +138,11 @@ public class RecorderTest {
         doubleRecorder2.getIntervalHistogramInto(doubleHistogram4);
         doubleHistogram4.add(doubleHistogram3);
         Assert.assertEquals(doubleHistogram4, doubleHistogram2);
+
+        PackedLongArray array4 = arrayRecorder1.getIntervalArray();
+        array4.add(array3);
+        arraysAreEqual = array4.equals(array2);
+        Assert.assertEquals(arraysAreEqual, true);
     }
 
     @ParameterizedTest
@@ -123,6 +150,55 @@ public class RecorderTest {
     public void testSimpleAutosizingRecorder(boolean usePacked) throws Exception {
         Recorder recorder = new Recorder(3, usePacked);
         Histogram histogram = recorder.getIntervalHistogram();
+    }
+
+    // PackedArrayRecorder recycling tests:
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testPARecycling(boolean usePacked) throws Exception {
+        PackedArrayRecorder recorder = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+        PackedLongArray arrayA = recorder.getIntervalArray();
+        PackedLongArray arrayB = recorder.getIntervalArray(arrayA);
+        PackedLongArray arrayC = recorder.getIntervalArray(arrayB, true);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testPARecyclingContainingClassEnforcement(final boolean usePacked) throws Exception {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        PackedLongArray arrayToRecycle = new PackedLongArray(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+                        PackedArrayRecorder recorder = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+                        PackedLongArray arrayA = recorder.getIntervalArray(arrayToRecycle);
+                    }
+                });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testPARecyclingContainingInstanceEnforcement(final boolean usePacked) throws Exception {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        PackedArrayRecorder recorder1 = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+                        PackedArrayRecorder recorder2 = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+                        PackedLongArray arrayToRecycle = recorder1.getIntervalArray();
+                        PackedLongArray arrayToRecycle2 = recorder2.getIntervalArray(arrayToRecycle);
+                    }
+                });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    public void testPARecyclingContainingInstanceNonEnforcement(final boolean usePacked) throws Exception {
+        PackedArrayRecorder recorder1 = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+        PackedArrayRecorder recorder2 = new PackedArrayRecorder(packedArrayLength, usePacked ? 0 : nonPackedPhysicalLength);
+        PackedLongArray arrayToRecycle = recorder1.getIntervalArray();
+        PackedLongArray arrayToRecycle2 = recorder2.getIntervalArray(arrayToRecycle, false);
     }
 
     // Recorder Recycling tests:
@@ -133,7 +209,7 @@ public class RecorderTest {
         Recorder recorder = new Recorder(3, usePacked);
         Histogram histogramA = recorder.getIntervalHistogram();
         Histogram histogramB = recorder.getIntervalHistogram(histogramA);
-        Histogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+        Histogram histogramC = recorder.getIntervalHistogram(histogramB, true);
     }
 
     @ParameterizedTest
@@ -182,7 +258,7 @@ public class RecorderTest {
         SingleWriterRecorder recorder = new SingleWriterRecorder(3, usePacked);
         Histogram histogramA = recorder.getIntervalHistogram();
         Histogram histogramB = recorder.getIntervalHistogram(histogramA);
-        Histogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+        Histogram histogramC = recorder.getIntervalHistogram(histogramB, true);
     }
 
     @ParameterizedTest
@@ -231,7 +307,7 @@ public class RecorderTest {
         DoubleRecorder recorder = new DoubleRecorder(3, usePacked);
         DoubleHistogram histogramA = recorder.getIntervalHistogram();
         DoubleHistogram histogramB = recorder.getIntervalHistogram(histogramA);
-        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramB, true);
     }
 
     @ParameterizedTest
@@ -280,7 +356,7 @@ public class RecorderTest {
         SingleWriterDoubleRecorder recorder = new SingleWriterDoubleRecorder(3, usePacked);
         DoubleHistogram histogramA = recorder.getIntervalHistogram();
         DoubleHistogram histogramB = recorder.getIntervalHistogram(histogramA);
-        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramA, true);
+        DoubleHistogram histogramC = recorder.getIntervalHistogram(histogramB, true);
     }
 
     @ParameterizedTest
