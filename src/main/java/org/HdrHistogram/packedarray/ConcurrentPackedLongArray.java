@@ -31,7 +31,7 @@ public class ConcurrentPackedLongArray extends PackedLongArray {
     transient WriterReaderPhaser wrp = new WriterReaderPhaser();
 
     @Override
-    void resizeStorageArray(int newPhysicalLengthInLongs) {
+    void resizeStorageArray(final int newPhysicalLengthInLongs) {
         AbstractPackedArrayContext inactiveArrayContext;
         try {
             wrp.readerLock();
@@ -106,6 +106,13 @@ public class ConcurrentPackedLongArray extends PackedLongArray {
         for (IterationValue v : inactiveArrayContext.nonZeroValues()) {
             add(v.getIndex(), v.getValue());
         }
+    }
+
+    @Override
+    public ConcurrentPackedLongArray copy() {
+        ConcurrentPackedLongArray copy = new ConcurrentPackedLongArray(this.length(), this.getPhysicalLength());
+        copy.add(this);
+        return copy;
     }
 
     @Override

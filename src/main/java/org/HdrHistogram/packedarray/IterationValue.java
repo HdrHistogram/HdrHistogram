@@ -7,7 +7,7 @@ public class IterationValue {
     IterationValue() {
     }
 
-    void set(int index, long value) {
+    void set(final int index, final long value) {
         this.index = index;
         this.value = value;
     }

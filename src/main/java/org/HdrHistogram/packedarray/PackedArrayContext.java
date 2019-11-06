@@ -7,14 +7,19 @@ import java.util.Arrays;
  */
 class PackedArrayContext extends AbstractPackedArrayContext {
 
-    PackedArrayContext(final int initialPhysicalLength) {
-        super(initialPhysicalLength);
+    PackedArrayContext(final int virtualLength,
+                       final int initialPhysicalLength,
+                       final boolean allocateArray) {
+        super(virtualLength, initialPhysicalLength);
+        if (allocateArray) {
+            array = new long[getPhysicalLength()];
+            init(virtualLength);
+        }
     }
 
-    PackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
-        this(initialPhysicalLength);
-        array = new long[getPhysicalLength()];
-        init(virtualLength);
+    PackedArrayContext(final int virtualLength,
+                       final int initialPhysicalLength) {
+        this(virtualLength, initialPhysicalLength, true);
     }
 
     PackedArrayContext(final int virtualLength,
@@ -58,14 +63,14 @@ class PackedArrayContext extends AbstractPackedArrayContext {
     }
 
     @Override
-    boolean casAtLongIndex(final int longIndex, long expectedValue, long newValue) {
+    boolean casAtLongIndex(final int longIndex, final long expectedValue, final long newValue) {
         if (array[longIndex] != expectedValue) return false;
         array[longIndex] = newValue;
         return true;
     }
 
     @Override
-    void lazySetAtLongIndex(int longIndex, long newValue) {
+    void lazySetAtLongIndex(final int longIndex, final long newValue) {
         array[longIndex] = newValue;
     }
 
@@ -76,35 +81,35 @@ class PackedArrayContext extends AbstractPackedArrayContext {
     }
 
     @Override
-    void resizeArray(int newLength) {
+    void resizeArray(final int newLength) {
         array = Arrays.copyOf(array, newLength);
     }
 
     @Override
-    long getAtUnpackedIndex(int index) {
+    long getAtUnpackedIndex(final int index) {
         return array[index];
     }
 
     @Override
-    void setAtUnpackedIndex(int index, long newValue) {
+    void setAtUnpackedIndex(final int index, final long newValue) {
         array[index] = newValue;
     }
 
     @Override
-    void lazysetAtUnpackedIndex(int index, long newValue) {
+    void lazysetAtUnpackedIndex(final int index, final long newValue) {
         array[index] = newValue;
     }
 
     @Override
-    long incrementAndGetAtUnpackedIndex(int index) {
+    long incrementAndGetAtUnpackedIndex(final int index) {
         array[index]++;
         return array[index];
     }
 
     @Override
-    long addAndGetAtUnpackedIndex(int index, long valueToAdd) {
+    long addAndGetAtUnpackedIndex(final int index, final long valueToAdd) {
         array[index] += valueToAdd;
-        return array[index];        
+        return array[index];
     }
 
     @Override

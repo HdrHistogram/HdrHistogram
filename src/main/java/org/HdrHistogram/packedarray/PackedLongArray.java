@@ -17,7 +17,7 @@ public class PackedLongArray extends AbstractPackedLongArray {
     }
 
     @Override
-    void resizeStorageArray(int newPhysicalLengthInLongs) {
+    void resizeStorageArray(final int newPhysicalLengthInLongs) {
         AbstractPackedArrayContext oldArrayContext = getArrayContext();
         PackedArrayContext newArrayContext =
                 new PackedArrayContext(oldArrayContext.getVirtualLength(), oldArrayContext, newPhysicalLengthInLongs);
@@ -50,6 +50,13 @@ public class PackedLongArray extends AbstractPackedLongArray {
     }
 
     @Override
+    public PackedLongArray copy() {
+        PackedLongArray copy = new PackedLongArray(this.length(), this.getPhysicalLength());
+        copy.add(this);
+        return copy;
+    }
+
+    @Override
     void clearContents() {
         getArrayContext().clearContents();
     }
@@ -60,7 +67,7 @@ public class PackedLongArray extends AbstractPackedLongArray {
     }
 
     @Override
-    void criticalSectionExit(long criticalValueAtEnter) {
+    void criticalSectionExit(final long criticalValueAtEnter) {
     }
 }
 

@@ -150,9 +150,12 @@ abstract class AbstractPackedArrayContext implements Serializable {
     private int virtualLength = 0;
     private int topLevelShift = Integer.MAX_VALUE; // Make it non-sensical until properly initialized.
 
-    AbstractPackedArrayContext(final int initialPhysicalLength) {
+    AbstractPackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
         physicalLength = Math.max(initialPhysicalLength, MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
         isPacked = (physicalLength <= AbstractPackedArrayContext.MAX_SUPPORTED_PACKED_COUNTS_ARRAY_LENGTH);
+        if (!isPacked) {
+            physicalLength = virtualLength;
+        }
     }
 
     void init(final int virtualLength) {
@@ -182,16 +185,16 @@ abstract class AbstractPackedArrayContext implements Serializable {
     //  ##     ## ########   ######     ##    ##     ## ##     ##  ######     ##     ######
     //
 
-    
+
     abstract int length();
 
     abstract int getPopulatedShortLength();
 
-    abstract boolean casPopulatedShortLength(final int expectedPopulatedShortLength, final int newPopulatedShortLength);
+    abstract boolean casPopulatedShortLength(int expectedPopulatedShortLength, int newPopulatedShortLength);
 
-    abstract boolean casPopulatedLongLength(final int expectedPopulatedShortLength, final int newPopulatedShortLength);
+    abstract boolean casPopulatedLongLength(int expectedPopulatedShortLength, int newPopulatedShortLength);
 
-    abstract long getAtLongIndex(final int longIndex);
+    abstract long getAtLongIndex(int longIndex);
 
     abstract boolean casAtLongIndex(int longIndex, long expectedValue, long newValue);
 
@@ -711,9 +714,9 @@ abstract class AbstractPackedArrayContext implements Serializable {
     }
 
     private void copyEntriesAtLevelFromOther(final AbstractPackedArrayContext other,
-                                           final int otherLevelEntryIndex,
-                                           final int levelEntryIndexPointer,
-                                           final int otherIndexShift) {
+                                             final int otherLevelEntryIndex,
+                                             final int levelEntryIndexPointer,
+                                             final int otherIndexShift) {
         boolean nextLevelIsLeaf = (otherIndexShift == LEAF_LEVEL_SHIFT);
         int packedSlotIndicators = other.getPackedSlotIndicators(otherLevelEntryIndex);
         int numberOfSlots = Integer.bitCount(packedSlotIndicators);

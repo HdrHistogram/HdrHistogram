@@ -6,17 +6,22 @@ import java.util.concurrent.atomic.AtomicLongArray;
 
 class ConcurrentPackedArrayContext extends PackedArrayContext {
 
-    ConcurrentPackedArrayContext(final int initialPhysicalLength) {
-        super(initialPhysicalLength);
+    ConcurrentPackedArrayContext(final int virtualLength,
+                                 final int initialPhysicalLength,
+                                 final boolean allocateArray) {
+        super(virtualLength, initialPhysicalLength, false);
+        if (allocateArray) {
+            array = new AtomicLongArray(getPhysicalLength());
+            init(virtualLength);
+        }
     }
 
-    public ConcurrentPackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
-        this(initialPhysicalLength);
-        array = new AtomicLongArray(getPhysicalLength());
-        init(virtualLength);
+    ConcurrentPackedArrayContext(final int virtualLength,
+                                 final int initialPhysicalLength) {
+        this(virtualLength, initialPhysicalLength, true);
     }
 
-    ConcurrentPackedArrayContext(int newVirtualCountsArraySize,
+    ConcurrentPackedArrayContext(final int newVirtualCountsArraySize,
                                  final AbstractPackedArrayContext from,
                                  final int arrayLength) {
         this(newVirtualCountsArraySize, arrayLength);
@@ -55,17 +60,17 @@ class ConcurrentPackedArrayContext extends PackedArrayContext {
     }
 
     @Override
-    long getAtLongIndex(int longIndex) {
+    long getAtLongIndex(final int longIndex) {
         return array.get(longIndex);
     }
 
     @Override
-    boolean casAtLongIndex(int longIndex, long expectedValue, long newValue) {
+    boolean casAtLongIndex(final int longIndex, final long expectedValue, final long newValue) {
         return array.compareAndSet(longIndex, expectedValue, newValue);
     }
 
     @Override
-    void lazySetAtLongIndex(int longIndex, long newValue) {
+    void lazySetAtLongIndex(final int longIndex, final long newValue) {
         array.lazySet(longIndex, newValue);
     }
 
@@ -78,7 +83,7 @@ class ConcurrentPackedArrayContext extends PackedArrayContext {
     }
 
     @Override
-    void resizeArray(int newLength) {
+    void resizeArray(final int newLength) {
         final AtomicLongArray newArray = new AtomicLongArray(newLength);
         int copyLength = Math.min(array.length(), newLength);
         for (int i = 0; i < copyLength; i++) {
@@ -88,27 +93,27 @@ class ConcurrentPackedArrayContext extends PackedArrayContext {
     }
 
     @Override
-    long getAtUnpackedIndex(int index) {
+    long getAtUnpackedIndex(final int index) {
         return array.get(index);
     }
 
     @Override
-    void setAtUnpackedIndex(int index, long newValue) {
+    void setAtUnpackedIndex(final int index, final long newValue) {
         array.set(index, newValue);
     }
 
     @Override
-    void lazysetAtUnpackedIndex(int index, long newValue) {
+    void lazysetAtUnpackedIndex(final int index, final long newValue) {
         array.lazySet(index, newValue);
     }
 
     @Override
-    long incrementAndGetAtUnpackedIndex(int index) {
+    long incrementAndGetAtUnpackedIndex(final int index) {
         return array.incrementAndGet(index);
     }
 
     @Override
-    long addAndGetAtUnpackedIndex(int index, long valueToAdd) {
+    long addAndGetAtUnpackedIndex(final int index, final long valueToAdd) {
         return array.addAndGet(index, valueToAdd);
     }
 

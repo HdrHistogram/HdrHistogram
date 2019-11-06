@@ -69,6 +69,13 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
      */
     abstract public void setVirtualLength(final int newVirtualArrayLength);
 
+    /**
+     * Create a copy of this array, complete with data and everything.
+     *
+     * @return A distinct copy of this array.
+     */
+    abstract public AbstractPackedLongArray copy();
+
     abstract void resizeStorageArray(int newPhysicalLengthInLongs);
 
     abstract void clearContents();
@@ -209,6 +216,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                         // Deal with unpacked context:
                         if (!arrayContext.isPacked()) {
                             arrayContext.setAtUnpackedIndex(index, value);
+                            return;
                         }
                         // Context is packed:
                         if (valueForNextLevels == 0) {
@@ -242,6 +250,17 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                 resizeStorageArray(ex.getNewSize()); // Resize outside of critical section
             }
         } while (true);
+    }
+
+    /**
+     * Add the contents of the other array to this one
+     *
+     * @param other The to add to this array
+     */
+    public void add(final AbstractPackedLongArray other) {
+        for (IterationValue v : other.nonZeroValues()) {
+            add(v.getIndex(), v.getValue());
+        }
     }
 
     /**
@@ -309,4 +328,50 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
         return getArrayContext().nonZeroValues();
     }
 
+    /**
+     * Determine if this array is equivalent to another.
+     *
+     * @param other the other array to compare to
+     * @return True if this array are equivalent with the other.
+     */
+    @Override
+    public boolean equals(final Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof AbstractPackedLongArray)) {
+            return false;
+        }
+        AbstractPackedLongArray that = (AbstractPackedLongArray) other;
+        if (length() != that.length()) {
+            return false;
+        }
+        if (this.arrayContext.isPacked() || that.arrayContext.isPacked()) {
+            // If at least one of the arrays is packed, comparing only the
+            // non-zero values that exist in both arrays, using two passes,
+            // will likely be more efficient than a single all-index pass:
+            // - If both are packed, it will obvioulsy be much faster.
+            // - If one is packed and the other is not, we would be visiting
+            //   every index in the non-packed array, in one of the passes,
+            //   but would still only visit the non-zero elements in the
+            //   packed one.
+            for (IterationValue v : this.nonZeroValues()) {
+                if (that.get(v.getIndex()) != v.getValue()) {
+                    return false;
+                }
+            }
+            for (IterationValue v : that.nonZeroValues()) {
+                if (this.get(v.getIndex()) != v.getValue()) {
+                    return false;
+                }
+            }
+        } else {
+            for (int i = 0; i < this.length(); i++) {
+                if (this.get(i) != that.get(i)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
