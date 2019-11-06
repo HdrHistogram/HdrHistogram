@@ -20,6 +20,8 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
     private static final int NUMBER_OF_SETS = 8;
 
     private AbstractPackedArrayContext arrayContext;
+    private long startTimeStampMsec = Long.MAX_VALUE;
+    private long endTimeStampMsec = 0;
 
     AbstractPackedArrayContext getArrayContext() {
         return arrayContext;
@@ -27,6 +29,38 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
 
     void setArrayContext(AbstractPackedArrayContext newArrayContext) {
         arrayContext = newArrayContext;
+    }
+
+    /**
+     * get the start time stamp [optionally] stored with this array
+     * @return the start time stamp [optionally] stored with this array
+     */
+    public long getStartTimeStamp() {
+        return startTimeStampMsec;
+    }
+
+    /**
+     * Set the start time stamp value associated with this array to a given value.
+     * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
+     */
+    public void setStartTimeStamp(final long timeStampMsec) {
+        this.startTimeStampMsec = timeStampMsec;
+    }
+
+    /**
+     * get the end time stamp [optionally] stored with this array
+     * @return the end time stamp [optionally] stored with this array
+     */
+    public long getEndTimeStamp() {
+        return endTimeStampMsec;
+    }
+
+    /**
+     * Set the end time stamp value associated with this array to a given value.
+     * @param timeStampMsec the value to set the time stamp to, [by convention] in msec since the epoch.
+     */
+    public void setEndTimeStamp(final long timeStampMsec) {
+        this.endTimeStampMsec = timeStampMsec;
     }
 
     /**
