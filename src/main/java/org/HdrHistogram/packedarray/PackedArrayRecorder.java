@@ -12,17 +12,21 @@ import org.HdrHistogram.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Records adds and increment of integer values at indexes of a logical array of 64 bit signed integer values, and
+ * Records increments and adds of integer values at indexes of a logical array of 64 bit signed integer values, and
  * provides stable interval {@link PackedLongArray} samples from live recorded data without interrupting or stalling
  * active recording of values. Each interval array provided contains all values accumulated since the previous
  * interval array was taken.
  * <p>
  * This pattern is commonly used in logging interval accumulator information while recording is ongoing.
  * <p>
- * {@link PackedArrayRecorder} supports concurrent
- * {@link PackedArrayRecorder#increment(int)} or
+ * {@link PackedArrayRecorder} supports fully concurrent
+ * {@link PackedArrayRecorder#increment(int)} and
  * {@link PackedArrayRecorder#add(int, long)} calls.
- * Recording calls are "low wait", or "wait less": They are wait
+ * While the {@link #increment increment()} and {@link #add add()} methods are not quite wait-free, they
+ * come "close" to that behvaior in the sense that a given thread will incur a total of no more than a capped
+ * fixed number (e.g. 74 in a current implementation) of non-wait-free add or increment operations during
+ * the lifetime of an interval array (including across recycling of that array across intervals within the
+ * same recorder), regradless of the number of operations done.
  * <p>
  * A common pattern for using a {@link PackedArrayRecorder} looks like this:
  * <br><pre><code>
