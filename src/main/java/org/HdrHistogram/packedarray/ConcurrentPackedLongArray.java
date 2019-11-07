@@ -6,15 +6,20 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 
 /**
- * A Packed array of signed 64 bit values, and supports {@link #get get()}, {@link #set set()},
- * {@link #add add()} and {@link #increment increment()} operations on the logical contents of the array.
+ * A Packed array of signed 64 bit values that supports {@link #get get()}, {@link #set set()},
+ * {@link #add add()} and {@link #increment increment()} operations the logical contents of the array.
  * <p>
  * {@link ConcurrentPackedLongArray} supports concurrent accumulation, with the {@link #add add()}
  * and {@link #increment increment()} methods providing lossless atomic accumulation in the presence of
  * multiple writers. However, it is impotant to note that {@link #add add()} and {@link #increment increment()}
- * are the *only* safe concurrent operation operations, and that all other operations, including
- * {@link #get get()}, {@link #set set()} and {@link #clear()} may produce suprising results if used on an
+ * are the *only* safe concurrent operations, and that all other operations, including
+ * {@link #get get()}, {@link #set set()} and {@link #clear()} may produce "suprising" results if used on an
  * array that is not at rest.
+ *
+ * While the {@link #add add()} and {@link #increment increment()} methods are not quite wait-free, they
+ * come "close" that behvaior in the sense that a given thread will incur a total of no more than a capped
+ * fixed number (e.g. 74 in a current implementation) of non-wait-free add or increment operations during
+ * the lifetime of an array, regradless of the number of operations done.
  * </p>
  */
 public class ConcurrentPackedLongArray extends PackedLongArray {

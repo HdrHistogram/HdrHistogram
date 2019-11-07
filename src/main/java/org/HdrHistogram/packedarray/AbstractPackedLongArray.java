@@ -374,4 +374,33 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
         }
         return true;
     }
+
+    static final int NUMBER_OF_NON_ZEROS_TO_HASH = 8;
+
+    @Override
+    public int hashCode() {
+        int h = 0;
+        h = oneAtATimeHashStep(h, length());
+        int count = 0;
+        // Include the first NUMBER_OF_NON_ZEROS_TO_HASH non-zeros in the hash:
+        for (IterationValue v : nonZeroValues()) {
+            if (++count > NUMBER_OF_NON_ZEROS_TO_HASH) {
+                break;
+            }
+            h = oneAtATimeHashStep(h, (int) v.getIndex());
+            h = oneAtATimeHashStep(h, (int) v.getValue());
+        }
+        h += (h << 3);
+        h ^= (h >> 11);
+        h += (h << 15);
+        return h;
+    }
+
+    private int oneAtATimeHashStep(final int incomingHash, final int v) {
+        int h = incomingHash;
+        h += v;
+        h += (h << 10);
+        h ^= (h >> 6);
+        return h;
+    }
 }
