@@ -174,10 +174,12 @@
 <script>
     function timeUnitsSelected(evt) {
         drawChart();
+        return {typed: ''};
     }
 
     function doExport(event) {
         saveSvgAsPng(document.querySelector('svg'), 'Histogram', 2.0);
+        return {typed: ''};
     }
 </script>
 
@@ -378,6 +380,7 @@ Percentile range:
         document.getElementById("percentileRange").innerHTML=percentile + "%";
         maxPercentile = x;
         drawChart();
+        return {typed: ''};
     }
 </script>
 </p>
