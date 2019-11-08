@@ -259,10 +259,12 @@
 
             reader.readAsText(f);            
           }
+          return {typed: ''};
         }
 
         function doExport(event) {
           saveSvgAsPng(document.querySelector('svg'), 'Histogram');
+          return {typed: ''};
         }
     </script>
   </head>
