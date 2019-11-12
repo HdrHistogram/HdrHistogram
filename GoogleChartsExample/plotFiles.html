@@ -18,7 +18,7 @@
         alert('The File APIs are not fully supported in this browser.');
     }
 
-    // Load the Visualization API and the piechart package.
+    // Load the Visualization API and the corechart package.
     google.load('visualization', '1.0', {'packages':['corechart']});
 
     // Set a callback to run when the Google Visualization API is loaded.
@@ -96,7 +96,7 @@
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
         }
 
-        // add tooptips with correct percentile text to data:
+        // add tooltips with correct percentile text to data:
         var columns = [0];
         for (var i = 1; i < chartData.getNumberOfColumns(); i++) {
             columns.push(i);
@@ -352,7 +352,7 @@
 
 <pre id="fileDisplayArea">Please select file(s) above.</pre>
 
-<!--Div that will hold the pie chart-->
+<!--Div that will hold the chart-->
 <div id="chart_div">None Loaded</div>
 
 Latency time units:
