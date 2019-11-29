@@ -20,6 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterDoubleRecorder#recordValue} or
  * {@link SingleWriterDoubleRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT support concurrent recording calls.
+ * Recording calls are wait-free on architectures that support atomic increment operations, and
+ * are lock-free on architectures that do not.
  * <p>
  * A common pattern for using a {@link SingleWriterDoubleRecorder} looks like this:
  * <br><pre><code>
@@ -36,14 +38,38 @@ import java.util.concurrent.atomic.AtomicLong;
  * </code></pre>
  */
 
-public class SingleWriterDoubleRecorder {
+public class SingleWriterDoubleRecorder implements DoubleValueRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile InternalDoubleHistogram activeHistogram;
-    private InternalDoubleHistogram inactiveHistogram;
+    private volatile DoubleHistogram activeHistogram;
+    private DoubleHistogram inactiveHistogram;
+
+    /**
+     * Construct an auto-resizing {@link SingleWriterDoubleRecorder} using a precision stated as a
+     * number of significant decimal digits.
+     * <p>
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterDoubleRecorder} can
+     * be configuired to track value counts in a packed internal representation optimized for typical histogram
+     * recoded values are sparse in the value range and tend to be incremented in small unit counts. This packed
+     * representation tends to require significantly smaller amounts of stoarge when compared to unpacked
+     * representations, but can incur additional recording cost due to resizing and repacking operations that may
+     * occur as previously unrecorded values are encountered.
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     */
+    public SingleWriterDoubleRecorder(final int numberOfSignificantValueDigits, final boolean packed) {
+        activeHistogram = packed ?
+                new PackedInternalDoubleHistogram(instanceId, numberOfSignificantValueDigits) :
+                new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+    }
 
     /**
      * Construct an auto-resizing {@link SingleWriterDoubleRecorder} using a precision stated as a
@@ -54,9 +80,7 @@ public class SingleWriterDoubleRecorder {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public SingleWriterDoubleRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalDoubleHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = null;
-        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+        this(numberOfSignificantValueDigits, false);
     }
 
     /**
@@ -136,13 +160,43 @@ public class SingleWriterDoubleRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link SingleWriterDoubleRecorder#getIntervalHistogram()} will reset
+     * Calling {@code getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized DoubleHistogram getIntervalHistogram() {
         return getIntervalHistogram(null);
+    }
+
+    /**
+     * Get an interval histogram, which will include a stable, consistent view of all value counts
+     * accumulated since the last interval histogram was taken.
+     * <p>
+     * {@code getIntervalHistogram(histogramToRecycle)}
+     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram()} and
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The
+     * provided {@code histogramToRecycle} must
+     * be either be null or an interval histogram returned by a previous call to
+     * {@code getIntervalHistogram(histogramToRecycle)} or
+     * {@link SingleWriterDoubleRecorder#getIntervalHistogram()}.
+     * <p>
+     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
+     * the same interval histogram instance is recycled more than once, behavior is undefined.
+     * <p>
+     * Calling
+     * {@code getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
+     * counts for the next interval
+     *
+     * @param histogramToRecycle a previously returned interval histogram (from this instance of
+     *                           {@link SingleWriterDoubleRecorder}) that may be recycled to avoid allocation and
+     *                           copy operations.
+     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
+     */
+    public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
+        return getIntervalHistogram(histogramToRecycle, true);
     }
 
     /**
@@ -171,12 +225,16 @@ public class SingleWriterDoubleRecorder {
      *
      * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
      *                           copy operations.
+     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     *                                 instance of {@link SingleWriterDoubleRecorder}. If false, will allow recycling histograms
+     *                                 previously returned by other instances of {@link SingleWriterDoubleRecorder}.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
-    public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle) {
+    public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle,
+                                                             boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle);
-        inactiveHistogram = (InternalDoubleHistogram) histogramToRecycle;
+        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
+        inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         DoubleHistogram sampledHistogram = inactiveHistogram;
         inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
@@ -187,7 +245,7 @@ public class SingleWriterDoubleRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@link SingleWriterDoubleRecorder#getIntervalHistogramInto}() will
+     * Calling {@code getIntervalHistogramInto(targetHistogram)} will
      * reset the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
@@ -212,13 +270,20 @@ public class SingleWriterDoubleRecorder {
 
             // Make sure we have an inactive version to flip in:
             if (inactiveHistogram == null) {
-                inactiveHistogram = new InternalDoubleHistogram(activeHistogram);
+                if (activeHistogram instanceof InternalDoubleHistogram) {
+                    inactiveHistogram = new InternalDoubleHistogram((InternalDoubleHistogram) activeHistogram);
+                } else if (activeHistogram instanceof PackedInternalDoubleHistogram) {
+                    inactiveHistogram = new PackedInternalDoubleHistogram(
+                            instanceId, activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    throw new IllegalStateException("Unexpected internal histogram type for activeHistogram");
+                }
             }
 
             inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
-            final InternalDoubleHistogram tempHistogram = inactiveHistogram;
+            final DoubleHistogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -257,20 +322,38 @@ public class SingleWriterDoubleRecorder {
         }
     }
 
-    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram) {
+    private class PackedInternalDoubleHistogram extends PackedDoubleHistogram {
+        private final long containingInstanceId;
+
+        private PackedInternalDoubleHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+    }
+
+    private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram,
+                                                   boolean enforeContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if ((replacementHistogram instanceof InternalDoubleHistogram)
                 &&
-                (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
-                        activeHistogram.containingInstanceId)
-                ) {
+                ((!enforeContainingInstance) ||
+                        (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
+                                ((InternalDoubleHistogram)activeHistogram).containingInstanceId)
+                )) {
+            bad = false;
+        } else if ((replacementHistogram instanceof PackedInternalDoubleHistogram)
+                &&
+                ((!enforeContainingInstance) ||
+                        (((PackedInternalDoubleHistogram) replacementHistogram).containingInstanceId ==
+                                ((PackedInternalDoubleHistogram)activeHistogram).containingInstanceId)
+                )) {
             bad = false;
         }
 
         if (bad) {
-            throw new IllegalArgumentException("replacement histogram must have been obtained via a previous" +
+            throw new IllegalArgumentException("replacement histogram must have been obtained via a previous " +
                     "getIntervalHistogram() call from this " + this.getClass().getName() +" instance");
         }
     }

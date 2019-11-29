@@ -136,7 +136,7 @@
         alert('The File APIs are not fully supported in this browser.');
       }
 
-      // Load the Visualization API and the piechart package.
+      // Load the Visualization API and the corechart package.
       google.load('visualization', '1.0', {'packages':['corechart']});
 
       // Global data series
@@ -170,7 +170,7 @@
 
         var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
 
-        // add tooptips with correct percentile text to data:
+        // add tooltips with correct percentile text to data:
         var columns = [0];
         for (var i = 1; i < data.getNumberOfColumns(); i++) {
           columns.push(i);
@@ -259,16 +259,18 @@
 
             reader.readAsText(f);            
           }
+          return {typed: ''};
         }
 
         function doExport(event) {
           saveSvgAsPng(document.querySelector('svg'), 'Histogram');
+          return {typed: ''};
         }
     </script>
   </head>
 
   <body>
-    <!--Div that will hold the pie chart-->
+    <!--Div that will hold the chart-->
     <div id="chart_div">Please select a histogram file</div>
     <input type='file' onchange='loadFile(event)' multiple>
     <button type='button' onclick='doExport(event)'>Export Image</button>

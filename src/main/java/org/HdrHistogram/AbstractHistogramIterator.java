@@ -9,6 +9,7 @@ package org.HdrHistogram;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * Used for iterating through histogram values.
@@ -103,7 +104,7 @@ abstract class AbstractHistogramIterator implements Iterator<HistogramIterationV
             (totalCountToCurrentIndex > arrayTotalCount)) {
             throw new ConcurrentModificationException();
         }
-        throw new ArrayIndexOutOfBoundsException();
+        throw new NoSuchElementException();
     }
 
     /**

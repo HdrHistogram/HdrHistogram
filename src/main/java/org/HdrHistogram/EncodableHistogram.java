@@ -37,7 +37,7 @@ public abstract class EncodableHistogram {
     public abstract double getMaxValueAsDouble();
 
     /**
-     * Decode a {@EncodableHistogram} from a compressed byte buffer. Will return either a
+     * Decode a {@link EncodableHistogram} from a compressed byte buffer. Will return either a
      * {@link org.HdrHistogram.Histogram} or {@link org.HdrHistogram.DoubleHistogram} depending
      * on the format found in the supplied buffer.
      *

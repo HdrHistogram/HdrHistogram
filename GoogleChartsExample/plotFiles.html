@@ -18,7 +18,7 @@
         alert('The File APIs are not fully supported in this browser.');
     }
 
-    // Load the Visualization API and the piechart package.
+    // Load the Visualization API and the corechart package.
     google.load('visualization', '1.0', {'packages':['corechart']});
 
     // Set a callback to run when the Google Visualization API is loaded.
@@ -96,7 +96,7 @@
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
         }
 
-        // add tooptips with correct percentile text to data:
+        // add tooltips with correct percentile text to data:
         var columns = [0];
         for (var i = 1; i < chartData.getNumberOfColumns(); i++) {
             columns.push(i);
@@ -174,10 +174,12 @@
 <script>
     function timeUnitsSelected(evt) {
         drawChart();
+        return {typed: ''};
     }
 
     function doExport(event) {
         saveSvgAsPng(document.querySelector('svg'), 'Histogram', 2.0);
+        return {typed: ''};
     }
 </script>
 
@@ -188,7 +190,6 @@
 
         var names = [];
         var histos = [];
-        var fileCount = 0;
 
         fileDisplayArea.innerText = "file selected...\n";
 
@@ -256,8 +257,8 @@
             var css = "";
             var sheets = document.styleSheets;
             for (var i = 0; i < sheets.length; i++) {
-                var rules = sheets[i].cssRules;
-                if (rules != null) {
+                if (sheets[i].hasOwnProperty('cssRules')) {
+                    var rules = sheets[i].cssRules;
                     for (var j = 0; j < rules.length; j++) {
                         var rule = rules[j];
                         if (typeof(rule.style) != "undefined") {
@@ -351,7 +352,7 @@
 
 <pre id="fileDisplayArea">Please select file(s) above.</pre>
 
-<!--Div that will hold the pie chart-->
+<!--Div that will hold the chart-->
 <div id="chart_div">None Loaded</div>
 
 Latency time units:
@@ -375,10 +376,11 @@ Percentile range:
 <script type="text/javascript">
     function showValue(newValue) {
         var x = Math.pow(10, newValue);
-        percentile = 100.0 - (100.0 / x);
+        var percentile = 100.0 - (100.0 / x);
         document.getElementById("percentileRange").innerHTML=percentile + "%";
         maxPercentile = x;
         drawChart();
+        return {typed: ''};
     }
 </script>
 </p>

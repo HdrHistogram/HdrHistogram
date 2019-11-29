@@ -5,17 +5,14 @@ import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.IllegalFormatException;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.Deflater;
 
 import static java.nio.ByteOrder.BIG_ENDIAN;
-
 
 /**
  * A histogram log writer.

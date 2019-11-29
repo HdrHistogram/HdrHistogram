@@ -1,15 +1,18 @@
 HdrHistogram
 ----------------------------------------------
 [![Gitter](https://img.shields.io/gitter/room/gitterHQ/gitter.svg)](https://gitter.im/HdrHistogram/HdrHistogram?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build Status](https://travis-ci.org/HdrHistogram/HdrHistogram.svg?branch=master)](https://travis-ci.org/HdrHistogram/HdrHistogram) 
+[![Build Status](https://travis-ci.org/HdrHistogram/HdrHistogram.svg?branch=master)](https://travis-ci.org/HdrHistogram/HdrHistogram)
+[![Java CI](https://github.com/hdrhistogram/hdrhistogram/workflows/Java%20CI/badge.svg)](https://github.com/hdrhistogram/hdrhistogram/actions)
 [![Javadocs](http://www.javadoc.io/badge/org.hdrhistogram/HdrHistogram.svg)](http://www.javadoc.io/doc/org.hdrhistogram/HdrHistogram)
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/HdrHistogram/HdrHistogram.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/HdrHistogram/HdrHistogram/alerts/)
+[![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/HdrHistogram/HdrHistogram.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/HdrHistogram/HdrHistogram/context:java)
 
 ----------------------------------------------------------------------------
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
-This respository currently includes a Java implementation of
+This repository currently includes a Java implementation of
 HdrHistogram. C, C#/.NET, Python, Javascript, Rust, Erlang, and Go ports
-can be found in other respositories. All of which share common concepts
+can be found in other repositories. All of which share common concepts
 and data representation capabilities. Look at repositories under the
 [HdrHistogram organization](https://github.com/HdrHistogram) for various
 implementations and useful tools.
@@ -18,7 +21,7 @@ Note: The below is an excerpt from a Histogram JavaDoc. While much
 of it generally applies to other language implementations as well,
 some details may vary by implementation (e.g. iteration and
 synchronization), so you should consult the documentation or header
-information of specific API library you intended to use.
+information of the specific API library you intend to use.
 
 ----------------------------------------------
 
@@ -69,7 +72,7 @@ low [and ultimately configurable] loss in accuracy when compared to
 performing the same analysis directly on the potentially infinite series of
 sourced data values samples.
 
-An common use example of HdrHistogram would be to record response times
+A common use example of HdrHistogram would be to record response times
 in units of microseconds across a dynamic range stretching from 1 usec to
 over an hour, with a good enough resolution to support later performing
 post-recording analysis on the collected data. Analysis can include
@@ -134,12 +137,12 @@ sampling, analyzing, or reporting operations are needed, consider using
 the Recorder and SingleWriterRecorder recorder variants that were specifically
 designed for that purpose. Recorders provide a recording API similar to
 Histogram, and internally maintain and coordinate active/inactive histograms
-such that recording remains wait-free in the presense of accurate and stable
+such that recording remains wait-free in the presence of accurate and stable
 interval sampling.
 
 It is worth mentioning that since Histogram objects are additive, it is
 common practice to use per-thread non-synchronized histograms or
-SingleWriterRecorders, and using a summary/reporting thread perform
+SingleWriterRecorders, and using a summary/reporting thread to perform
 histogram aggregation math across time and/or threads.  
 
 
@@ -266,13 +269,13 @@ random, uncoordinated request would have experienced.
 Footprint estimation
 ----------------------------------------------
 
-Due to it's dynamic range representation, Histogram is relatively efficient
+Due to its dynamic range representation, Histogram is relatively efficient
 in memory space requirements given the accuracy and dynamic range it covers.
 Still, it is useful to be able to estimate the memory footprint involved
 for a given highestTrackableValue and numberOfSignificantValueDigits
 combination. Beyond a relatively small fixed-size footprint used for internal
 fields and stats (which can be estimated as "fixed at well less than 1KB"),
-the bulk of a Histogram's storage is taken up by it's data value recording
+the bulk of a Histogram's storage is taken up by its data value recording
 counts array. The total footprint can be conservatively estimated by:
 
 ``` java

@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * call {@link SingleWriterRecorder#recordValue} or
  * {@link SingleWriterRecorder#recordValueWithExpectedInterval} at any point in time.
  * It DOES NOT safely support concurrent recording calls.
+ * Recording calls are wait-free on architectures that support atomic increment operations, and
+ * re lock-free on architectures that do not.
  *  * <p>
  * A common pattern for using a {@link SingleWriterRecorder} looks like this:
  * <br><pre><code>
@@ -37,14 +39,38 @@ import java.util.concurrent.atomic.AtomicLong;
  * </code></pre>
  */
 
-public class SingleWriterRecorder {
+public class SingleWriterRecorder implements ValueRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
     private final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
 
-    private volatile InternalHistogram activeHistogram;
-    private InternalHistogram inactiveHistogram;
+    private volatile Histogram activeHistogram;
+    private Histogram inactiveHistogram;
+
+    /**
+     * Construct an auto-resizing {@link SingleWriterRecorder} with a lowest discernible value of
+     * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
+     * <p>
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterRecorder} can be configuired to
+     * track value counts in a packed internal representation optimized for typical histogram recoded values are
+     * sparse in the value range and tend to be incremented in small unit counts. This packed representation tends
+     * to require significantly smaller amounts of stoarge when compared to unpacked representations, but can incur
+     * additional recording cost due to resizing and repacking operations that may
+     * occur as previously unrecorded values are encountered.
+     *
+     * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
+     *                                       decimal digits to which the histogram will maintain value resolution
+     *                                       and separation. Must be a non-negative integer between 0 and 5.
+     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     */
+    public SingleWriterRecorder(final int numberOfSignificantValueDigits, final boolean packed) {
+        activeHistogram = packed ?
+                new PackedInternalHistogram(instanceId, numberOfSignificantValueDigits) :
+                new InternalHistogram(instanceId, numberOfSignificantValueDigits);
+        inactiveHistogram = null;
+        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+    }
 
     /**
      * Construct an auto-resizing {@link SingleWriterRecorder} with a lowest discernible value of
@@ -55,9 +81,7 @@ public class SingleWriterRecorder {
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
     public SingleWriterRecorder(final int numberOfSignificantValueDigits) {
-        activeHistogram = new InternalHistogram(instanceId, numberOfSignificantValueDigits);
-        inactiveHistogram = null;
-        activeHistogram.setStartTimeStamp(System.currentTimeMillis());
+        this(numberOfSignificantValueDigits, false);
     }
 
     /**
@@ -106,6 +130,7 @@ public class SingleWriterRecorder {
      * @param value the value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValue(final long value) {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -122,6 +147,7 @@ public class SingleWriterRecorder {
      * @param count The number of occurrences of this value to record
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithCount(final long value, final long count) throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
         try {
@@ -147,6 +173,7 @@ public class SingleWriterRecorder {
      *                                           than expectedIntervalBetweenValueSamples
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds highestTrackableValue
      */
+    @Override
     public void recordValueWithExpectedInterval(final long value, final long expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
@@ -161,13 +188,42 @@ public class SingleWriterRecorder {
      * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
      * counts accumulated since the last interval histogram was taken.
      * <p>
-     * Calling {@link SingleWriterRecorder#getIntervalHistogram()} will reset
+     * Calling {@code getIntervalHistogram()} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized Histogram getIntervalHistogram() {
         return getIntervalHistogram(null);
+    }
+
+    /**
+     * Get an interval histogram, which will include a stable, consistent view of all value counts
+     * accumulated since the last interval histogram was taken.
+     * <p>
+     * {@code getIntervalHistogram(histogramToRecycle)}
+     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
+     * and content copying operations, and is therefore significantly more efficient for repeated use than
+     * {@link SingleWriterRecorder#getIntervalHistogram()} and
+     * {@link SingleWriterRecorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
+     * {@code histogramToRecycle} must
+     * be either be null or an interval histogram returned by a previous call to
+     * {@code getIntervalHistogram(histogramToRecycle)} or
+     * {@link SingleWriterRecorder#getIntervalHistogram()}.
+     * <p>
+     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
+     * the same interval histogram instance is recycled more than once, behavior is undefined.
+     * <p>
+     * Calling {@code getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start
+     * accumulating value counts for the next interval
+     *
+     * @param histogramToRecycle a previously returned interval histogram (from this instance of
+     *                           {@link SingleWriterRecorder}) that may be recycled to avoid allocation and
+     *                           copy operations.
+     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
+     */
+    public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
+        return getIntervalHistogram(histogramToRecycle, true);
     }
 
     /**
@@ -195,12 +251,16 @@ public class SingleWriterRecorder {
      *
      * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
      *                           copy operations.
+     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     *                                 instance of {@link SingleWriterRecorder}. If false, will allow recycling histograms
+     *                                 previously returned by other instances of {@link SingleWriterRecorder}.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
-    public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
+    public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle,
+                                                       boolean enforeContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle);
-        inactiveHistogram = (InternalHistogram) histogramToRecycle;
+        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
+        inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         Histogram sampledHistogram = inactiveHistogram;
         inactiveHistogram = null; // Once we expose the sample, we can't reuse it internally until it is recycled
@@ -211,7 +271,7 @@ public class SingleWriterRecorder {
      * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
      * was taken) into {@code targetHistogram}.
      *
-     * Calling {@link SingleWriterRecorder#getIntervalHistogramInto getIntervalHistogramInto()} will reset
+     * Calling {@code getIntervalHistogramInto(targetHistogram)} will reset
      * the value counts, and start accumulating value counts for the next interval.
      *
      * @param targetHistogram the histogram into which the interval histogram's data should be copied
@@ -224,6 +284,7 @@ public class SingleWriterRecorder {
     /**
      * Reset any value counts accumulated thus far.
      */
+    @Override
     public synchronized void reset() {
         // the currently inactive histogram is reset each time we flip. So flipping twice resets both:
         performIntervalSample();
@@ -236,13 +297,20 @@ public class SingleWriterRecorder {
 
             // Make sure we have an inactive version to flip in:
             if (inactiveHistogram == null) {
-                inactiveHistogram = new InternalHistogram(activeHistogram);
+                if (activeHistogram instanceof InternalHistogram) {
+                    inactiveHistogram = new InternalHistogram((InternalHistogram) activeHistogram);
+                } else if (activeHistogram instanceof PackedInternalHistogram) {
+                    inactiveHistogram = new PackedInternalHistogram(
+                            instanceId, activeHistogram.getNumberOfSignificantValueDigits());
+                } else {
+                    throw new IllegalStateException("Unexpected internal histogram type for activeHistogram");
+                }
             }
 
             inactiveHistogram.reset();
 
             // Swap active and inactive histograms:
-            final InternalHistogram tempHistogram = inactiveHistogram;
+            final Histogram tempHistogram = inactiveHistogram;
             inactiveHistogram = activeHistogram;
             activeHistogram = tempHistogram;
 
@@ -260,7 +328,7 @@ public class SingleWriterRecorder {
         }
     }
 
-    private class InternalHistogram extends Histogram {
+    private static class InternalHistogram extends Histogram {
         private final long containingInstanceId;
 
         private InternalHistogram(long id, int numberOfSignificantValueDigits) {
@@ -282,21 +350,40 @@ public class SingleWriterRecorder {
         }
     }
 
-    private void validateFitAsReplacementHistogram(Histogram replacementHistogram) {
+    private static class PackedInternalHistogram extends PackedHistogram {
+        private final long containingInstanceId;
+
+        private PackedInternalHistogram(long id, int numberOfSignificantValueDigits) {
+            super(numberOfSignificantValueDigits);
+            this.containingInstanceId = id;
+        }
+    }
+
+    private void validateFitAsReplacementHistogram(Histogram replacementHistogram,
+                                                   boolean enforeContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if ((replacementHistogram instanceof InternalHistogram)
                 &&
-                (((InternalHistogram) replacementHistogram).containingInstanceId ==
-                        activeHistogram.containingInstanceId)
-                ) {
+                ((!enforeContainingInstance) ||
+                        (((InternalHistogram) replacementHistogram).containingInstanceId ==
+                                ((InternalHistogram) activeHistogram).containingInstanceId)
+                )) {
+            bad = false;
+        } else if ((replacementHistogram instanceof PackedInternalHistogram)
+                &&
+                ((!enforeContainingInstance) ||
+                        (((PackedInternalHistogram) replacementHistogram).containingInstanceId ==
+                                ((PackedInternalHistogram) activeHistogram).containingInstanceId)
+                )) {
             bad = false;
         }
 
         if (bad) {
             throw new IllegalArgumentException("replacement histogram must have been obtained via a previous " +
-                    "getIntervalHistogram() call from this " + this.getClass().getName() +" instance");
+                    "getIntervalHistogram() call from this " + this.getClass().getName() +
+                    (enforeContainingInstance ? " insatnce" : " class"));
         }
     }
 }

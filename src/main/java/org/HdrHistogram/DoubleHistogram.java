@@ -20,8 +20,8 @@ import java.util.zip.Deflater;
  * <p>
  * It is important to note that {@link DoubleHistogram} is not thread-safe, and does not support safe concurrent
  * recording by multiple threads. If concurrent operation is required, consider usings
- * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram}, or(recommended)
- * {@link DoubleRecorder}, which are intended for this purpose.
+ * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram},
+ * or (recommended) {@link DoubleRecorder} or {@link SingleWriterDoubleRecorder} which are intended for this purpose.
  * <p>
  * {@link DoubleHistogram} supports the recording and analyzing sampled data value counts across a
  * configurable dynamic range of floating point (double) values, with configurable value precision within the range.
@@ -50,7 +50,7 @@ import java.util.zip.Deflater;
  * <p>
  * See package description for {@link org.HdrHistogram} for details.
  */
-public class DoubleHistogram extends EncodableHistogram implements Serializable {
+public class DoubleHistogram extends EncodableHistogram implements DoubleValueRecorder, Serializable {
     private static final double highestAllowedValueEver; // A value that will keep us from multiplying into infinity.
 
     private long configuredHighestToLowestValueRatio;
@@ -134,7 +134,7 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         this(highestToLowestValueRatio, numberOfSignificantValueDigits, internalCountsHistogramClass, null);
     }
 
-    private DoubleHistogram(final long highestToLowestValueRatio,
+    DoubleHistogram(final long highestToLowestValueRatio,
                             final int numberOfSignificantValueDigits,
                             final Class<? extends AbstractHistogram> internalCountsHistogramClass,
                             AbstractHistogram internalCountsHistogram) {
@@ -215,13 +215,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             // Set our double tracking range and internal histogram:
             init(highestToLowestValueRatio, initialLowestValueInAutoRange, valuesHistogram);
 
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (IllegalAccessException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InstantiationException ex) {
-            throw new IllegalArgumentException(ex);
-        } catch (InvocationTargetException ex) {
+        } catch (NoSuchMethodException | IllegalAccessException |
+                InstantiationException | InvocationTargetException ex) {
             throw new IllegalArgumentException(ex);
         }
     }
@@ -287,8 +282,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * Record a value in the histogram
      *
      * @param value The value to be recorded
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValue(final double value) throws ArrayIndexOutOfBoundsException {
         recordSingleValue(value);
     }
@@ -298,8 +294,9 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      *
      * @param value The value to be recorded
      * @param count The number of occurrences of this value to record
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValueWithCount(final double value, final long count) throws ArrayIndexOutOfBoundsException {
         recordCountAtValue(count, value);
     }
@@ -323,31 +320,66 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
      * @param expectedIntervalBetweenValueSamples If expectedIntervalBetweenValueSamples is larger than 0, add
      *                                           auto-generated value records as appropriate if value is larger
      *                                           than expectedIntervalBetweenValueSamples
-     * @throws ArrayIndexOutOfBoundsException (may throw) if value is cannot be covered by the histogram's range
+     * @throws ArrayIndexOutOfBoundsException (may throw) if value cannot be covered by the histogram's range
      */
+    @Override
     public void recordValueWithExpectedInterval(final double value, final double expectedIntervalBetweenValueSamples)
             throws ArrayIndexOutOfBoundsException {
         recordValueWithCountAndExpectedInterval(value, 1, expectedIntervalBetweenValueSamples);
     }
 
     private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
-            // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
-            // with it on the slow path...
-            autoAdjustRangeForValue(value);
+        int throwCount = 0;
+        while (true) {
+            if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
+                // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
+                // with it on the slow path...
+                autoAdjustRangeForValue(value);
+            }
+            try {
+                integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
+                return;
+            } catch (ArrayIndexOutOfBoundsException ex) {
+                // A race that would pass the auto-range check above and would still take an AIOOB
+                // can only occur due to a value that would have been valid becoming invalid due
+                // to a concurrent adjustment operation. Such adjustment operations can happen no
+                // more than 64 times in the entire lifetime of the Histogram, which makes it safe
+                // to retry with no fear of live-locking.
+                if (++throwCount > 64) {
+                    // For the retry check to not detect an out of range attempt after 64 retries
+                    // should be  theoretically impossible, and would indicate a bug.
+                    throw new ArrayIndexOutOfBoundsException(
+                            "BUG: Unexpected non-transient AIOOB Exception caused by:\n" + ex);
+                }
+            }
         }
-
-        integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
     }
 
     private void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
-        if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
-            // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
-            // with it on the slow path...
-            autoAdjustRangeForValue(value);
+        int throwCount = 0;
+        while (true) {
+            if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
+                // Zero is valid and needs no auto-ranging, but also rare enough that we should deal
+                // with it on the slow path...
+                autoAdjustRangeForValue(value);
+            }
+            try {
+                integerValuesHistogram.recordConvertedDoubleValue(value);
+                return;
+            } catch (ArrayIndexOutOfBoundsException ex) {
+                // A race that would pass the auto-range check above and would still take an AIOOB
+                // can only occur due to a value that would have been valid becoming invalid due
+                // to a concurrent adjustment operation. Such adjustment operations can happen no
+                // more than 64 times in the entire lifetime of the Histogram, which makes it safe
+                // to retry with no fear of live-locking.
+                if (++throwCount > 64) {
+                    // For the retry check to not detect an out of range attempt after 64 retries
+                    // should be  theoretically impossible, and would indicate a bug.
+                    throw new ArrayIndexOutOfBoundsException(
+                            "BUG: Unexpected non-transient AIOOB Exception caused by:\n" + ex);
+                }
+            }
         }
-
-        integerValuesHistogram.recordConvertedDoubleValue(value);
     }
 
     private void recordValueWithCountAndExpectedInterval(final double value, final long count,
@@ -573,8 +605,11 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
     /**
      * Reset the contents and stats of this histogram
      */
+    @Override
     public void reset() {
-        integerValuesHistogram.clearCounts();
+        integerValuesHistogram.reset();
+        double initialLowestValueInAutoRange = Math.pow(2.0, 800);
+        init(configuredHighestToLowestValueRatio, initialLowestValueInAutoRange, integerValuesHistogram);
     }
 
     //
@@ -1426,11 +1461,11 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return isCompressedDoubleHistogramCookie(cookie) || isNonCompressedDoubleHistogramCookie(cookie);
     }
 
-    private static boolean isCompressedDoubleHistogramCookie(int cookie) {
+    static boolean isCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_compressedEncodingCookie);
     }
 
-    private static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
+    static boolean isNonCompressedDoubleHistogramCookie(int cookie) {
         return (cookie == DHIST_encodingCookie);
     }
 
@@ -1478,9 +1513,12 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         return encodeIntoCompressedByteBuffer(targetBuffer, Deflater.DEFAULT_COMPRESSION);
     }
 
-    private static DoubleHistogram constructHistogramFromBuffer(
+    private static final Class[] constructorArgTypes = {long.class, int.class, Class.class, AbstractHistogram.class};
+
+    static <T extends DoubleHistogram> T constructHistogramFromBuffer(
             int cookie,
             final ByteBuffer buffer,
+            final Class<T> doubleHistogramClass,
             final Class<? extends AbstractHistogram> histogramClass,
             final long minBarForHighestToLowestValueRatio) throws DataFormatException {
         int numberOfSignificantValueDigits = buffer.getInt();
@@ -1493,16 +1531,26 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             valuesHistogram =
                     AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histogramClass, minBarForHighestToLowestValueRatio);
         } else {
-            throw new IllegalStateException("The buffer does not contain a DoubleHistogram");
+            throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
         }
-        DoubleHistogram histogram =
-                new DoubleHistogram(
-                        configuredHighestToLowestValueRatio,
-                        numberOfSignificantValueDigits,
-                        histogramClass,
-                        valuesHistogram
-                );
-        return histogram;
+
+        try {
+            Constructor<T> doubleHistogramConstructor =
+                    doubleHistogramClass.getDeclaredConstructor(constructorArgTypes);
+
+            T histogram =
+                    doubleHistogramConstructor.newInstance(
+                            configuredHighestToLowestValueRatio,
+                            numberOfSignificantValueDigits,
+                            histogramClass,
+                            valuesHistogram
+                    );
+            histogram.setAutoResize(true);
+            return histogram;
+        } catch (NoSuchMethodException | InstantiationException |
+                IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Unable to construct DoubleHistogram of type " + doubleHistogramClass);
+        }
     }
 
     /**
@@ -1537,7 +1585,8 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
             if (!isNonCompressedDoubleHistogramCookie(cookie)) {
                 throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
             }
-            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                    DoubleHistogram.class, internalCountsHistogramClass,
                     minBarForHighestToLowestValueRatio);
             return histogram;
         } catch (DataFormatException ex) {
@@ -1578,9 +1627,25 @@ public class DoubleHistogram extends EncodableHistogram implements Serializable 
         if (!isCompressedDoubleHistogramCookie(cookie)) {
             throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
-        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer, internalCountsHistogramClass,
+        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+                DoubleHistogram.class, internalCountsHistogramClass,
                 minBarForHighestToLowestValueRatio);
         return histogram;
+    }
+
+    /**
+     * Construct a new DoubleHistogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A DoubleHistogram decoded from the string
+     * @throws DataFormatException on error parsing/decompressing the input
+     */
+    public static DoubleHistogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
     }
 
     //

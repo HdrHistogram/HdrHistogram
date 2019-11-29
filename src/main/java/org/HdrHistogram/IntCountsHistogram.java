@@ -10,7 +10,6 @@ package org.HdrHistogram;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
@@ -53,7 +52,7 @@ public class IntCountsHistogram extends AbstractHistogram {
         long currentCount = counts[normalizedIndex];
         long newCount = (currentCount + value);
         if ((newCount < Integer.MIN_VALUE) || (newCount > Integer.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow integer count");
+            throw new IllegalStateException("would overflow integer count");
         }
         counts[normalizedIndex] = (int) newCount;
     }
@@ -66,7 +65,7 @@ public class IntCountsHistogram extends AbstractHistogram {
     @Override
     void setCountAtNormalizedIndex(int index, long value) {
         if ((value < 0) || (value > Integer.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow short integer count");
+            throw new IllegalStateException("would overflow integer count");
         }
         counts[index] = (int) value;
     }
@@ -79,6 +78,12 @@ public class IntCountsHistogram extends AbstractHistogram {
     @Override
     void setNormalizingIndexOffset(int normalizingIndexOffset) {
         this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+
+    @Override
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+        nonConcurrentSetIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
     }
 
     @Override
@@ -221,8 +226,7 @@ public class IntCountsHistogram extends AbstractHistogram {
      */
     public static IntCountsHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                     final long minBarForHighestTrackableValue) {
-        return (IntCountsHistogram) decodeFromByteBuffer(buffer, IntCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, IntCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -233,17 +237,28 @@ public class IntCountsHistogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static IntCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                              final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                              final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, IntCountsHistogram.class, minBarForHighestTrackableValue);
+    }
+
+    /**
+     * Construct a new IntCountsHistogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A IntCountsHistogram decoded from the string
+     * @throws DataFormatException on error parsing/decompressing the input
+     */
+    public static IntCountsHistogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
     }
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
-    }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asIntBuffer().get(counts, 0, length);
     }
 }

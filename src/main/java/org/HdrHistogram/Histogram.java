@@ -10,7 +10,6 @@ package org.HdrHistogram;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
@@ -85,6 +84,11 @@ public class Histogram extends AbstractHistogram {
     @Override
     void setNormalizingIndexOffset(int normalizingIndexOffset) {
         this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+    @Override
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+        nonConcurrentSetIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
     }
 
     @Override
@@ -240,7 +244,7 @@ public class Histogram extends AbstractHistogram {
      */
     public static Histogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                  final long minBarForHighestTrackableValue) {
-        return (Histogram) decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -251,7 +255,8 @@ public class Histogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static Histogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                           final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                           final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, Histogram.class, minBarForHighestTrackableValue);
     }
 
@@ -260,8 +265,18 @@ public class Histogram extends AbstractHistogram {
         o.defaultReadObject();
     }
 
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asLongBuffer().get(counts, 0, length);
+    /**
+     * Construct a new Histogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A Histogream decoded from the string
+     * @throws DataFormatException on error parsing/decompressing the input
+     */
+    public static Histogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
     }
 }

@@ -77,6 +77,8 @@ public class HistogramLogProcessor extends Thread {
         int percentilesOutputTicksPerHalf = 5;
         Double outputValueUnitRatio = 1000000.0; // default to msec units for output.
 
+        double expectedIntervalForCoordinatedOmissionCorrection = 0.0;
+
         String errorMessage = "";
 
         HistogramLogProcessorConfiguration(final String[] args) {
@@ -92,25 +94,28 @@ public class HistogramLogProcessor extends Thread {
                     } else if (args[i].equals("-alltags")) {
                         allTags = true;
                     } else if (args[i].equals("-i")) {
-                        inputFileName = args[++i];
+                        inputFileName = args[++i];              // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-tag")) {
-                        tag = args[++i];
+                        tag = args[++i];                        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-mwp")) {
-                        movingWindowPercentileToReport = Double.parseDouble(args[++i]);
+                        movingWindowPercentileToReport = Double.parseDouble(args[++i]); // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-mwpl")) {
-                        movingWindowLengthInMsec = Long.parseLong(args[++i]);
+                        movingWindowLengthInMsec = Long.parseLong(args[++i]);   // lgtm [java/index-out-of-bounds]
                         movingWindow = true;
                     } else if (args[i].equals("-start")) {
-                        rangeStartTimeSec = Double.parseDouble(args[++i]);
+                        rangeStartTimeSec = Double.parseDouble(args[++i]);      // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-end")) {
-                        rangeEndTimeSec = Double.parseDouble(args[++i]);
+                        rangeEndTimeSec = Double.parseDouble(args[++i]);        // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-o")) {
-                        outputFileName = args[++i];
+                        outputFileName = args[++i];                             // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-percentilesOutputTicksPerHalf")) {
-                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);
+                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-outputValueUnitRatio")) {
-                        outputValueUnitRatio = Double.parseDouble(args[++i]);
+                        outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
+                    } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
+                        expectedIntervalForCoordinatedOmissionCorrection =
+                                Double.parseDouble(args[++i]);  // lgtm [java/index-out-of-bounds]
                     } else if (args[i].equals("-h")) {
                         askedForHelp = true;
                         throw new Exception("Help: " + args[i]);
@@ -118,7 +123,6 @@ public class HistogramLogProcessor extends Thread {
                         throw new Exception("Invalid args: " + args[i]);
                     }
                 }
-
             } catch (Exception e) {
                 errorMessage = "Error: " + versionString + " launched with the following args:\n";
 
@@ -133,22 +137,28 @@ public class HistogramLogProcessor extends Thread {
                 final String validArgs =
                         "\"[-csv] [-v] [-i inputFileName] [-o outputFileName] [-tag tag] " +
                                 "[-start rangeStartTimeSec] [-end rangeEndTimeSec] " +
-                                "[-outputValueUnitRatio r] [-listtags]";
+                                "[-outputValueUnitRatio r] [-correctLogWithKnownCoordinatedOmission i] [-listtags]";
 
                 System.err.println("valid arguments = " + validArgs);
 
                 System.err.println(
-                        " [-h]                        help\n" +
-                                " [-v]                        Provide verbose error output\n" +
-                                " [-csv]                      Use CSV format for output log files\n" +
-                                " [-i logFileName]            File name of Histogram Log to process (default is standard input)\n" +
-                                " [-o outputFileName]         File name to output to (default is standard output)\n" +
-                                " [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n" +
-                                " [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)\n" +
-                                " [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)\n" +
-                                " [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units\n" +
-                                "                             in output. [default = 1000000.0 (1 msec in nsec)]\n" +
-                                " [-listtags]                 list all tags found on histogram lines the input file."
+                            " [-h]                                         help\n" +
+                            " [-v]                                         Provide verbose error output\n" +
+                            " [-csv]                                       Use CSV format for output log files\n" +
+                            " [-i logFileName]                             File name of Histogram Log to process (default is standard input)\n" +
+                            " [-o outputFileName]                          File name to output to (default is standard output)\n" +
+                            " [-tag tag]                                   The tag (default no tag) of the histogram lines to be processed\n" +
+                            " [-start rangeStartTimeSec]                   The start time for the range in the file, in seconds (default 0.0)\n" +
+                            " [-end rangeEndTimeSec]                       The end time for the range in the file, in seconds (default is infinite)\n" +
+                            " [-outputValueUnitRatio r]                    The scaling factor by which to divide histogram recorded values units\n" +
+                            "                                              in output. [default = 1000000.0 (1 msec in nsec)]\n" +
+                            " [-correctLogWithKnownCoordinatedOmission i]  When the supplied expected interval i is than 0, performs coordinated\n" +
+                            "                                              omission corection on the input log's interval histograms by adding\n" +
+                            "                                              missing values as appropriate based on the supplied expected interval\n" +
+                            "                                              value i (in wahtever units the log histograms were recorded with). This\n" +
+                            "                                              feature should only be used when the input log is known to have been\n" +
+                            "                                              recorded with coordinated ommisions, and when an expected interval is known.\n" +
+                            " [-listtags]                                  list all tags found on histogram lines the input file."
                 );
                 System.exit(1);
             }
@@ -170,12 +180,33 @@ public class HistogramLogProcessor extends Thread {
                 startTime, (new Date((long) (startTime * 1000))).toString());
     }
 
+    EncodableHistogram copyCorrectedForCoordinatedOmission(final EncodableHistogram inputHistogram) {
+        EncodableHistogram histogram = inputHistogram;
+        if (histogram instanceof DoubleHistogram) {
+            if (config.expectedIntervalForCoordinatedOmissionCorrection > 0.0) {
+                histogram = ((DoubleHistogram) histogram).copyCorrectedForCoordinatedOmission(
+                        config.expectedIntervalForCoordinatedOmissionCorrection);
+            }
+        } else if (histogram instanceof Histogram) {
+            long expectedInterval = (long) config.expectedIntervalForCoordinatedOmissionCorrection;
+            if (expectedInterval > 0) {
+                histogram = ((Histogram) histogram).copyCorrectedForCoordinatedOmission(expectedInterval);
+            }
+        }
+        return histogram;
+    }
+
     private int lineNumber = 0;
 
     private EncodableHistogram getIntervalHistogram() {
         EncodableHistogram histogram = null;
         try {
             histogram = logReader.nextIntervalHistogram(config.rangeStartTimeSec, config.rangeEndTimeSec);
+            if (config.expectedIntervalForCoordinatedOmissionCorrection > 0.0) {
+                // Apply Coordinated Omission correction to log histograms when arguments indicate that
+                // such correction is desired, and an expected interval is provided.
+                histogram = copyCorrectedForCoordinatedOmission(histogram);
+            }
         } catch (RuntimeException ex) {
             System.err.println("Log file parsing error at line number " + lineNumber +
                     ": line appears to be malformed.");
@@ -211,15 +242,14 @@ public class HistogramLogProcessor extends Thread {
         PrintStream timeIntervalLog = null;
         PrintStream movingWindowLog = null;
         PrintStream histogramPercentileLog = System.out;
-        Double firstStartTime = 0.0;
+        double firstStartTime = 0.0;
         boolean timeIntervalLogLegendWritten = false;
         boolean movingWindowLogLegendWritten = false;
 
-        EncodableHistogram movingWindowSumHistogram = null;
-        Queue<EncodableHistogram> movingWindowQueue = new LinkedList<EncodableHistogram>();
+        Queue<EncodableHistogram> movingWindowQueue = new LinkedList<>();
 
         if (config.listTags) {
-            Set<String> tags = new TreeSet<String>();
+            Set<String> tags = new TreeSet<>();
             EncodableHistogram histogram;
             boolean nullTagFound = false;
             while ((histogram = getIntervalHistogram()) != null) {
@@ -279,35 +309,36 @@ public class HistogramLogProcessor extends Thread {
             }
 
             EncodableHistogram intervalHistogram = getIntervalHistogram(config.tag);
+            boolean logUsesDoubleHistograms = (intervalHistogram instanceof DoubleHistogram);
 
-            Histogram accumulatedRegularHistogram = null;
-            DoubleHistogram accumulatedDoubleHistogram = null;
+            Histogram accumulatedRegularHistogram = logUsesDoubleHistograms ?
+                    new Histogram(3) :
+                    ((Histogram) intervalHistogram).copy();
+            accumulatedRegularHistogram.reset();
+            accumulatedRegularHistogram.setAutoResize(true);
 
-            if (intervalHistogram != null) {
-                // Shape the accumulated histogram like the histograms in the log file (but clear their contents):
-                if (intervalHistogram instanceof DoubleHistogram) {
-                    accumulatedDoubleHistogram = ((DoubleHistogram) intervalHistogram).copy();
-                    accumulatedDoubleHistogram.reset();
-                    accumulatedDoubleHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new DoubleHistogram(3);
-                } else {
-                    accumulatedRegularHistogram = ((Histogram) intervalHistogram).copy();
-                    accumulatedRegularHistogram.reset();
-                    accumulatedRegularHistogram.setAutoResize(true);
-                    movingWindowSumHistogram = new Histogram(3);
-                }
-            }
+            DoubleHistogram accumulatedDoubleHistogram = logUsesDoubleHistograms ?
+                    ((DoubleHistogram) intervalHistogram).copy() :
+                    new DoubleHistogram(3);
+            accumulatedDoubleHistogram.reset();
+            accumulatedDoubleHistogram.setAutoResize(true);
+
+
+            EncodableHistogram movingWindowSumHistogram = logUsesDoubleHistograms ?
+                    new DoubleHistogram(3) :
+                    new Histogram(3);
+
 
             while (intervalHistogram != null) {
 
                 // handle accumulated histogram:
                 if (intervalHistogram instanceof DoubleHistogram) {
-                    if (accumulatedDoubleHistogram == null) {
+                    if (!logUsesDoubleHistograms) {
                         throw new IllegalStateException("Encountered a DoubleHistogram line in a log of Histograms.");
                     }
                     accumulatedDoubleHistogram.add((DoubleHistogram) intervalHistogram);
                 } else {
-                    if (accumulatedRegularHistogram == null) {
+                    if (logUsesDoubleHistograms) {
                         throw new IllegalStateException("Encountered a Histogram line in a log of DoubleHistograms.");
                     }
                     accumulatedRegularHistogram.add((Histogram) intervalHistogram);
@@ -316,22 +347,24 @@ public class HistogramLogProcessor extends Thread {
                 long windowCutOffTimeStamp = intervalHistogram.getEndTimeStamp() - config.movingWindowLengthInMsec;
                 // handle moving window:
                 if (config.movingWindow) {
-
                     // Add the current interval histogram to the moving window sums:
-                    if (movingWindowSumHistogram instanceof DoubleHistogram) {
+                    if ((movingWindowSumHistogram instanceof DoubleHistogram) &&
+                            (intervalHistogram instanceof DoubleHistogram)){
                         ((DoubleHistogram) movingWindowSumHistogram).add((DoubleHistogram) intervalHistogram);
-                    } else {
+                    } else if ((movingWindowSumHistogram instanceof Histogram) &&
+                            (intervalHistogram instanceof Histogram)){
                         ((Histogram) movingWindowSumHistogram).add((Histogram) intervalHistogram);
                     }
                     // Remove previous, now-out-of-window interval histograms from moving window:
-                    while ((movingWindowQueue.peek() != null) &&
-                            (movingWindowQueue.peek().getEndTimeStamp() <= windowCutOffTimeStamp)) {
+                    EncodableHistogram head;
+                    while (((head = movingWindowQueue.peek()) != null) &&
+                            (head.getEndTimeStamp() <= windowCutOffTimeStamp)) {
                         EncodableHistogram prevHist = movingWindowQueue.remove();
                         if (movingWindowSumHistogram instanceof DoubleHistogram) {
                             if (prevHist != null) {
                                 ((DoubleHistogram) movingWindowSumHistogram).subtract((DoubleHistogram) prevHist);
                             }
-                        } else {
+                        } else if (movingWindowSumHistogram instanceof Histogram) {
                             if (prevHist != null) {
                                 ((Histogram) movingWindowSumHistogram).subtract((Histogram) prevHist);
                             }
@@ -362,7 +395,7 @@ public class HistogramLogProcessor extends Thread {
                         }
                     }
 
-                    if (intervalHistogram instanceof DoubleHistogram) {
+                    if (logUsesDoubleHistograms) {
                         timeIntervalLog.format(Locale.US, logFormat,
                                 ((intervalHistogram.getEndTimeStamp() / 1000.0) - logReader.getStartTimeSec()),
                                 // values recorded during the last reporting interval
@@ -432,21 +465,21 @@ public class HistogramLogProcessor extends Thread {
                 intervalHistogram = getIntervalHistogram(config.tag);
             }
 
-            if (accumulatedDoubleHistogram != null) {
+            if (logUsesDoubleHistograms) {
                 accumulatedDoubleHistogram.outputPercentileDistribution(histogramPercentileLog,
                         config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
             } else {
-                if (accumulatedRegularHistogram == null) {
-                    // If there were no histograms in the log file, we still need an empty histogram for the
-                    // one line output (shape/range doesn't matter because it is empty):
-                    accumulatedRegularHistogram = new Histogram(1000000L, 2);
-                }
                 accumulatedRegularHistogram.outputPercentileDistribution(histogramPercentileLog,
                         config.percentilesOutputTicksPerHalf, config.outputValueUnitRatio, config.logFormatCsv);
             }
         } finally {
-            if (config.outputFileName != null) {
+            if (timeIntervalLog != null) {
                 timeIntervalLog.close();
+            }
+            if (movingWindowLog != null) {
+                movingWindowLog.close();
+            }
+            if (histogramPercentileLog != System.out) {
                 histogramPercentileLog.close();
             }
         }
@@ -456,16 +489,22 @@ public class HistogramLogProcessor extends Thread {
      * Construct a {@link org.HdrHistogram.HistogramLogProcessor} with the given arguments
      * (provided in command line style).
      * <pre>
-     * [-h]                        help
-     * [-csv]                      Use CSV format for output log files
-     * [-i logFileName]            File name of Histogram Log to process (default is standard input)
-     * [-o outputFileName]         File name to output to (default is standard output)
-     *                             (will replace occurrences of %pid and %date with appropriate information)
-     * [-tag tag]                  The tag (default no tag) of the histogram lines to be processed\n
-     * [-start rangeStartTimeSec]  The start time for the range in the file, in seconds (default 0.0)
-     * [-end rangeEndTimeSec]      The end time for the range in the file, in seconds (default is infinite)
-     * [-outputValueUnitRatio r]   The scaling factor by which to divide histogram recorded values units
-     *                             in output. [default = 1000000.0 (1 msec in nsec)]"
+     * [-h]                                                        help
+     * [-csv]                                                      Use CSV format for output log files
+     * [-i logFileName]                                            File name of Histogram Log to process (default is standard input)
+     * [-o outputFileName]                                         File name to output to (default is standard output)
+     *                                                             (will replace occurrences of %pid and %date with appropriate information)
+     * [-tag tag]                                                  The tag (default no tag) of the histogram lines to be processed\n
+     * [-start rangeStartTimeSec]                                  The start time for the range in the file, in seconds (default 0.0)
+     * [-end rangeEndTimeSec]                                      The end time for the range in the file, in seconds (default is infinite)
+     * [-correctLogWithKnownCoordinatedOmission expectedInterval]  When the supplied expected interval i is than 0, performs coordinated
+     *                                                             omission corection on the input log's interval histograms by adding
+     *                                                             missing values as appropriate based on the supplied expected interval
+     *                                                             value i (in wahtever units the log histograms were recorded with). This
+     *                                                             feature should only be used when the input log is known to have been
+     *                                                             recorded with coordinated ommisions, and when an expected interval is known.
+     * [-outputValueUnitRatio r]                                   The scaling factor by which to divide histogram recorded values units
+     *                                                             in output. [default = 1000000.0 (1 msec in nsec)]"
      * </pre>
      * @param args command line arguments
      * @throws FileNotFoundException if specified input file is not found

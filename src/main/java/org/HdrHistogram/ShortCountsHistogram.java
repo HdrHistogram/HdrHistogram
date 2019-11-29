@@ -10,7 +10,6 @@ package org.HdrHistogram;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.zip.DataFormatException;
 
@@ -52,7 +51,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
         long currentCount = counts[normalizedIndex];
         long newCount = (currentCount + value);
         if ((newCount < Short.MIN_VALUE) || (newCount > Short.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow integer count");
+            throw new IllegalStateException("would overflow short integer count");
         }
         counts[normalizedIndex] = (short) newCount;
     }
@@ -65,7 +64,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
     @Override
     void setCountAtNormalizedIndex(int index, long value) {
         if ((value < 0) || (value > Short.MAX_VALUE)) {
-            throw new IllegalArgumentException("would overflow short integer count");
+            throw new IllegalStateException("would overflow short integer count");
         }
         counts[index] = (short) value;
     }
@@ -78,6 +77,11 @@ public class ShortCountsHistogram extends AbstractHistogram {
     @Override
     void setNormalizingIndexOffset(int normalizingIndexOffset) {
         this.normalizingIndexOffset = normalizingIndexOffset;
+    }
+
+    @Override
+    void setIntegerToDoubleValueConversionRatio(double integerToDoubleValueConversionRatio) {
+        nonConcurrentSetIntegerToDoubleValueConversionRatio(integerToDoubleValueConversionRatio);
     }
 
     @Override
@@ -164,8 +168,8 @@ public class ShortCountsHistogram extends AbstractHistogram {
     }
     
     /**
-     * Construct a ShortCountsHistogram given the Highest value to be tracked and a number of significant decimal digits. The
-     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
+     * Construct a ShortCountsHistogram given the Highest value to be tracked and a number of significant decimal
+     * digits. The histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
@@ -219,8 +223,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
      */
     public static ShortCountsHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                       final long minBarForHighestTrackableValue) {
-        return (ShortCountsHistogram) decodeFromByteBuffer(buffer, ShortCountsHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, ShortCountsHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -231,17 +234,28 @@ public class ShortCountsHistogram extends AbstractHistogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static ShortCountsHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                                final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, ShortCountsHistogram.class, minBarForHighestTrackableValue);
+    }
+
+    /**
+     * Construct a new ShortCountsHistogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A ShortCountsHistogram decoded from the string
+     * @throws DataFormatException on error parsing/decompressing the input
+     */
+    public static ShortCountsHistogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
     }
 
     private void readObject(final ObjectInputStream o)
             throws IOException, ClassNotFoundException {
         o.defaultReadObject();
-    }
-
-    @Override
-    synchronized void fillCountsArrayFromBuffer(final ByteBuffer buffer, final int length) {
-        buffer.asShortBuffer().get(counts, 0, length);
     }
 }

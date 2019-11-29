@@ -10,7 +10,6 @@ package org.HdrHistogram;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.util.concurrent.atomic.*;
 import java.util.zip.DataFormatException;
 
@@ -156,8 +155,8 @@ public class AtomicHistogram extends Histogram {
     }
 
     /**
-     * Construct a AtomicHistogram given the Highest value to be tracked and a number of significant decimal digits. The
-     * histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
+     * Construct a AtomicHistogram given the Highest value to be tracked and a number of significant decimal digits.
+     * The histogram will be constructed to implicitly track (distinguish from 0) values as low as 1.
      *
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} 2.
@@ -185,7 +184,8 @@ public class AtomicHistogram extends Histogram {
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
      */
-    public AtomicHistogram(final long lowestDiscernibleValue, final long highestTrackableValue, final int numberOfSignificantValueDigits) {
+    public AtomicHistogram(final long lowestDiscernibleValue, final long highestTrackableValue,
+                           final int numberOfSignificantValueDigits) {
         super(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits, false);
         counts = new AtomicLongArray(countsArrayLength);
         wordSizeInBytes = 8;
@@ -210,8 +210,7 @@ public class AtomicHistogram extends Histogram {
      */
     public static AtomicHistogram decodeFromByteBuffer(final ByteBuffer buffer,
                                                        final long minBarForHighestTrackableValue) {
-        return (AtomicHistogram) decodeFromByteBuffer(buffer, AtomicHistogram.class,
-                minBarForHighestTrackableValue);
+        return decodeFromByteBuffer(buffer, AtomicHistogram.class, minBarForHighestTrackableValue);
     }
 
     /**
@@ -222,8 +221,24 @@ public class AtomicHistogram extends Histogram {
      * @throws DataFormatException on error parsing/decompressing the buffer
      */
     public static AtomicHistogram decodeFromCompressedByteBuffer(final ByteBuffer buffer,
-                                                                 final long minBarForHighestTrackableValue) throws DataFormatException {
+                                                                 final long minBarForHighestTrackableValue)
+            throws DataFormatException {
         return decodeFromCompressedByteBuffer(buffer, AtomicHistogram.class, minBarForHighestTrackableValue);
+    }
+
+    /**
+     * Construct a new AtomicHistogram by decoding it from a String containing a base64 encoded
+     * compressed histogram representation.
+     *
+     * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
+     * @return A AtomicHistogram decoded from the string
+     * @throws DataFormatException on error parsing/decompressing the input
+     */
+    public static AtomicHistogram fromString(final String base64CompressedHistogramString)
+            throws DataFormatException {
+        return decodeFromCompressedByteBuffer(
+                ByteBuffer.wrap(Base64Helper.parseBase64Binary(base64CompressedHistogramString)),
+                0);
     }
 
     private void readObject(final ObjectInputStream o)
