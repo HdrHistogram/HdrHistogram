@@ -11,17 +11,19 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * {@link StripedWriterReaderPhaser} is a striped version of {@link WriterReaderPhaser}
- * which reduces contention at the expense of higher space consumption.
+ * which reduces contention at the expense of higher space consumption
+ * and slightly higher writer critical section enter/exit costs.
  *
  */
 public class StripedWriterReaderPhaser extends WriterReaderPhaser {
-    private static final int PADDING_BYTES = 128;
-    private static final int STRIDE = PADDING_BYTES / 8;
+    private static final int STRIDE_BYTES = 128;
+    private static final int STRIDE = STRIDE_BYTES / 8;
     private static final int MAX_STRIPES = Integer.MAX_VALUE / STRIDE;
 
     private static final int DEFAULT_NUMBER_OF_STRIPES = 8;
 
     private final int stripes;
+    private final int stripeMask;
 
     private final AtomicLongArray startEpoch;
     private final AtomicLongArray evenEndEpoch;
@@ -47,11 +49,12 @@ public class StripedWriterReaderPhaser extends WriterReaderPhaser {
             throw new IllegalArgumentException("There must be at most " + MAX_STRIPES + " stripes, not " + stripes);
         }
         this.stripes = stripes;
+        this.stripeMask = stripes - 1;
         final int paddedStripes = stripes * STRIDE;
         startEpoch = new AtomicLongArray(paddedStripes);
         evenEndEpoch = new AtomicLongArray(paddedStripes);
         oddEndEpoch = new AtomicLongArray(paddedStripes);
-        for (int i=0; i<stripes; i++) {
+        for (int i = 0; i < stripes; i++) {
             oddEndEpoch.set(i * STRIDE, Long.MIN_VALUE);
         }
     }
@@ -107,41 +110,37 @@ public class StripedWriterReaderPhaser extends WriterReaderPhaser {
         // First, clear currently unused [next] phase end epoch (to proper initial value for phase):
         if (nextPhaseIsEven) {
             initialStartValue = 0;
-            for (int i=0; i<stripes; i++) {
+            for (int i = 0; i < stripes; i++) {
                 evenEndEpoch.lazySet(i * STRIDE, initialStartValue);
             }
         } else {
             initialStartValue = Long.MIN_VALUE;
-            for (int i=0; i<stripes; i++) {
+            for (int i = 0; i < stripes; i++) {
                 oddEndEpoch.lazySet(i * STRIDE, initialStartValue);
             }
         }
 
         // Next, reset start value, indicating new phase, and retain value at flip:
         final long[] startValueAtFlip = new long[stripes];
-        for (int i=0; i<stripes; i++) {
+        for (int i = 0; i < stripes; i++) {
             startValueAtFlip[i] = startEpoch.getAndSet(i * STRIDE, initialStartValue);
         }
 
         // Now, spin until previous phase end value catches up with start value at flip:
-        for (;;) {
-            if (!caughtUp(startValueAtFlip, nextPhaseIsEven ? oddEndEpoch : evenEndEpoch)) {
-                if (yieldTimeNsec == 0) {
-                    Thread.yield();
-                } else {
-                    try {
-                        TimeUnit.NANOSECONDS.sleep(yieldTimeNsec);
-                    } catch (InterruptedException ex) {
-                    }
-                }
+        while (!caughtUp(startValueAtFlip, nextPhaseIsEven ? oddEndEpoch : evenEndEpoch)) {
+            if (yieldTimeNsec == 0) {
+                Thread.yield();
             } else {
-                break;
+                try {
+                    TimeUnit.NANOSECONDS.sleep(yieldTimeNsec);
+                } catch (InterruptedException ex) {
+                }
             }
         }
     }
 
     private boolean caughtUp(final long[] startValueAtFlip, final AtomicLongArray endEpoch) {
-        for (int i=0; i<stripes; i++) {
+        for (int i = 0; i < stripes; i++) {
             if (endEpoch.get(i * STRIDE) < startValueAtFlip[i]) {
                 return false;
             }
@@ -152,14 +151,7 @@ public class StripedWriterReaderPhaser extends WriterReaderPhaser {
 
     private int threadIndex() {
         final int index = (int) Thread.currentThread().getId();
-        return STRIDE * (index & (stripes - 1));
+        return STRIDE * (index & stripeMask);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void flipPhase() {
-        flipPhase(0);
-    }
 }
