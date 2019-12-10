@@ -10,9 +10,9 @@ HdrHistogram
 ----------------------------------------------------------------------------
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
-This respository currently includes a Java implementation of
+This repository currently includes a Java implementation of
 HdrHistogram. C, C#/.NET, Python, Javascript, Rust, Erlang, and Go ports
-can be found in other respositories. All of which share common concepts
+can be found in other repositories. All of which share common concepts
 and data representation capabilities. Look at repositories under the
 [HdrHistogram organization](https://github.com/HdrHistogram) for various
 implementations and useful tools.
@@ -21,7 +21,7 @@ Note: The below is an excerpt from a Histogram JavaDoc. While much
 of it generally applies to other language implementations as well,
 some details may vary by implementation (e.g. iteration and
 synchronization), so you should consult the documentation or header
-information of specific API library you intended to use.
+information of the specific API library you intend to use.
 
 ----------------------------------------------
 
@@ -72,7 +72,7 @@ low [and ultimately configurable] loss in accuracy when compared to
 performing the same analysis directly on the potentially infinite series of
 sourced data values samples.
 
-An common use example of HdrHistogram would be to record response times
+A common use example of HdrHistogram would be to record response times
 in units of microseconds across a dynamic range stretching from 1 usec to
 over an hour, with a good enough resolution to support later performing
 post-recording analysis on the collected data. Analysis can include
@@ -137,12 +137,12 @@ sampling, analyzing, or reporting operations are needed, consider using
 the Recorder and SingleWriterRecorder recorder variants that were specifically
 designed for that purpose. Recorders provide a recording API similar to
 Histogram, and internally maintain and coordinate active/inactive histograms
-such that recording remains wait-free in the presense of accurate and stable
+such that recording remains wait-free in the presence of accurate and stable
 interval sampling.
 
 It is worth mentioning that since Histogram objects are additive, it is
 common practice to use per-thread non-synchronized histograms or
-SingleWriterRecorders, and using a summary/reporting thread perform
+SingleWriterRecorders, and using a summary/reporting thread to perform
 histogram aggregation math across time and/or threads.  
 
 
