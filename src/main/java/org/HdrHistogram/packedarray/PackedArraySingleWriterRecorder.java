@@ -7,7 +7,8 @@
 
 package org.HdrHistogram.packedarray;
 
-import org.HdrHistogram.*;
+import org.HdrHistogram.SingleWriterRecorder;
+import org.HdrHistogram.WriterReaderPhaser;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -19,18 +20,19 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>
  * This pattern is commonly used in logging interval accumulator information while recording is ongoing.
  * <p>
- * {@link PackedArrayRecorder} supports fully concurrent
- * {@link PackedArrayRecorder#increment(int)} and
- * {@link PackedArrayRecorder#add(int, long)} calls.
+ * {@link PackedArraySingleWriterRecorder} expects only a single thread (the "single writer") to call
+ * {@link PackedArraySingleWriterRecorder#increment(int)} or
+ * {@link PackedArraySingleWriterRecorder#add(int, long)} at any point in time.
+ * It DOES NOT safely support concurrent increment or add calls.
  * While the {@link #increment increment()} and {@link #add add()} methods are not quite wait-free, they
  * come "close" to that behvaior in the sense that a given thread will incur a total of no more than a capped
  * fixed number (e.g. 74 in a current implementation) of non-wait-free add or increment operations during
  * the lifetime of an interval array (including across recycling of that array across intervals within the
  * same recorder), regradless of the number of operations done.
  * <p>
- * A common pattern for using a {@link PackedArrayRecorder} looks like this:
+ * A common pattern for using a {@link PackedArraySingleWriterRecorder} looks like this:
  * <br><pre><code>
- * PackedArrayRecorder recorder = new PackedArrayRecorder(); //
+ * PackedArraySingleWriterRecorder recorder = new PackedArraySingleWriterRecorder(); //
  * PackedLongArray intervalArray = null;
  * ...
  * [start of some loop construct that periodically wants to grab an interval array]
@@ -45,7 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  */
 
-public class PackedArrayRecorder {
+public class PackedArraySingleWriterRecorder {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
@@ -54,24 +56,24 @@ public class PackedArrayRecorder {
     private volatile PackedLongArray activeArray;
 
     /**
-     * Construct a {@link PackedArrayRecorder} with a given (virtual) array length.
+     * Construct a {@link PackedArraySingleWriterRecorder} with a given (virtual) array length.
      *
      * @param virtualLength The (virtual) array length
      */
-    public PackedArrayRecorder(final int virtualLength) {
-        activeArray = new InternalConcurrentPackedLongArray(instanceId, virtualLength);
+    public PackedArraySingleWriterRecorder(final int virtualLength) {
+        activeArray = new InternalPackedLongArray(instanceId, virtualLength);
         activeArray.setStartTimeStamp(System.currentTimeMillis());
     }
 
     /**
-     * Construct a {@link PackedArrayRecorder} with a given (virtual) array length, starting with a given
+     * Construct a {@link PackedArraySingleWriterRecorder} with a given (virtual) array length, starting with a given
      * initial physical backing store length
      *
      * @param virtualLength The (virtual) array length
      * @param initialPhysicalLength The initial physical backing store length
      */
-    public PackedArrayRecorder(final int virtualLength, final int initialPhysicalLength) {
-        activeArray = new InternalConcurrentPackedLongArray(instanceId, virtualLength, initialPhysicalLength);
+    public PackedArraySingleWriterRecorder(final int virtualLength, final int initialPhysicalLength) {
+        activeArray = new InternalPackedLongArray(instanceId, virtualLength, initialPhysicalLength);
         activeArray.setStartTimeStamp(System.currentTimeMillis());
     }
 
@@ -133,13 +135,13 @@ public class PackedArrayRecorder {
      * accumulated since the last interval array was taken.
      * <p>
      * Calling this method is equivalent to calling {@code getIntervalArray(null)}. It is generally recommended
-     * that the {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * that the {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalHistogram(arrayToRecycle)} orm be used for
      * regular interval array sampling, as that form accepts a previously returned interval array that can be
      * recycled internally to avoid allocation and content copying operations, and is therefore significantly
-     * more efficient for repeated use than {@link PackedArrayRecorder#getIntervalArray()}.
+     * more efficient for repeated use than {@link PackedArraySingleWriterRecorder#getIntervalArray()}.
      * <p>
-     * Calling {@link PackedArrayRecorder#getIntervalArray()} will reset the values at
+     * Calling {@link PackedArraySingleWriterRecorder#getIntervalArray()} will reset the values at
      * all indexes of the array tracked by the recorder, and start accumulating values for the next interval.
      *
      * @return an array containing the values accumulated since the last interval array was taken.
@@ -152,25 +154,25 @@ public class PackedArrayRecorder {
      * Get an interval array, which will include a stable, consistent view of all values
      * accumulated since the last interval array was taken.
      * <p>
-     * {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle)}
      * accepts a previously returned interval array that can be recycled internally to avoid allocation
      * and content copying operations, and is therefore significantly more efficient for repeated use than
-     * {@link PackedArrayRecorder#getIntervalArray()}. The provided {@code arrayToRecycle} must
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray()}. The provided {@code arrayToRecycle} must
      * be either be null or an interval array returned by a previous call to
-     * {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle)} or
-     * {@link PackedArrayRecorder#getIntervalArray()}.
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray()}.
      * <p>
      * NOTE: The caller is responsible for not recycling the same returned interval array more than once. If
      * the same interval array instance is recycled more than once, behavior is undefined.
      * <p>
-     * Calling {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * Calling {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle)} will reset the values at all indexes of the array
      * tracked by the recorder, and start accumulating values for the next interval.
      *
      * @param arrayToRecycle a previously returned interval array (from this instance of
-     *                           {@link PackedArrayRecorder}) that may be recycled to avoid allocation and
+     *                           {@link PackedArraySingleWriterRecorder}) that may be recycled to avoid allocation and
      *                           copy operations.
      * @return an array containing the values accumulated since the last interval array was taken.
      */
@@ -182,28 +184,28 @@ public class PackedArrayRecorder {
      * Get an interval array, which will include a stable, consistent view of all values
      * accumulated since the last interval array was taken.
      * <p>
-     * {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle)}
      * accepts a previously returned interval array that can be recycled internally to avoid allocation
      * and content copying operations, and is therefore significantly more efficient for repeated use than
-     * {@link PackedArrayRecorder#getIntervalArray()}. The provided {@code arrayToRecycle} must
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray()}. The provided {@code arrayToRecycle} must
      * be either be null or an interval array returned by a previous call to
-     * {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle)} or
-     * {@link PackedArrayRecorder#getIntervalArray()}.
+     * {@link PackedArraySingleWriterRecorder#getIntervalArray()}.
      * <p>
      * NOTE: The caller is responsible for not recycling the same returned interval array more than once. If
      * the same interval array instance is recycled more than once, behavior is undefined.
      * <p>
-     * Calling {@link PackedArrayRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
+     * Calling {@link PackedArraySingleWriterRecorder#getIntervalArray(PackedLongArray arrayToRecycle)
      * getIntervalArray(arrayToRecycle, enforeContainingInstance)} will reset the values at all indexes
      * of the array tracked by the recorder, and start accumulating values for the next interval.
      *
      * @param arrayToRecycle a previously returned interval array that may be recycled to avoid allocation and
      *                           copy operations.
      * @param enforeContainingInstance if true, will only allow recycling of arrays previously returned from this
-     *                                 instance of {@link PackedArrayRecorder}. If false, will allow recycling arrays
-     *                                 previously returned by other instances of {@link PackedArrayRecorder}.
+     *                                 instance of {@link PackedArraySingleWriterRecorder}. If false, will allow recycling arrays
+     *                                 previously returned by other instances of {@link PackedArraySingleWriterRecorder}.
      * @return an array containing the values accumulated since the last interval array was taken.
      */
     public synchronized PackedLongArray getIntervalArray(final PackedLongArray arrayToRecycle,
@@ -229,8 +231,8 @@ public class PackedArrayRecorder {
 
             // Make sure we have an inactive version to flip in:
             if (inactiveArray == null) {
-                if (activeArray instanceof InternalConcurrentPackedLongArray) {
-                    inactiveArray = new InternalConcurrentPackedLongArray(instanceId, activeArray.length());
+                if (activeArray instanceof InternalPackedLongArray) {
+                    inactiveArray = new InternalPackedLongArray(instanceId, activeArray.length());
                 } else {
                     throw new IllegalStateException("Unexpected internal array type for activeArray");
                 }
@@ -258,15 +260,15 @@ public class PackedArrayRecorder {
         return inactiveArray;
     }
 
-    private static class InternalConcurrentPackedLongArray extends ConcurrentPackedLongArray {
+    private static class InternalPackedLongArray extends PackedLongArray {
         private final long containingInstanceId;
 
-        private InternalConcurrentPackedLongArray(final long id, int virtualLength, final int initialPhysicalLength) {
+        private InternalPackedLongArray(final long id, int virtualLength, final int initialPhysicalLength) {
             super(virtualLength, initialPhysicalLength);
             this.containingInstanceId = id;
         }
 
-        private InternalConcurrentPackedLongArray(final long id, final int virtualLength) {
+        private InternalPackedLongArray(final long id, final int virtualLength) {
             super(virtualLength);
             this.containingInstanceId = id;
         }
@@ -277,12 +279,12 @@ public class PackedArrayRecorder {
         boolean bad = true;
         if (replacementArray == null) {
             bad = false;
-        } else if (replacementArray instanceof InternalConcurrentPackedLongArray) {
-            if ((activeArray instanceof InternalConcurrentPackedLongArray)
+        } else if (replacementArray instanceof InternalPackedLongArray) {
+            if ((activeArray instanceof InternalPackedLongArray)
                     &&
                     ((!enforeContainingInstance) ||
-                            (((InternalConcurrentPackedLongArray)replacementArray).containingInstanceId ==
-                                    ((InternalConcurrentPackedLongArray) activeArray).containingInstanceId)
+                            (((InternalPackedLongArray)replacementArray).containingInstanceId ==
+                                    ((InternalPackedLongArray) activeArray).containingInstanceId)
                     )) {
                 bad = false;
             }
