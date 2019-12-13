@@ -52,6 +52,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
      * of the value, and Set 7 contains the MSByte of the value.
      *
      * The array contents is comprised of thre types of entries:
+     *
      *  - The root indexes: A fixed size 8 short-words array of short indexes at the start of the array, containing
      *    the short-index of the root entry of each of the 8 set trees.
      *
@@ -106,19 +107,28 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *
      * - Expansion of entries: Since entries hold only enough storage to represent currently populated paths
      *   below them in the set tree, any addition of entries at a lower level requires the expansion of the entry
-     *   to make room for a larger enrtrySlotsIndexes array. Expansion allocates a new and larger entry structure,
-     *   and populates the newly inserted slot in it with an index to a newly allocated next-level entry. It then
-     *   links the newly expanded entry the previous entry structure via the previousVersionIndex field, and
-     *   publishes the newly expanded entry by [atomically] replacing the "pointer index" to the previous entry
-     *   (located at a higher level entry's slot, or in the root indexes) with a "pointer index" to the newly
-     *   expanded entry structure.  A failure to atomically publish a newly expanded entry (e.g. if the "pointer
-     *   index" being replaced holds a value other than that in our not-yet-published previousVersionIndex) will
-     *   restart the expansion operation from the beginning.
-     *   When first published, a newly-visible expanded entry is immediately "usable" because it has an active,
-     *   "not yet consolidated" previous version entry, and any user of the entry will first have to consolidate it.
-     *   The expansion will follow publication of the expanded entry with a consolidation of the previous entry
-     *   into the new one, clearing the previousVersionIndex field in the process, and enabling normal use of
-     *   the expanded entry.
+     *   to make room for a larger enrtrySlotsIndexes array. The expansion of an entry in order to add a new
+     *   next-level entry under follows the following steps:
+     *
+     *      - Allocate a new and larger entry structure (initializes all slots to -1)
+     *
+     *      - Populate the newly inserted slot with an index to a newly allocated next-level entry
+     *
+     *      - Link the newly expanded entry to the previous entry structure via the previousVersionIndex field
+     *
+     *      - Publish the newly expanded entry by [atomically] replacing the "pointer index" to the previous
+     *        entry (located at a higher level entry's slot, or in the root indexes) with a "pointer index" to
+     *        the newly expanded entry structure
+     *
+     *   A failure to atomically publish a newly expanded entry (e.g. if the "pointer index" being replaced
+     *   holds a value other than that in our not-yet-published previousVersionIndex) will restart the expansion
+     *   operation from the beginning.
+     *
+     *   When first published, a newly-visible expanded entry is not immediately "usable" because it has an
+     *   active, "not yet consolidated" previous version entry, and any user of the entry will first have to
+     *   consolidate it. The expansion will follow publication of the expanded entry with a consolidation of
+     *   the previous entry into the new one, clearing the previousVersionIndex field in the process, and
+     *   enabling normal use of the expanded entry.
      *
      * - Concurrent consolidation: While expansion and consolidation are ongoing, other threads can be
      *   concurrently walking the set trees. Per the protocol stated here, any tree walk encountering a Non-Leaf
@@ -126,9 +136,11 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *   of a given entry can occur concurrently by an an expanding thread and by multiple walking threads.
      *
      * - Consolidation of a a previous version entry into a current one is done by:
-     *      - For each non-zero index in the previous version enrty, copy that index to the new assocaited
+     *
+     *      - For each non-zero index in the previous version enrty, copy that index to the new associated
      *        entry slot in the entry, and CAS a zero in the old entry slot. If the CAS fails, repeat (including
      *        the zero check).
+     *
      *      - Once all entry slots in the previous version entry have been consolidated and zeroed, zero
      *        the index to the previous version entry.
      */
