@@ -698,7 +698,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
             int otherEntryIndex = other.getAtShortIndex(SET_0_START_INDEX + i);
             if (otherEntryIndex == 0) continue; // No tree to duplicate
             int entryIndexPointer = SET_0_START_INDEX + i;
-            for (i = getTopLevelShift(); i > other.getTopLevelShift(); i -= 4) {
+            for (int j = getTopLevelShift(); j > other.getTopLevelShift(); j -= 4) {
                 // for each inserted level:
 
                 // Allocate entry in other:
