@@ -6,21 +6,20 @@ import java.util.NoSuchElementException;
 
 /**
  * A packed-value, sparse array context used for storing 64 bit signed values.
- *
- * An array context is optimised for tracking sparsely set (as in mostly zeros) values that tend to not make
- * use pof the full 64 bit value range even when they are non-zero. The array context's internal representation
- * is such that the packed value at each virtual array index may be represented by 0-8 bytes of actual storage.
- *
- * An array context encodes the packed values in 8 "set trees" with each set tree representing one byte of the
- * packed value at the virtual index in question. The {@link #getPackedIndex(int, int, boolean)} method is used
- * to look up the byte-index corresponding to the given (set tree) value byte of the given virtual index, and can
- * be used to add entries to represent that byte as needed. As a succesful {@link #getPackedIndex(int, int, boolean)}
- * may require a resizing of the array, it can throw a {@link ResizeException} to indicate that the requested
- * packed index cannot be found or added without a resize of the physical storage.
- *
+ * <p>
+ * An array context is optimised for tracking sparsely set (as in mostly zeros) values that tend to not make use pof the
+ * full 64 bit value range even when they are non-zero. The array context's internal representation is such that the
+ * packed value at each virtual array index may be represented by 0-8 bytes of actual storage.
+ * <p>
+ * An array context encodes the packed values in 8 "set trees" with each set tree representing one byte of the packed
+ * value at the virtual index in question. The {@link #getPackedIndex(int, int, boolean)} method is used to look up the
+ * byte-index corresponding to the given (set tree) value byte of the given virtual index, and can be used to add
+ * entries to represent that byte as needed. As a succesful {@link #getPackedIndex(int, int, boolean)} may require a
+ * resizing of the array, it can throw a {@link ResizeException} to indicate that the requested packed index cannot be
+ * found or added without a resize of the physical storage.
  */
 abstract class AbstractPackedArrayContext implements Serializable {
-    /**
+    /*
      *
      * The physical representation uses an insert-at-the-end mechanism for adding contents to the array. Any
      * insertion will occur at the very end of the array, and any expansion of an element will move it to the end,
@@ -39,7 +38,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
      * The storage array stores long (64 bit) words. Lookups for the variuous sizes are done as such:
      *
      * long getAtLongIndex(int longIndex) { return array[longIndex]; }
-     * short getAtShortIndex(int shortIndex) { return (short)((array[shortIndex >> 2] >> (shortIndex & 0x3)) & 0xffff); }
+     * short getAtShortIndex(int shortIndex) { return (short)((array[shortIndex >> 2] >> (shortIndex & 0x3)) & 0xffff);}
      * byte getAtByteIndex(int byteIndex) { return (byte)((array[byteIndex >> 3] >> (byteIndex & 0x7)) & 0xff); }
      *
      * [Therefore there is no dependence on byte endiannes of the underlying arhcitecture]
@@ -177,8 +176,10 @@ abstract class AbstractPackedArrayContext implements Serializable {
             return;
         }
         // room for the 8 shorts root indexes:
+        boolean success;
         do {
-        } while (!casPopulatedShortLength(getPopulatedShortLength(), SET_0_START_INDEX + 8));
+            success = casPopulatedShortLength(getPopulatedShortLength(), SET_0_START_INDEX + 8);
+        } while (!success);
 
         // Populate empty root entries, and point to them from the root indexes:
         for (int i = 0; i < NUMBER_OF_SETS; i++) {
@@ -301,7 +302,8 @@ abstract class AbstractPackedArrayContext implements Serializable {
 
     /**
      * add a byte value to a current byte value in the array
-     * @param byteIndex index of byte value to add to
+     *
+     * @param byteIndex  index of byte value to add to
      * @param valueToAdd byte value to add
      * @return the afterAddValue. ((afterAddValue & 0x100) != 0) indicates a carry.
      */
@@ -408,7 +410,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
         } while (!success);
 
         for (int i = 0; i < entryLengthInShorts; i++) {
-            setAtShortIndex(newEntryIndex + i, (short) -1); // Poison value -1. Must be overriden before reads
+            setAtShortIndex(newEntryIndex + i, (short) -1); // Poison value -1. Must be overriden before read
         }
         return newEntryIndex;
     }
@@ -443,7 +445,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
         // Previous version exists, needs consolidation
 
         int packedSlotsIndicators = getPackedSlotIndicators(entryIndex);
-        int insertedSlotMask = packedSlotsIndicators ^ previousVersionPackedSlotsIndicators; // the only bit that differs
+        int insertedSlotMask = packedSlotsIndicators ^ previousVersionPackedSlotsIndicators; // only bit that differs
         int slotsBelowBitNumber = packedSlotsIndicators & (insertedSlotMask - 1);
         int insertedSlotIndex = Integer.bitCount(slotsBelowBitNumber);
         int numberOfSlotsInEntry = Integer.bitCount(packedSlotsIndicators);
@@ -488,7 +490,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                             final int entryPointerIndex,
                             final int insertedSlotIndex,
                             final int insertedSlotMask,
-                            final boolean nextLevelIsLeaf)throws RetryException, ResizeException {
+                            final boolean nextLevelIsLeaf) throws RetryException, ResizeException {
         int packedSlotIndicators = ((int) getAtShortIndex(existingEntryIndex)) & 0xffff;
         packedSlotIndicators |= insertedSlotMask;
         int numberOfslotsInExpandedEntry = Integer.bitCount(packedSlotIndicators);
@@ -504,7 +506,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
         } else {
             // TODO: Optimize this by creating the whole sub-tree here, rather than a step that will immediaterly expand
             // Create a new 1 word (empty, no slots set) entry for the next level:
-            indexOfNewNextLevelEntry = newEntry(NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS); // Establish short-index to new leaf entry
+            indexOfNewNextLevelEntry = newEntry(NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS); // Establish index to new entry
             setPackedSlotIndicators(indexOfNewNextLevelEntry, (short) 0);
             setPreviousVersionIndex(indexOfNewNextLevelEntry, (short) 0);
         }
@@ -534,7 +536,6 @@ abstract class AbstractPackedArrayContext implements Serializable {
         return expandedEntryIndex;
 
     }
-
 
 
     //
@@ -629,7 +630,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                         entryIndex = expandEntry(entryIndex, entryPointerIndex, slotNumber, slotMask, nextLevelIsLeaf);
                     }
 
-                    // Next level's entry pointer index is in the appropriate slot in in the entries array in this entry:
+                    // Next level's entry pointer index is in the appropriate slot in the entries array in this entry:
                     entryPointerIndex = entryIndex + NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS + slotNumber;
 
                     entryIndex = getIndexAtShortIndex(entryPointerIndex);
@@ -718,7 +719,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                 // Populate new level entry, use pointer to slot 0 as place to populate under:
                 setPackedSlotIndicators(newEntryIndex, (short) 0x1); // Slot 0 populated
                 setPreviousVersionIndex(newEntryIndex, (short) 0); // No previous version
-                entryIndexPointer = newEntryIndex + NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS; // Where the slot 0 index goes.
+                entryIndexPointer = newEntryIndex + NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS; // Where slot 0 index goes.
             }
             copyEntriesAtLevelFromOther(other, otherEntryIndex,
                     entryIndexPointer, other.getTopLevelShift());
@@ -836,7 +837,8 @@ abstract class AbstractPackedArrayContext implements Serializable {
                 consolidateEntry(nextLevelEntryIndex);
             }
 
-            virtualIndex = seekToPopulatedVirtualIndexStartingAtLevel(virtualIndex, nextLevelEntryIndex, indexShift - 4);
+            virtualIndex =
+                    seekToPopulatedVirtualIndexStartingAtLevel(virtualIndex, nextLevelEntryIndex, indexShift - 4);
             if (virtualIndex < 0) {
                 virtualIndex = -virtualIndex;
             } else {
@@ -857,7 +859,8 @@ abstract class AbstractPackedArrayContext implements Serializable {
                 int entryIndex = getRootEntry(0);
                 if (entryIndex == 0) return getVirtualLength(); // Nothing under the root
                 nextVirtrualIndex =
-                        seekToPopulatedVirtualIndexStartingAtLevel(startingVirtualIndex, entryIndex, getTopLevelShift());
+                        seekToPopulatedVirtualIndexStartingAtLevel(startingVirtualIndex, entryIndex,
+                                getTopLevelShift());
             } catch (RetryException ex) {
                 retry = true;
             }
@@ -936,6 +939,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
 
     /**
      * An Iterator over all non-Zero values in the array
+     *
      * @return an Iterator over all non-Zero values in the array
      */
     Iterable<IterationValue> nonZeroValues() {
@@ -1074,7 +1078,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                 output += String.format("[%d] : %d\n", v.getIndex(), v.getValue());
             }
             return output;
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             output += "!!! Exception thown in value iteration...\n";
         }
         return output;
@@ -1101,5 +1105,5 @@ abstract class AbstractPackedArrayContext implements Serializable {
         return output;
     }
 
-    private static class RetryException extends Exception { }
+    private static class RetryException extends Exception {}
 }
