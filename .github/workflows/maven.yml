@@ -21,3 +21,23 @@ jobs:
         java-version: ${{ matrix.java }}
     - name: Test with Maven
       run: mvn test -B --file pom.xml
+
+  test-zing:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04]
+        java: [8.0.252, 8, 11.0.7, 11]
+      fail-fast: false
+      max-parallel: 5           
+    name: Test Zing JDK ${{ matrix.java }}, ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up JDK
+      uses: zing-actions/setup-java@master
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Test with Maven
+      run: mvn test -B --file pom.xml
+
