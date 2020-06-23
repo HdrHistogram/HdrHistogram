@@ -58,7 +58,7 @@
 
     var maxPercentile = 1000000;
 
-    function drawChart() {
+    function drawChart(listener) {
 
         var ticks =
                 [{v:1,f:'0%'},
@@ -94,6 +94,9 @@
 
         if (chart == null) {
             chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+            google.visualization.events.addListener(chart, 'ready', function () {
+                chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+            });
         }
 
         // add tooltips with correct percentile text to data:
@@ -119,7 +122,6 @@
         view.setColumns(columns);
 
         chart.draw(view, options);
-
     }
 </script>
 <script type="text/javascript">
