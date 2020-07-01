@@ -92,12 +92,10 @@
             legend: {position: 'bottom'}
         };
 
-        if (chart == null) {
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            google.visualization.events.addListener(chart, 'ready', function () {
-                chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
-            });
-        }
+        chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        google.visualization.events.addListener(chart, 'ready', function () {
+            chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+        });
 
         // add tooptips with correct percentile text to data:
         var columns = [0];
