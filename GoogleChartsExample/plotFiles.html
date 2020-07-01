@@ -58,7 +58,7 @@
 
     var maxPercentile = 1000000;
 
-    function drawChart(listener) {
+    function drawChart() {
 
         var ticks =
                 [{v:1,f:'0%'},
@@ -92,12 +92,10 @@
             legend: {position: 'bottom'}
         };
 
-        if (chart == null) {
-            chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-            google.visualization.events.addListener(chart, 'ready', function () {
-                chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
-            });
-        }
+        chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+        google.visualization.events.addListener(chart, 'ready', function () {
+            chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+        });
 
         // add tooltips with correct percentile text to data:
         var columns = [0];
