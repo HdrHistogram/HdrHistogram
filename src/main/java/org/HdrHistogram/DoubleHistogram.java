@@ -19,7 +19,7 @@ import java.util.zip.Deflater;
  * <h3>A floating point values High Dynamic Range (HDR) Histogram</h3>
  * <p>
  * It is important to note that {@link DoubleHistogram} is not thread-safe, and does not support safe concurrent
- * recording by multiple threads. If concurrent operation is required, consider usings
+ * recording by multiple threads. If concurrent operation is required, consider using
  * {@link ConcurrentDoubleHistogram}, {@link SynchronizedDoubleHistogram},
  * or (recommended) {@link DoubleRecorder} or {@link SingleWriterDoubleRecorder} which are intended for this purpose.
  * <p>
@@ -560,7 +560,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
                     // been able to fit before, no shift is needed, as the value should now fit. So rather
                     // than shifting and adjusting both lowest and highest limits, we'll end up just
                     // expanding newHighestValueLimitInAutoRange to indicate the newly expanded range.
-                    // We therefore reverse-scale the newLowestValueInAutoRange before lating the later
+                    // We therefore reverse-scale the newLowestValueInAutoRange before letting the later
                     // code scale both up:
                     newLowestValueInAutoRange /= shiftMultiplier;
                 }
@@ -1021,7 +1021,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
 
     /**
      * Set the tag string associated with this histogram
-     * @param tag the tag string to assciate with this histogram
+     * @param tag the tag string to associate with this histogram
      */
     public void setTag(String tag) {
         integerValuesHistogram.setTag(tag);
@@ -1676,7 +1676,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         // range to be bigger, such that the entire double value range can fit in the upper halves of
         // all buckets. Compute the integer value range that will achieve this:
 
-        long lowestTackingIntegerValue = AbstractHistogram.numberOfSubbuckets(numberOfSignificantValueDigits) / 2;
+        long lowestTackingIntegerValue = AbstractHistogram.numberOfSubBuckets(numberOfSignificantValueDigits) / 2;
         long integerValueRange = lowestTackingIntegerValue * internalHighestToLowestValueRatio;
 
         return integerValueRange;
@@ -1709,7 +1709,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
     static {
         // We don't want to allow the histogram to shift and expand into value ranges that could equate
         // to infinity (e.g. 1024.0 * (Double.MAX_VALUE / 1024.0) == Infinity). So lets makes sure the
-        // highestAllowedValueEver cap is a couple of bindary orders of magnitude away from MAX_VALUE:
+        // highestAllowedValueEver cap is a couple of binary orders of magnitude away from MAX_VALUE:
 
         // Choose a highestAllowedValueEver that is a nice power of 2 multiple of 1.0 :
         double value = 1.0;

@@ -103,7 +103,7 @@ class ConcurrentPackedArrayContext extends PackedArrayContext {
     }
 
     @Override
-    void lazysetAtUnpackedIndex(final int index, final long newValue) {
+    void lazySetAtUnpackedIndex(final int index, final long newValue) {
         array.lazySet(index, newValue);
     }
 

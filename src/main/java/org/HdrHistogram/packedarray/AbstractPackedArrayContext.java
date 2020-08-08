@@ -7,14 +7,14 @@ import java.util.NoSuchElementException;
 /**
  * A packed-value, sparse array context used for storing 64 bit signed values.
  * <p>
- * An array context is optimised for tracking sparsely set (as in mostly zeros) values that tend to not make use pof the
+ * An array context is optimised for tracking sparsely set (as in mostly zeros) values that tend to not make use of the
  * full 64 bit value range even when they are non-zero. The array context's internal representation is such that the
  * packed value at each virtual array index may be represented by 0-8 bytes of actual storage.
  * <p>
  * An array context encodes the packed values in 8 "set trees" with each set tree representing one byte of the packed
  * value at the virtual index in question. The {@link #getPackedIndex(int, int, boolean)} method is used to look up the
  * byte-index corresponding to the given (set tree) value byte of the given virtual index, and can be used to add
- * entries to represent that byte as needed. As a succesful {@link #getPackedIndex(int, int, boolean)} may require a
+ * entries to represent that byte as needed. As a successful {@link #getPackedIndex(int, int, boolean)} may require a
  * resizing of the array, it can throw a {@link ResizeException} to indicate that the requested packed index cannot be
  * found or added without a resize of the physical storage.
  */
@@ -35,13 +35,13 @@ abstract class AbstractPackedArrayContext implements Serializable {
      * short-index: an index of a 16-bit aligned short within the overall array (i.e. in multiples of 2 bytes)
      * byte-index: an index of an 8-bit aligned byte within the overall array (i.e. in multiples of 1 byte)
      *
-     * The storage array stores long (64 bit) words. Lookups for the variuous sizes are done as such:
+     * The storage array stores long (64 bit) words. Lookups for the various sizes are done as such:
      *
      * long getAtLongIndex(int longIndex) { return array[longIndex]; }
      * short getAtShortIndex(int shortIndex) { return (short)((array[shortIndex >> 2] >> (shortIndex & 0x3)) & 0xffff);}
      * byte getAtByteIndex(int byteIndex) { return (byte)((array[byteIndex >> 3] >> (byteIndex & 0x7)) & 0xff); }
      *
-     * [Therefore there is no dependence on byte endiannes of the underlying arhcitecture]
+     * [Therefore there is no dependence on byte endianness of the underlying architecture]
      *
      * Structure:
      *
@@ -50,15 +50,15 @@ abstract class AbstractPackedArrayContext implements Serializable {
      * sets in the array, each corresponding to a byte in the overall value being stored. Set 0 contains the LSByte
      * of the value, and Set 7 contains the MSByte of the value.
      *
-     * The array contents is comprised of thre types of entries:
+     * The array contents is comprised of there types of entries:
      *
      *  - The root indexes: A fixed size 8 short-words array of short indexes at the start of the array, containing
      *    the short-index of the root entry of each of the 8 set trees.
      *
-     *  - Non-Leaf Entires: Variable sized, 2-18 short-words entries representing non-leaf entries in a set tree.
+     *  - Non-Leaf Entries: Variable sized, 2-18 short-words entries representing non-leaf entries in a set tree.
      *    Non-Leaf entries comprise of a 2 short-word header containing a packed slot indicators bitmask and the
      *    (optional non-zero) index of previous version of the entry, followed by an array of 0-16 shortwords.
-     *    The short-word found at a given slot in this array holds an index to an entry in the next level of
+     *    The shortword found at a given slot in this array holds an index to an entry in the next level of
      *    the set tree.
      *
      *  - Leaf Entries: comprised of long-words. Each byte [0-7] in the longword holds an actual value. Specifically,
@@ -71,42 +71,42 @@ abstract class AbstractPackedArrayContext implements Serializable {
      **
      * Non-leaf entries structure and mutation protocols:
      *
-     * The structure of a Non-Leaf entry in the array can be roughly desctibed in terms of this C-stylre struct:
+     * The structure of a Non-Leaf entry in the array can be roughly described in terms of this C-style struct:
      *
      * struct nonLeafEntry {
      *     short packedSlotIndicators;
      *     short previousVersionIndex;
-     *     short[] enrtrySlotsIndexes;
+     *     short[] entrySlotsIndexes;
      * }
      *
      * Non-leaf entries are 2-18 short-words in length, with the length determined by the number of bits set in
      * the packedSlotIndicators short-word in the entry. The packed slot indicators short-word is a bit mask which
      * represents the 16 possible next-level entries below the given entry, and has a bit set (to '1') for each slot
-     * that is actually populated with a next level entry. Each of the short-words in the enrtrySlots is
+     * that is actually populated with a next level entry. Each of the short-words in the entrySlots is
      * associated with a specific active ('1') bit in the packedSlotIndicators short-word, and holds the index
-     * to the next level's entry associated with ta given path in the tree. [Note: the values in enrtrySlotsIndexes[]
+     * to the next level's entry associated with ta given path in the tree. [Note: the values in entrySlotsIndexes[]
      * are short-indexes if the next level is not a leaf level, and long-indexes if the next level is
      * a leaf.]
      *
      * Summary of Non-leaf entry use and replacement protocol:
      *
-     * - No value in any enrtrySlotsIndexes[] array is ever initialized to a zero value. Zero values in
-     *   enrtrySlotsIndexes[] can only appear through consolidation (see below). Once an enrtrySlotsIndexes[]
+     * - No value in any entrySlotsIndexes[] array is ever initialized to a zero value. Zero values in
+     *   entrySlotsIndexes[] can only appear through consolidation (see below). Once an entrySlotsIndexes[]
      *   slot is observed to contain a zero, it cannot change to a non-zero value.
      *
-     * - Zero values encountered in enrtrySlotsIndexes[] arrays are never followed. If a zero value is found
+     * - Zero values encountered in entrySlotsIndexes[] arrays are never followed. If a zero value is found
      *   when looking for the index to a lower level entry during a tree walk, the tree walking operation is
      *   restarted from the root.
      *
      * - A Non-Leaf entry with an active (non zero index) previous version is never followed or expanded.
      *   Instead, any thread encountering a Non-leaf entry with an active previous version will consolidate
-     *   the previous version with the current one. the consolidation opeartion will clear (zero) the
+     *   the previous version with the current one. the consolidation operation will clear (zero) the
      *   previousVersionIndex, which will then allow the caller to continue with whatever use the thread was
      *   attempting to make of the entry.
      *
      * - Expansion of entries: Since entries hold only enough storage to represent currently populated paths
      *   below them in the set tree, any addition of entries at a lower level requires the expansion of the entry
-     *   to make room for a larger enrtrySlotsIndexes array. The expansion of an entry in order to add a new
+     *   to make room for a larger entrySlotsIndexes array. The expansion of an entry in order to add a new
      *   next-level entry under follows the following steps:
      *
      *      - Allocate a new and larger entry structure (initializes all slots to -1)
@@ -136,7 +136,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *
      * - Consolidation of a a previous version entry into a current one is done by:
      *
-     *      - For each non-zero index in the previous version enrty, copy that index to the new associated
+     *      - For each non-zero index in the previous version entry, copy that index to the new associated
      *        entry slot in the entry, and CAS a zero in the old entry slot. If the CAS fails, repeat (including
      *        the zero check).
      *
@@ -159,7 +159,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
     private final boolean isPacked;
     private int physicalLength;
     private int virtualLength = 0;
-    private int topLevelShift = Integer.MAX_VALUE; // Make it non-sensical until properly initialized.
+    private int topLevelShift = Integer.MAX_VALUE; // Make it nonsensical until properly initialized.
 
     AbstractPackedArrayContext(final int virtualLength, final int initialPhysicalLength) {
         physicalLength = Math.max(initialPhysicalLength, MINIMUM_INITIAL_PACKED_ARRAY_CAPACITY);
@@ -221,7 +221,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
 
     abstract void setAtUnpackedIndex(int index, long newValue);
 
-    abstract void lazysetAtUnpackedIndex(int index, long newValue);
+    abstract void lazySetAtUnpackedIndex(int index, long newValue);
 
     abstract long incrementAndGetAtUnpackedIndex(int index);
 
@@ -347,8 +347,8 @@ abstract class AbstractPackedArrayContext implements Serializable {
         return getAtShortIndex(entryIndex + NON_LEAF_ENTRY_PREVIOUS_VERSION_OFFSET);
     }
 
-    private void setPreviousVersionIndex(final int entryIndex, final short newPreviosVersionIndex) {
-        setAtShortIndex(entryIndex + NON_LEAF_ENTRY_PREVIOUS_VERSION_OFFSET, newPreviosVersionIndex);
+    private void setPreviousVersionIndex(final int entryIndex, final short newPreviousVersionIndex) {
+        setAtShortIndex(entryIndex + NON_LEAF_ENTRY_PREVIOUS_VERSION_OFFSET, newPreviousVersionIndex);
     }
 
     private short getIndexAtEntrySlot(final int entryIndex, final int slot) {
@@ -410,7 +410,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
         } while (!success);
 
         for (int i = 0; i < entryLengthInShorts; i++) {
-            setAtShortIndex(newEntryIndex + i, (short) -1); // Poison value -1. Must be overriden before read
+            setAtShortIndex(newEntryIndex + i, (short) -1); // Poison value -1. Must be overridden before read
         }
         return newEntryIndex;
     }
@@ -430,7 +430,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
     }
 
     /**
-     * Consolidate entry with previous entry verison if one exists
+     * Consolidate entry with previous entry version if one exists
      *
      * @param entryIndex The shortIndex of the entry to be consolidated
      */
@@ -462,7 +462,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                         // (only copy value in if previous value is less than new one AND is non-zero)
                         casIndexAtEntrySlotIfNonZeroAndLessThan(entryIndex, targetSlot, indexAtSlot);
 
-                        // CAS the previous verison slot to 0.
+                        // CAS the previous version slot to 0.
                         // (Succeeds only if the index in that slot has not changed. Retry if it did).
                         success = casIndexAtEntrySlot(previousVersionIndex, sourceSlot, indexAtSlot, (short) 0);
                     }
@@ -480,10 +480,10 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *
      * @param existingEntryIndex the index of the entry
      * @param entryPointerIndex  index to the slot pointing to the entry (needs to be fixed up)
-     * @param insertedSlotIndex  realtive [packed] index of slot being inserted into entry
+     * @param insertedSlotIndex  relative [packed] index of slot being inserted into entry
      * @param insertedSlotMask   mask value fo slot being inserted
      * @param nextLevelIsLeaf    the level below this one is a leaf level
-     * @return the updated index of the entry (-1 if epansion failed due to conflict)
+     * @return the updated index of the entry (-1 if expansion failed due to conflict)
      * @throws RetryException if expansion fails due to concurrent conflict, and caller should try again.
      */
     private int expandEntry(final int existingEntryIndex,
@@ -493,18 +493,18 @@ abstract class AbstractPackedArrayContext implements Serializable {
                             final boolean nextLevelIsLeaf) throws RetryException, ResizeException {
         int packedSlotIndicators = ((int) getAtShortIndex(existingEntryIndex)) & 0xffff;
         packedSlotIndicators |= insertedSlotMask;
-        int numberOfslotsInExpandedEntry = Integer.bitCount(packedSlotIndicators);
-        if (insertedSlotIndex >= numberOfslotsInExpandedEntry) {
+        int numberOfSlotsInExpandedEntry = Integer.bitCount(packedSlotIndicators);
+        if (insertedSlotIndex >= numberOfSlotsInExpandedEntry) {
             throw new IllegalStateException("inserted slot index is out of range given provided masks");
         }
-        int expandedEntryLength = numberOfslotsInExpandedEntry + NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS;
+        int expandedEntryLength = numberOfSlotsInExpandedEntry + NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS;
 
         // Create new next-level entry to refer to from slot at this level:
         int indexOfNewNextLevelEntry = 0;
         if (nextLevelIsLeaf) {
             indexOfNewNextLevelEntry = newLeafEntry(); // Establish long-index to new leaf entry
         } else {
-            // TODO: Optimize this by creating the whole sub-tree here, rather than a step that will immediaterly expand
+            // TODO: Optimize this by creating the whole sub-tree here, rather than a step that will immediately expand
             // Create a new 1 word (empty, no slots set) entry for the next level:
             indexOfNewNextLevelEntry = newEntry(NON_LEAF_ENTRY_HEADER_SIZE_IN_SHORTS); // Establish index to new entry
             setPackedSlotIndicators(indexOfNewNextLevelEntry, (short) 0);
@@ -518,18 +518,18 @@ abstract class AbstractPackedArrayContext implements Serializable {
         setPackedSlotIndicators(expandedEntryIndex, (short) packedSlotIndicators);
         setPreviousVersionIndex(expandedEntryIndex, (short) existingEntryIndex);
 
-        // Populate the inserted slot with the iundex of the new next level entry:
+        // Populate the inserted slot with the index of the new next level entry:
         setIndexAtEntrySlot(expandedEntryIndex, insertedSlotIndex, insertedSlotValue);
 
         // Copy of previous version entries is deferred to later consolidateEntry() call.
 
-        // Set the pointer to the updated entry index. If CAS fails, discard by throwing retry expecption.
+        // Set the pointer to the updated entry index. If CAS fails, discard by throwing retry exception.
         boolean success = casAtShortIndex(entryPointerIndex, (short) existingEntryIndex, (short) expandedEntryIndex);
         if (!success) {
             throw new RetryException();
         }
 
-        // Exanded entry is published, now consolidate it:
+        // Expanded entry is published, now consolidate it:
 
         consolidateEntry(expandedEntryIndex);
 
@@ -671,7 +671,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                     }
                     byteValueAtPackedIndex = (((long) getAtByteIndex(packedIndex)) & 0xff) << (byteNum << 3);
                 } catch (ResizeException ex) {
-                    throw new IllegalStateException("Should never encounter a resize excpetion without inserts");
+                    throw new IllegalStateException("Should never encounter a resize exception without inserts");
                 }
             } while (packedIndex == 0);
 
@@ -693,7 +693,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
 
     void populateEquivalentEntriesWithZerosFromOther(final AbstractPackedArrayContext other) {
         if (getVirtualLength() < other.getVirtualLength()) {
-            throw new IllegalStateException("Cannot populate array of smaller virtrual length");
+            throw new IllegalStateException("Cannot populate array of smaller virtual length");
         }
         for (int i = 0; i < NUMBER_OF_SETS; i++) {
             int otherEntryIndex = other.getAtShortIndex(SET_0_START_INDEX + i);
@@ -850,7 +850,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
     }
 
     private int findFirstPotentiallyPopulatedVirtualIndexStartingAt(final int startingVirtualIndex) {
-        int nextVirtrualIndex = -1;
+        int nextVirtualIndex = -1;
         // Look for a populated virtual index in set 0:
         boolean retry;
         do {
@@ -858,7 +858,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
             try {
                 int entryIndex = getRootEntry(0);
                 if (entryIndex == 0) return getVirtualLength(); // Nothing under the root
-                nextVirtrualIndex =
+                nextVirtualIndex =
                         seekToPopulatedVirtualIndexStartingAtLevel(startingVirtualIndex, entryIndex,
                                 getTopLevelShift());
             } catch (RetryException ex) {
@@ -867,18 +867,18 @@ abstract class AbstractPackedArrayContext implements Serializable {
         } while (retry);
 
         // Don't drill to value if out of range:
-        if ((nextVirtrualIndex < 0) || (nextVirtrualIndex >= getVirtualLength())) {
+        if ((nextVirtualIndex < 0) || (nextVirtualIndex >= getVirtualLength())) {
             return getVirtualLength();
         }
 
-        return nextVirtrualIndex;
+        return nextVirtualIndex;
     }
 
     // Recorded values iteration:
 
     class NonZeroValuesIterator implements Iterator<IterationValue> {
 
-        int nextVirtrualIndex = 0;
+        int nextVirtualIndex = 0;
         long nextValue;
 
         final IterationValue currentIterationValue = new IterationValue();
@@ -886,22 +886,22 @@ abstract class AbstractPackedArrayContext implements Serializable {
         private void findFirstNonZeroValueVirtualIndexStartingAt(final int startingVirtualIndex) {
             if (!isPacked()) {
                 // Look for non-zero value in unpacked context:
-                for (nextVirtrualIndex = startingVirtualIndex;
-                     nextVirtrualIndex < getVirtualLength();
-                     nextVirtrualIndex++) {
-                    if ((nextValue = getAtUnpackedIndex(nextVirtrualIndex)) != 0) {
+                for (nextVirtualIndex = startingVirtualIndex;
+                     nextVirtualIndex < getVirtualLength();
+                     nextVirtualIndex++) {
+                    if ((nextValue = getAtUnpackedIndex(nextVirtualIndex)) != 0) {
                         return;
                     }
                 }
                 return;
             }
             // Context is packed:
-            nextVirtrualIndex = startingVirtualIndex;
+            nextVirtualIndex = startingVirtualIndex;
             do {
-                nextVirtrualIndex = findFirstPotentiallyPopulatedVirtualIndexStartingAt(nextVirtrualIndex);
-                if (nextVirtrualIndex >= getVirtualLength()) break;
-                if ((nextValue = contextLocalGetValueAtIndex(nextVirtrualIndex)) != 0) break;
-                nextVirtrualIndex++;
+                nextVirtualIndex = findFirstPotentiallyPopulatedVirtualIndexStartingAt(nextVirtualIndex);
+                if (nextVirtualIndex >= getVirtualLength()) break;
+                if ((nextValue = contextLocalGetValueAtIndex(nextVirtualIndex)) != 0) break;
+                nextVirtualIndex++;
             } while (true);
         }
 
@@ -910,15 +910,15 @@ abstract class AbstractPackedArrayContext implements Serializable {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            currentIterationValue.set(nextVirtrualIndex, nextValue);
-            findFirstNonZeroValueVirtualIndexStartingAt(nextVirtrualIndex + 1);
+            currentIterationValue.set(nextVirtualIndex, nextValue);
+            findFirstNonZeroValueVirtualIndexStartingAt(nextVirtualIndex + 1);
             return currentIterationValue;
         }
 
         @Override
         public boolean hasNext() {
-            return ((nextVirtrualIndex >= 0) &&
-                    (nextVirtrualIndex < getVirtualLength()));
+            return ((nextVirtualIndex >= 0) &&
+                    (nextVirtualIndex < getVirtualLength()));
         }
 
         @Override
@@ -1025,19 +1025,19 @@ abstract class AbstractPackedArrayContext implements Serializable {
         }
         try {
             final int packedSlotIndicators = getPackedSlotIndicators(entryIndex);
-            output += String.format("slotIndiators: 0x%02x, prevVersionIndex: %3d: [ ",
+            output += String.format("slotIndicators: 0x%02x, prevVersionIndex: %3d: [ ",
                     packedSlotIndicators,
                     getPreviousVersionIndex(entryIndex));
-            final int numberOfslotsInEntry = Integer.bitCount(packedSlotIndicators);
-            for (int i = 0; i < numberOfslotsInEntry; i++) {
+            final int numberOfSlotsInEntry = Integer.bitCount(packedSlotIndicators);
+            for (int i = 0; i < numberOfSlotsInEntry; i++) {
                 output += String.format("%d", getIndexAtEntrySlot(entryIndex, i));
-                if (i < numberOfslotsInEntry - 1) {
+                if (i < numberOfSlotsInEntry - 1) {
                     output += ", ";
                 }
             }
             output += String.format(" ] (indexShift = %d)\n", indexShift);
             final boolean nextLevelIsLeaf = (indexShift == LEAF_LEVEL_SHIFT);
-            for (int i = 0; i < numberOfslotsInEntry; i++) {
+            for (int i = 0; i < numberOfSlotsInEntry; i++) {
                 final int nextLevelEntryIndex = getIndexAtEntrySlot(entryIndex, i);
                 if (nextLevelIsLeaf) {
                     output += leafEntryToString(nextLevelEntryIndex, indentLevel + 4);
@@ -1047,7 +1047,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
                 }
             }
         } catch (Exception ex) {
-            output += String.format("Exception thrown at nonLeafEnty at index %d with indexShift %d\n",
+            output += String.format("Exception thrown at nonLeafEntry at index %d with indexShift %d\n",
                     entryIndex, indexShift);
         }
         return output;
@@ -1066,7 +1066,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
             }
             output += "\n";
         } catch (Exception ex) {
-            output += String.format("Exception thrown at leafEnty at index %d\n", entryIndex);
+            output += String.format("Exception thrown at leafEntry at index %d\n", entryIndex);
         }
         return output;
     }
@@ -1079,7 +1079,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
             }
             return output;
         } catch (Exception ex) {
-            output += "!!! Exception thown in value iteration...\n";
+            output += "!!! Exception thrown in value iteration...\n";
         }
         return output;
     }

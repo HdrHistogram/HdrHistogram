@@ -18,7 +18,7 @@ import java.lang.reflect.Method;
  *
  * This makes it "hard" to write a single piece of source code that deals with base64 encodings and
  * will compile and run on e.g. Java SE 7 AND Java SE 9. And such common source is a common need for
- * libraries. This class is intended to encapsulate this "hard"-ness and hide the ugly pretzle-twising
+ * libraries. This class is intended to encapsulate this "hard"-ness and hide the ugly pretzel-twisting
  * needed under the covers.
  *
  * Base64Helper provides a common API that works across Java SE 6..9 (and beyond hopefully), and

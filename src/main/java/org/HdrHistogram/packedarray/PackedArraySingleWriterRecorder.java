@@ -25,10 +25,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * {@link PackedArraySingleWriterRecorder#add(int, long)} at any point in time.
  * It DOES NOT safely support concurrent increment or add calls.
  * While the {@link #increment increment()} and {@link #add add()} methods are not quite wait-free, they
- * come "close" to that behvaior in the sense that a given thread will incur a total of no more than a capped
+ * come "close" to that behavior in the sense that a given thread will incur a total of no more than a capped
  * fixed number (e.g. 74 in a current implementation) of non-wait-free add or increment operations during
  * the lifetime of an interval array (including across recycling of that array across intervals within the
- * same recorder), regradless of the number of operations done.
+ * same recorder), regardless of the number of operations done.
  * <p>
  * A common pattern for using a {@link PackedArraySingleWriterRecorder} looks like this:
  * <br><pre><code>
@@ -94,7 +94,7 @@ public class PackedArraySingleWriterRecorder {
             recordingPhaser.readerLock();
             // We don't care about concurrent modifications to the array, as setVirtualLength() in the
             // ConcurrentPackedLongArray takes care of those. However, we must perform the change of virtual
-            // length under the recorder's readerLock proptection to prevent mid-change observations:
+            // length under the recorder's readerLock protection to prevent mid-change observations:
             activeArray.setVirtualLength(newVirtualLength);
         } finally {
             recordingPhaser.readerUnlock();
@@ -103,7 +103,7 @@ public class PackedArraySingleWriterRecorder {
 
     /**
      * Increment a value at a given index in the array
-     * @param index the index of trhe value to be incremented
+     * @param index the index of the value to be incremented
      * @throws ArrayIndexOutOfBoundsException (may throw) if value is exceeds length()
      */
     public void increment(final int index) throws ArrayIndexOutOfBoundsException {
@@ -203,15 +203,15 @@ public class PackedArraySingleWriterRecorder {
      *
      * @param arrayToRecycle a previously returned interval array that may be recycled to avoid allocation and
      *                           copy operations.
-     * @param enforeContainingInstance if true, will only allow recycling of arrays previously returned from this
+     * @param enforceContainingInstance if true, will only allow recycling of arrays previously returned from this
      *                                 instance of {@link PackedArraySingleWriterRecorder}. If false, will allow recycling arrays
      *                                 previously returned by other instances of {@link PackedArraySingleWriterRecorder}.
      * @return an array containing the values accumulated since the last interval array was taken.
      */
     public synchronized PackedLongArray getIntervalArray(final PackedLongArray arrayToRecycle,
-                                                         final boolean enforeContainingInstance) {
+                                                         final boolean enforceContainingInstance) {
         // Verify that replacement array can validly be used as an inactive array replacement:
-        validateFitAsReplacementArray(arrayToRecycle, enforeContainingInstance);
+        validateFitAsReplacementArray(arrayToRecycle, enforceContainingInstance);
         PackedLongArray sampledArray = performIntervalSample(arrayToRecycle);
         return sampledArray;
     }
@@ -275,14 +275,14 @@ public class PackedArraySingleWriterRecorder {
     }
 
     private void validateFitAsReplacementArray(final PackedLongArray replacementArray,
-                                               final boolean enforeContainingInstance) {
+                                               final boolean enforceContainingInstance) {
         boolean bad = true;
         if (replacementArray == null) {
             bad = false;
         } else if (replacementArray instanceof InternalPackedLongArray) {
             if ((activeArray instanceof InternalPackedLongArray)
                     &&
-                    ((!enforeContainingInstance) ||
+                    ((!enforceContainingInstance) ||
                             (((InternalPackedLongArray)replacementArray).containingInstanceId ==
                                     ((InternalPackedLongArray) activeArray).containingInstanceId)
                     )) {
@@ -292,7 +292,7 @@ public class PackedArraySingleWriterRecorder {
         if (bad) {
             throw new IllegalArgumentException("replacement array must have been obtained via a previous" +
                     " getIntervalArray() call from this " + this.getClass().getName() +
-                    (enforeContainingInstance ? " insatnce" : " class"));
+                    (enforceContainingInstance ? " instance" : " class"));
         }
     }
 }

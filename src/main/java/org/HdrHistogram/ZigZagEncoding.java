@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
  * This class provides encoding and decoding methods for writing and reading
  * ZigZag-encoded LEB128-64b9B-variant (Little Endian Base 128) values to/from a
  * {@link ByteBuffer}. LEB128's variable length encoding provides for using a
- * smaller nuber of bytes for smaller values, and the use of ZigZag encoding
+ * smaller number of bytes for smaller values, and the use of ZigZag encoding
  * allows small (closer to zero) negative values to use fewer bytes. Details
  * on both LEB128 and ZigZag can be readily found elsewhere.
  *

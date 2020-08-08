@@ -16,7 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * that were active at the beginning of the flip are still active after the
  * flip is done.  Multiple writers and multiple readers are supported.
  * <p>
- * Using a {@link WriterReaderPhaser} for coordination, writers can continously
+ * Using a {@link WriterReaderPhaser} for coordination, writers can continuously
  * perform wait-free/lock-free updates to common data structures, while readers
  * can get hold of atomic and inactive snapshots without stalling writers.
  * <p>
@@ -127,9 +127,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * High level design: There are even and odd epochs; the epoch flips for each
  * reader.  Any number of writers can be in the same epoch (odd or even), but
  * after a completed phase flip no writers will be still in the old epoch
- * (and therefor are known to not be updating or observing the old, inactive
+ * (and therefore are known to not be updating or observing the old, inactive
  * data structure). Writers can always proceed at full speed in what they
- * percieve to be the current (odd or even) epoch. The epoch flip is fast (a
+ * perceive to be the current (odd or even) epoch. The epoch flip is fast (a
  * single atomic op).
  */
 

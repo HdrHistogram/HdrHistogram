@@ -387,7 +387,7 @@ public class ConcurrentHistogram extends Histogram {
             // At this point, both active and inactive have been safely resized,
             // and the switch in each was done without any writers modifying it in flight.
 
-            // We resized things. We can now make the historam establish size accordingly for future recordings:
+            // We resized things. We can now make the histogram establish size accordingly for future recordings:
             establishSize(newHighestTrackableValue);
 
             assert (countsArrayLength == activeCounts.length());

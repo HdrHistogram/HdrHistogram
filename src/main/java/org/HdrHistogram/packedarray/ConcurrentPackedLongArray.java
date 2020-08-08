@@ -11,13 +11,13 @@ import java.io.ObjectInputStream;
  * <p>
  * {@link ConcurrentPackedLongArray} supports concurrent accumulation, with the {@link #add add()} and {@link #increment
  * increment()} methods providing lossless atomic accumulation in the presence of multiple writers. However, it is
- * impotant to note that {@link #add add()} and {@link #increment increment()} are the *only* safe concurrent
+ * important to note that {@link #add add()} and {@link #increment increment()} are the *only* safe concurrent
  * operations, and that all other operations, including {@link #get get()}, {@link #set set()} and {@link #clear()} may
- * produce "suprising" results if used on an array that is not at rest.
+ * produce "surprising" results if used on an array that is not at rest.
  * <p>
  * While the {@link #add add()} and {@link #increment increment()} methods are not quite wait-free, they come "close"
- * that behvaior in the sense that a given thread will incur a total of no more than a capped fixed number (e.g. 74 in a
- * current implementation) of non-wait-free add or increment operations during the lifetime of an array, regradless of
+ * that behavior in the sense that a given thread will incur a total of no more than a capped fixed number (e.g. 74 in a
+ * current implementation) of non-wait-free add or increment operations during the lifetime of an array, regardless of
  * the number of operations done.
  * </p>
  */
@@ -40,7 +40,7 @@ public class ConcurrentPackedLongArray extends PackedLongArray {
         try {
             wrp.readerLock();
 
-            // Create a new array context, mimicing the structure of the currently active
+            // Create a new array context, mimicking the structure of the currently active
             // context, but without actually populating any values.
             ConcurrentPackedArrayContext newArrayContext =
                     new ConcurrentPackedArrayContext(

@@ -153,11 +153,11 @@ public class HistogramLogProcessor extends Thread {
                             " [-outputValueUnitRatio r]                    The scaling factor by which to divide histogram recorded values units\n" +
                             "                                              in output. [default = 1000000.0 (1 msec in nsec)]\n" +
                             " [-correctLogWithKnownCoordinatedOmission i]  When the supplied expected interval i is than 0, performs coordinated\n" +
-                            "                                              omission corection on the input log's interval histograms by adding\n" +
+                            "                                              omission correction on the input log's interval histograms by adding\n" +
                             "                                              missing values as appropriate based on the supplied expected interval\n" +
-                            "                                              value i (in wahtever units the log histograms were recorded with). This\n" +
+                            "                                              value i (in whatever units the log histograms were recorded with). This\n" +
                             "                                              feature should only be used when the input log is known to have been\n" +
-                            "                                              recorded with coordinated ommisions, and when an expected interval is known.\n" +
+                            "                                              recorded with coordinated omissions, and when an expected interval is known.\n" +
                             " [-listtags]                                  list all tags found on histogram lines the input file."
                 );
                 System.exit(1);
@@ -439,7 +439,7 @@ public class HistogramLogProcessor extends Thread {
                             movingWindowLog.println("\"Timestamp\",\"Window_Count\",\"" +
                                     config.movingWindowPercentileToReport +"%'ile\",\"Max\"");
                         } else {
-                            movingWindowLog.println("Time: WindoCount " + config.movingWindowPercentileToReport + "%'ile Max");
+                            movingWindowLog.println("Time: WindowCount " + config.movingWindowPercentileToReport + "%'ile Max");
                         }
                     }
                     if (intervalHistogram instanceof DoubleHistogram) {
@@ -498,11 +498,11 @@ public class HistogramLogProcessor extends Thread {
      * [-start rangeStartTimeSec]                                  The start time for the range in the file, in seconds (default 0.0)
      * [-end rangeEndTimeSec]                                      The end time for the range in the file, in seconds (default is infinite)
      * [-correctLogWithKnownCoordinatedOmission expectedInterval]  When the supplied expected interval i is than 0, performs coordinated
-     *                                                             omission corection on the input log's interval histograms by adding
+     *                                                             omission correction on the input log's interval histograms by adding
      *                                                             missing values as appropriate based on the supplied expected interval
-     *                                                             value i (in wahtever units the log histograms were recorded with). This
+     *                                                             value i (in whatever units the log histograms were recorded with). This
      *                                                             feature should only be used when the input log is known to have been
-     *                                                             recorded with coordinated ommisions, and when an expected interval is known.
+     *                                                             recorded with coordinated omissions, and when an expected interval is known.
      * [-outputValueUnitRatio r]                                   The scaling factor by which to divide histogram recorded values units
      *                                                             in output. [default = 1000000.0 (1 msec in nsec)]"
      * </pre>

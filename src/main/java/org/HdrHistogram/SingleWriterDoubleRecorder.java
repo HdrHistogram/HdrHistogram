@@ -52,9 +52,9 @@ public class SingleWriterDoubleRecorder implements DoubleValueRecorder {
      * number of significant decimal digits.
      * <p>
      * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterDoubleRecorder} can
-     * be configuired to track value counts in a packed internal representation optimized for typical histogram
+     * be configured to track value counts in a packed internal representation optimized for typical histogram
      * recoded values are sparse in the value range and tend to be incremented in small unit counts. This packed
-     * representation tends to require significantly smaller amounts of stoarge when compared to unpacked
+     * representation tends to require significantly smaller amounts of storage when compared to unpacked
      * representations, but can incur additional recording cost due to resizing and repacking operations that may
      * occur as previously unrecorded values are encountered.
      *
@@ -225,15 +225,15 @@ public class SingleWriterDoubleRecorder implements DoubleValueRecorder {
      *
      * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
      *                           copy operations.
-     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     * @param enforceContainingInstance if true, will only allow recycling of histograms previously returned from this
      *                                 instance of {@link SingleWriterDoubleRecorder}. If false, will allow recycling histograms
      *                                 previously returned by other instances of {@link SingleWriterDoubleRecorder}.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized DoubleHistogram getIntervalHistogram(DoubleHistogram histogramToRecycle,
-                                                             boolean enforeContainingInstance) {
+                                                             boolean enforceContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
+        validateFitAsReplacementHistogram(histogramToRecycle, enforceContainingInstance);
         inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         DoubleHistogram sampledHistogram = inactiveHistogram;
@@ -332,20 +332,20 @@ public class SingleWriterDoubleRecorder implements DoubleValueRecorder {
     }
 
     private void validateFitAsReplacementHistogram(DoubleHistogram replacementHistogram,
-                                                   boolean enforeContainingInstance) {
+                                                   boolean enforceContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if ((replacementHistogram instanceof InternalDoubleHistogram)
                 &&
-                ((!enforeContainingInstance) ||
+                ((!enforceContainingInstance) ||
                         (((InternalDoubleHistogram) replacementHistogram).containingInstanceId ==
                                 ((InternalDoubleHistogram)activeHistogram).containingInstanceId)
                 )) {
             bad = false;
         } else if ((replacementHistogram instanceof PackedInternalDoubleHistogram)
                 &&
-                ((!enforeContainingInstance) ||
+                ((!enforceContainingInstance) ||
                         (((PackedInternalDoubleHistogram) replacementHistogram).containingInstanceId ==
                                 ((PackedInternalDoubleHistogram)activeHistogram).containingInstanceId)
                 )) {

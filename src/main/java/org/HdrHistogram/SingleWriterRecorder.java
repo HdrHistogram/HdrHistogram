@@ -52,10 +52,10 @@ public class SingleWriterRecorder implements ValueRecorder {
      * Construct an auto-resizing {@link SingleWriterRecorder} with a lowest discernible value of
      * 1 and an auto-adjusting highestTrackableValue. Can auto-resize up to track values up to (Long.MAX_VALUE / 2).
      * <p>
-     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterRecorder} can be configuired to
+     * Depending on the valuer of the <b><code>packed</code></b> parameter {@link SingleWriterRecorder} can be configured to
      * track value counts in a packed internal representation optimized for typical histogram recoded values are
      * sparse in the value range and tend to be incremented in small unit counts. This packed representation tends
-     * to require significantly smaller amounts of stoarge when compared to unpacked representations, but can incur
+     * to require significantly smaller amounts of storage when compared to unpacked representations, but can incur
      * additional recording cost due to resizing and repacking operations that may
      * occur as previously unrecorded values are encountered.
      *
@@ -251,15 +251,15 @@ public class SingleWriterRecorder implements ValueRecorder {
      *
      * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
      *                           copy operations.
-     * @param enforeContainingInstance if true, will only allow recycling of histograms previously returned from this
+     * @param enforceContainingInstance if true, will only allow recycling of histograms previously returned from this
      *                                 instance of {@link SingleWriterRecorder}. If false, will allow recycling histograms
      *                                 previously returned by other instances of {@link SingleWriterRecorder}.
      * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
      */
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle,
-                                                       boolean enforeContainingInstance) {
+                                                       boolean enforceContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
-        validateFitAsReplacementHistogram(histogramToRecycle, enforeContainingInstance);
+        validateFitAsReplacementHistogram(histogramToRecycle, enforceContainingInstance);
         inactiveHistogram = histogramToRecycle;
         performIntervalSample();
         Histogram sampledHistogram = inactiveHistogram;
@@ -360,20 +360,20 @@ public class SingleWriterRecorder implements ValueRecorder {
     }
 
     private void validateFitAsReplacementHistogram(Histogram replacementHistogram,
-                                                   boolean enforeContainingInstance) {
+                                                   boolean enforceContainingInstance) {
         boolean bad = true;
         if (replacementHistogram == null) {
             bad = false;
         } else if ((replacementHistogram instanceof InternalHistogram)
                 &&
-                ((!enforeContainingInstance) ||
+                ((!enforceContainingInstance) ||
                         (((InternalHistogram) replacementHistogram).containingInstanceId ==
                                 ((InternalHistogram) activeHistogram).containingInstanceId)
                 )) {
             bad = false;
         } else if ((replacementHistogram instanceof PackedInternalHistogram)
                 &&
-                ((!enforeContainingInstance) ||
+                ((!enforceContainingInstance) ||
                         (((PackedInternalHistogram) replacementHistogram).containingInstanceId ==
                                 ((PackedInternalHistogram) activeHistogram).containingInstanceId)
                 )) {
@@ -383,7 +383,7 @@ public class SingleWriterRecorder implements ValueRecorder {
         if (bad) {
             throw new IllegalArgumentException("replacement histogram must have been obtained via a previous " +
                     "getIntervalHistogram() call from this " + this.getClass().getName() +
-                    (enforeContainingInstance ? " insatnce" : " class"));
+                    (enforceContainingInstance ? " instance" : " class"));
         }
     }
 }

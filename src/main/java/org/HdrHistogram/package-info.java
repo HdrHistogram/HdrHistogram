@@ -80,7 +80,7 @@
  * </code>
  * </pre>
  * Specifying 3 decimal points of precision in this example guarantees that value quantization within the value range
- * will be no larger than 1/1,000th (or 0.1%) of any recorded value. This example Histogram can be therefor used to
+ * will be no larger than 1/1,000th (or 0.1%) of any recorded value. This example Histogram can be therefore used to
  * track, analyze and report the counts of observed latencies ranging between 1 microsecond and 1 hour in magnitude,
  * while maintaining a value resolution 1 microsecond (or better) up to 1 millisecond, a resolution of 1 millisecond
  * (or better) up to one second, and a resolution of 1 second (or better) up to 1,000 seconds. At it's maximum tracked
@@ -124,7 +124,7 @@
  * reporting operations are needed, consider using the {@link org.HdrHistogram.Recorder} and
  * {@link org.HdrHistogram.SingleWriterRecorder} variants that were specifically designed for that purpose.
  * Recorders provide a recording API similar to Histogram, and internally maintain and coordinate active/inactive
- * histograms such that recording remains wait-free in the presense of accurate and stable interval sampling.
+ * histograms such that recording remains wait-free in the presence of accurate and stable interval sampling.
  * </p>
  * <p>
  * It is worth mentioning that since Histogram objects are additive, it is common practice to use per-thread
@@ -249,7 +249,7 @@
  * than their associated <b><code>expectedIntervalBetweenValueSamples</code></b> parameters.
  * </p>
  * <p>
- * In addition to at-recording-time correction option, Histrogram variants also provide the post-recording correction
+ * In addition to at-recording-time correction option, Histogram variants also provide the post-recording correction
  * methods
  * {@link org.HdrHistogram.AbstractHistogram#copyCorrectedForCoordinatedOmission(long) copyCorrectedForCoordinatedOmission()}
  * and

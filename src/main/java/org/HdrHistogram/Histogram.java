@@ -270,7 +270,7 @@ public class Histogram extends AbstractHistogram {
      * compressed histogram representation.
      *
      * @param base64CompressedHistogramString A string containing a base64 encoding of a compressed histogram
-     * @return A Histogream decoded from the string
+     * @return A Histogram decoded from the string
      * @throws DataFormatException on error parsing/decompressing the input
      */
     public static Histogram fromString(final String base64CompressedHistogramString)

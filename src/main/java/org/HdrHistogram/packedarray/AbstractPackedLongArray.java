@@ -136,7 +136,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
     }
 
     /**
-     * Increment value at a virrual index in the array
+     * Increment value at a virtual index in the array
      * @param index virtual index of value to increment
      */
     public void increment(final int index) {
@@ -236,7 +236,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
                         if (byteNum < bytesAlreadySet) {
                             // We want to avoid writing to the same byte twice when not doing so for the
                             // entire 64 bit value atomically, as doing so opens a race with e.g. concurrent
-                            // adders. So dobn't actually write the byte if has been written before.
+                            // adders. So don't actually write the byte if has been written before.
                             continue;
                         }
                         arrayContext.setAtByteIndex(packedIndex, byteToWrite);
@@ -286,24 +286,24 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
         return getArrayContext().getVirtualLength();
     }
 
-    // Regular array iteration (iterates over all virtrual indexes, zero-value or not:
+    // Regular array iteration (iterates over all virtual indexes, zero-value or not:
 
     class AllValuesIterator implements Iterator<Long> {
 
-        int nextVirtrualIndex = 0;
+        int nextVirtualIndex = 0;
 
         @Override
         public Long next() {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            return get(nextVirtrualIndex++);
+            return get(nextVirtualIndex++);
         }
 
         @Override
         public boolean hasNext() {
-            return ((nextVirtrualIndex >= 0) &&
-                    (nextVirtrualIndex < length()));
+            return ((nextVirtualIndex >= 0) &&
+                    (nextVirtualIndex < length()));
         }
 
         @Override
@@ -350,7 +350,7 @@ abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
             // If at least one of the arrays is packed, comparing only the
             // non-zero values that exist in both arrays, using two passes,
             // will likely be more efficient than a single all-index pass:
-            // - If both are packed, it will obvioulsy be much faster.
+            // - If both are packed, it will obviously be much faster.
             // - If one is packed and the other is not, we would be visiting
             //   every index in the non-packed array, in one of the passes,
             //   but would still only visit the non-zero elements in the

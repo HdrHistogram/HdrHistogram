@@ -190,7 +190,7 @@ public class HistogramLogReader implements Closeable {
      * get the latest start time found in the file so far (or 0.0),
      * per the log file format explained above. Assuming the "#[StartTime:" comment
      * line precedes the actual intervals recorded in the file, getStartTimeSec() can
-     * be safely used after each interval is read to determine's the offset of that
+     * be safely used after each interval is read to determine the offset of that
      * interval's timestamp from the epoch.
      * @return latest Start Time found in the file (or 0.0 if non found)
      */

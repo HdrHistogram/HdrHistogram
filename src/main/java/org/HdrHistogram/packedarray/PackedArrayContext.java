@@ -96,7 +96,7 @@ class PackedArrayContext extends AbstractPackedArrayContext {
     }
 
     @Override
-    void lazysetAtUnpackedIndex(final int index, final long newValue) {
+    void lazySetAtUnpackedIndex(final int index, final long newValue) {
         array[index] = newValue;
     }
 

@@ -24,7 +24,7 @@ import java.util.zip.DataFormatException;
  * <p>
  * {@link PackedHistogram} tracks value counts in a packed internal representation optimized
  * for typical histogram recoded values are sparse in the value range and tend to be incremented in small unit counts.
- * This packed representation tends to require significantly smaller amounts of stoarge when compared to unpacked
+ * This packed representation tends to require significantly smaller amounts of storage when compared to unpacked
  * representations, but can incur additional recording cost due to resizing and repacking operations that may
  * occur as previously unrecorded values are encountered.
  * <p>
@@ -110,7 +110,7 @@ public class PackedHistogram extends Histogram {
         if (oldNormalizedZeroIndex != 0) {
             // We need to shift the stuff from the zero index and up to the end of the array:
 
-            // When things are shifted in a packed array its not simple to identify the region shifed,
+            // When things are shifted in a packed array its not simple to identify the region shifted,
             // so re-record everything from the old normalized indexes to the new normalized indexes:
 
             PackedLongArray newPackedCounts = new PackedLongArray(countsArrayLength, packedCounts.getPhysicalLength());

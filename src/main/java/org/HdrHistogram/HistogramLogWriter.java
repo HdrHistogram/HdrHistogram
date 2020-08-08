@@ -44,8 +44,8 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
 public class HistogramLogWriter {
     private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.3";
 
-    private static Pattern containsDelimeterPattern = Pattern.compile(".[, \\r\\n].");
-    private Matcher containsDelimeterMatcher = containsDelimeterPattern.matcher("");
+    private static Pattern containsDelimiterPattern = Pattern.compile(".[, \\r\\n].");
+    private Matcher containsDelimiterMatcher = containsDelimiterPattern.matcher("");
 
     private final PrintStream log;
 
@@ -126,8 +126,8 @@ public class HistogramLogWriter {
                     Base64Helper.printBase64Binary(compressedArray)
             );
         } else {
-            containsDelimeterMatcher.reset(tag);
-            if (containsDelimeterMatcher.matches()) {
+            containsDelimiterMatcher.reset(tag);
+            if (containsDelimiterMatcher.matches()) {
                 throw new IllegalArgumentException("Tag string cannot contain commas, spaces, or line breaks");
             }
             log.format(Locale.US, "Tag=%s,%.3f,%.3f,%.3f,%s\n",
@@ -161,10 +161,10 @@ public class HistogramLogWriter {
      * Output an interval histogram, using the start/end timestamp indicated in the histogram,
      * and the [optional] tag associated with the histogram.
      * The histogram start and end timestamps are assumed to be in msec units. Logging will be
-     * in seconds, realtive by a base time (if set via {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}).
+     * in seconds, relative by a base time (if set via {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}).
      * The default base time is 0.
      * <p>
-     * By covention, histogram start/end time are generally stamped with absolute times in msec
+     * By convention, histogram start/end time are generally stamped with absolute times in msec
      * since the epoch. For logging with absolute time stamps, the base time would remain zero. For
      * logging with relative time stamps (time since a start point), the base time should be set
      * with {@link org.HdrHistogram.HistogramLogWriter#setBaseTime}.

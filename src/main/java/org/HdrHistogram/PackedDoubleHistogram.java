@@ -14,13 +14,13 @@ import java.util.zip.DataFormatException;
  * <h3>A floating point values High Dynamic Range (HDR) Histogram that uses a packed internal representation</h3>
  * <p>
  * It is important to note that {@link PackedDoubleHistogram} is not thread-safe, and does not support safe concurrent
- * recording by multiple threads. If concurrent operation is required, consider usings
+ * recording by multiple threads. If concurrent operation is required, consider using
  * {@link PackedConcurrentDoubleHistogram}, or (recommended) {@link DoubleRecorder} or
  * {@link SingleWriterDoubleRecorder} which are intended for this purpose.
  * <p>
  * {@link PackedDoubleHistogram} tracks value counts in a packed internal representation optimized
  * for typical histogram recoded values are sparse in the value range and tend to be incremented in small unit counts.
- * This packed representation tends to require significantly smaller amounts of stoarge when compared to unpacked
+ * This packed representation tends to require significantly smaller amounts of storage when compared to unpacked
  * representations, but can incur additional recording cost due to resizing and repacking operations that may
  * occur as previously unrecorded values are encountered.
  * <p>

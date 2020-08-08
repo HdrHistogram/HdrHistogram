@@ -24,7 +24,7 @@ import java.util.zip.DataFormatException;
  * <p>
  * {@link PackedConcurrentHistogram} tracks value counts in a packed internal representation optimized
  * for typical histogram recoded values are sparse in the value range and tend to be incremented in small unit counts.
- * This packed representation tends to require significantly smaller amounts of stoarge when compared to unpacked
+ * This packed representation tends to require significantly smaller amounts of storage when compared to unpacked
  * representations, but can incur additional recording cost due to resizing and repacking operations that may
  * occur as previously unrecorded values are encountered.
  * <p>

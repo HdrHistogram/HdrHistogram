@@ -1315,7 +1315,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
 
     /**
      * Set the tag string associated with this histogram
-     * @param tag the tag string to assciate with this histogram
+     * @param tag the tag string to associate with this histogram
      */
     public void setTag(String tag) {
         this.tag = tag;
@@ -1884,7 +1884,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final long indicatedStartTimeStampMsec = o.readLong();
         final long indicatedEndTimeStampMsec = o.readLong();
         final boolean indicatedAutoResize = o.readBoolean();
-        final int indicatedwordSizeInBytes = o.readInt();
+        final int indicatedWordSizeInBytes = o.readInt();
 
         init(lowestDiscernibleValue, highestTrackableValue, numberOfSignificantValueDigits,
                 integerToDoubleValueConversionRatio, normalizingIndexOffset);
@@ -1895,7 +1895,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         startTimeStampMsec = indicatedStartTimeStampMsec;
         endTimeStampMsec = indicatedEndTimeStampMsec;
         autoResize = indicatedAutoResize;
-        wordSizeInBytes = indicatedwordSizeInBytes;
+        wordSizeInBytes = indicatedWordSizeInBytes;
     }
 
     //   ######## ##    ##  ######   #######  ########  #### ##    ##  ######
@@ -1956,11 +1956,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     private static final int compressedEncodingCookieBase = V2CompressedEncodingCookieBase;
 
     private int getEncodingCookie() {
-        return encodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
+        return encodingCookieBase | 0x10; // LSBit of wordSize byte indicates TLZE Encoding
     }
 
     private int getCompressedEncodingCookie() {
-        return compressedEncodingCookieBase | 0x10; // LSBit of wordsize byte indicates TLZE Encoding
+        return compressedEncodingCookieBase | 0x10; // LSBit of wordSize byte indicates TLZE Encoding
     }
 
     private static int getCookieBase(final int cookie) {
@@ -2184,7 +2184,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             throw new IllegalArgumentException("word size must be 2, 4, 8, or V2maxWordSizeInBytes ("+
                     V2maxWordSizeInBytes + ") bytes");
         }
-        final long maxAllowableCountInHistigram =
+        final long maxAllowableCountInHistogram =
                 ((this.wordSizeInBytes == 2) ? Short.MAX_VALUE :
                         ((this.wordSizeInBytes == 4) ? Integer.MAX_VALUE : Long.MAX_VALUE)
                 );
@@ -2214,7 +2214,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
                                 )
                         );
             }
-            if (count > maxAllowableCountInHistigram) {
+            if (count > maxAllowableCountInHistogram) {
                 throw new IllegalArgumentException(
                         "An encoded count (" + count +
                         ") does not fit in the Histogram's (" +
@@ -2327,7 +2327,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             }
             return output;
         } catch(Exception ex) {
-            output += "!!! Exception thown in value iteration...\n";
+            output += "!!! Exception thrown in value iteration...\n";
         }
         return output;
     }
@@ -2443,7 +2443,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
     }
 
     /**
-     * @return The value `index - normalizingIndexOffset` modulo arrayLength (always nonnegative)
+     * @return The value `index - normalizingIndexOffset` modulo arrayLength (always non-negative)
      */
     int normalizeIndex(int index, int normalizingIndexOffset, int arrayLength) {
         if (normalizingIndexOffset == 0) {
@@ -2481,7 +2481,7 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         return valueFromIndex(bucketIndex, subBucketIndex);
     }
 
-    static int numberOfSubbuckets(final int numberOfSignificantValueDigits) {
+    static int numberOfSubBuckets(final int numberOfSignificantValueDigits) {
         final long largestValueWithSingleUnitResolution = 2 * (long) Math.pow(10, numberOfSignificantValueDigits);
 
         // We need to maintain power-of-two subBucketCount (for clean direct indexing) that is large enough to

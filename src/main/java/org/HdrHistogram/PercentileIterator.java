@@ -69,7 +69,7 @@ public class PercentileIterator extends AbstractHistogramIterator implements Ite
         // steps are much easier to browse through in a percentile distribution output, for example.
         //
         // We calculate the number of equal-sized "ticks" that the 0-100 range will be divided
-        // by at the current scale. The scale is detemined by the percentile level we are
+        // by at the current scale. The scale is determined by the percentile level we are
         // iterating to. The following math determines the tick size for the current scale,
         // and maintain a fixed tick size for the remaining "half the distance to 100%"
         // [from either 0% or from the previous half-distance]. When that half-distance is
