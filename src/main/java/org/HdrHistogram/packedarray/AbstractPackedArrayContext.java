@@ -931,12 +931,6 @@ abstract class AbstractPackedArrayContext implements Serializable {
         }
     }
 
-    class NonZeroValues implements Iterable<IterationValue> {
-        public Iterator<IterationValue> iterator() {
-            return new NonZeroValuesIterator();
-        }
-    }
-
     /**
      * An Iterator over all non-Zero values in the array
      *
