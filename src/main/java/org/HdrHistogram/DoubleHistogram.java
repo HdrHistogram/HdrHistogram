@@ -339,7 +339,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             try {
                 integerValuesHistogram.recordConvertedDoubleValueWithCount(value, count);
                 return;
-            } catch (ArrayIndexOutOfBoundsException ex) {
+            } catch (IndexOutOfBoundsException ex) {
                 // A race that would pass the auto-range check above and would still take an AIOOB
                 // can only occur due to a value that would have been valid becoming invalid due
                 // to a concurrent adjustment operation. Such adjustment operations can happen no
@@ -366,7 +366,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             try {
                 integerValuesHistogram.recordConvertedDoubleValue(value);
                 return;
-            } catch (ArrayIndexOutOfBoundsException ex) {
+            } catch (IndexOutOfBoundsException ex) {
                 // A race that would pass the auto-range check above and would still take an AIOOB
                 // can only occur due to a value that would have been valid becoming invalid due
                 // to a concurrent adjustment operation. Such adjustment operations can happen no
