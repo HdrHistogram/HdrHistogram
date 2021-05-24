@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  */
 
-public class Recorder implements ValueRecorder {
+public class Recorder implements ValueRecorder, IntervalHistogramProvider<Histogram> {
     private static AtomicLong instanceIdSequencer = new AtomicLong(1);
     private final long instanceId = instanceIdSequencer.getAndIncrement();
 
@@ -183,78 +183,17 @@ public class Recorder implements ValueRecorder {
         }
     }
 
-    /**
-     * Get a new instance of an interval histogram, which will include a stable, consistent view of all value
-     * counts accumulated since the last interval histogram was taken.
-     * <p>
-     * Calling {@code getIntervalHistogram()} will reset
-     * the value counts, and start accumulating value counts for the next interval.
-     *
-     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
-     */
+    @Override
     public synchronized Histogram getIntervalHistogram() {
         return getIntervalHistogram(null);
     }
 
-    /**
-     * Get an interval histogram, which will include a stable, consistent view of all value counts
-     * accumulated since the last interval histogram was taken.
-     * <p>
-     * {@code getIntervalHistogram(histogramToRecycle)}
-     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
-     * and content copying operations, and is therefore significantly more efficient for repeated use than
-     * {@link Recorder#getIntervalHistogram()} and
-     * {@link Recorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
-     * {@code histogramToRecycle} must
-     * be either be null or an interval histogram returned by a previous call to
-     * {@code getIntervalHistogram(histogramToRecycle)} or
-     * {@link Recorder#getIntervalHistogram()}.
-     * <p>
-     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
-     * the same interval histogram instance is recycled more than once, behavior is undefined.
-     * <p>
-     * Calling {@code getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start
-     * accumulating value counts for the next interval
-     *
-     * @param histogramToRecycle a previously returned interval histogram (from this instance of
-     *                           {@link Recorder}) that may be recycled to avoid allocation and
-     *                           copy operations.
-     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
-     */
+    @Override
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle) {
         return getIntervalHistogram(histogramToRecycle, true);
     }
 
-    /**
-     * Get an interval histogram, which will include a stable, consistent view of all value counts
-     * accumulated since the last interval histogram was taken.
-     * <p>
-     * {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
-     * getIntervalHistogram(histogramToRecycle)}
-     * accepts a previously returned interval histogram that can be recycled internally to avoid allocation
-     * and content copying operations, and is therefore significantly more efficient for repeated use than
-     * {@link Recorder#getIntervalHistogram()} and
-     * {@link Recorder#getIntervalHistogramInto getIntervalHistogramInto()}. The provided
-     * {@code histogramToRecycle} must
-     * be either be null or an interval histogram returned by a previous call to
-     * {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
-     * getIntervalHistogram(histogramToRecycle)} or
-     * {@link Recorder#getIntervalHistogram()}.
-     * <p>
-     * NOTE: The caller is responsible for not recycling the same returned interval histogram more than once. If
-     * the same interval histogram instance is recycled more than once, behavior is undefined.
-     * <p>
-     * Calling {@link Recorder#getIntervalHistogram(Histogram histogramToRecycle)
-     * getIntervalHistogram(histogramToRecycle)} will reset the value counts, and start accumulating value
-     * counts for the next interval
-     *
-     * @param histogramToRecycle a previously returned interval histogram that may be recycled to avoid allocation and
-     *                           copy operations.
-     * @param enforceContainingInstance if true, will only allow recycling of histograms previously returned from this
-     *                                 instance of {@link Recorder}. If false, will allow recycling histograms
-     *                                 previously returned by other instances of {@link Recorder}.
-     * @return a histogram containing the value counts accumulated since the last interval histogram was taken.
-     */
+    @Override
     public synchronized Histogram getIntervalHistogram(Histogram histogramToRecycle,
                                                        boolean enforceContainingInstance) {
         // Verify that replacement histogram can validly be used as an inactive histogram replacement:
@@ -266,15 +205,7 @@ public class Recorder implements ValueRecorder {
         return sampledHistogram;
     }
 
-    /**
-     * Place a copy of the value counts accumulated since accumulated (since the last interval histogram
-     * was taken) into {@code targetHistogram}.
-     *
-     * Calling {@code getIntervalHistogramInto(targetHistogram)} will reset
-     * the value counts, and start accumulating value counts for the next interval.
-     *
-     * @param targetHistogram the histogram into which the interval histogram's data should be copied
-     */
+    @Override
     public synchronized void getIntervalHistogramInto(Histogram targetHistogram) {
         performIntervalSample();
         inactiveHistogram.copyInto(targetHistogram);
