@@ -1050,7 +1050,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      * @return the Max value recorded in the histogram
      */
     public double getMaxValue() {
-        return integerValuesHistogram.getMaxValue() * getIntegerToDoubleValueConversionRatio();
+        return highestEquivalentValue(integerValuesHistogram.getMaxValue() * getIntegerToDoubleValueConversionRatio());
     }
 
     /**

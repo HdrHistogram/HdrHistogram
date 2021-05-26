@@ -463,6 +463,22 @@ public class DoubleHistogramTest {
         assertNotSame(null, histogram);
     }
 
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
+    public void testMaxValue(final Class histoClass) {
+        DoubleHistogram histogram = constructDoubleHistogram(histoClass, 1_000_000_000, 2);
+        Assertions.assertNotSame(null, histogram);
+        histogram.recordValue(2.5362386543);
+        double maxValue = histogram.getMaxValue();
+        Assertions.assertEquals(maxValue, histogram.highestEquivalentValue(2.5362386543));
+    }
+
     void testDoubleHistogramSerialization(DoubleHistogram histogram) throws Exception {
         histogram.recordValue(testValueLevel);
         histogram.recordValue(testValueLevel * 10);
