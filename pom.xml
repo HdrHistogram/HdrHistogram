@@ -92,6 +92,7 @@
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                             <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                            <Automatic-Module-Name>org.HdrHistogram</Automatic-Module-Name>
                         </manifest>
                     </archive>
                 </configuration>
