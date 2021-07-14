@@ -93,9 +93,6 @@
         };
 
         chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-        google.visualization.events.addListener(chart, 'ready', function () {
-            chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
-        });
 
         // add tooltips with correct percentile text to data:
         var columns = [0];
@@ -120,6 +117,10 @@
         view.setColumns(columns);
 
         chart.draw(view, options);
+
+        google.visualization.events.addListener(chart, 'ready', function () {
+            chart_div.innerHTML = '<img src="' + chart.getImageURI() + '">';
+        });
     }
 </script>
 <script type="text/javascript">
