@@ -1,3 +1,9 @@
+<a href="https://foojay.io/today/works-with-openjdk">
+   <img align="right" 
+        src="https://github.com/foojayio/badges/raw/main/works_with_openjdk/Works-with-OpenJDK.png"   
+        width="100">
+</a>
+
 HdrHistogram
 ----------------------------------------------
 [![Gitter](https://img.shields.io/gitter/room/gitterHQ/gitter.svg)](https://gitter.im/HdrHistogram/HdrHistogram?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -6,7 +12,6 @@ HdrHistogram
 [![Javadocs](http://www.javadoc.io/badge/org.hdrhistogram/HdrHistogram.svg)](http://www.javadoc.io/doc/org.hdrhistogram/HdrHistogram)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/HdrHistogram/HdrHistogram.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/HdrHistogram/HdrHistogram/alerts/)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/HdrHistogram/HdrHistogram.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/HdrHistogram/HdrHistogram/context:java)
-
 ----------------------------------------------------------------------------
 HdrHistogram: A High Dynamic Range (HDR) Histogram
 
