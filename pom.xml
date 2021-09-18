@@ -62,7 +62,7 @@
         <version.template.file>src/main/java/org/HdrHistogram/Version.java.template</version.template.file>
         <version.file>src/main/java/org/HdrHistogram/Version.java</version.file>
 
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
         <junit.jupiter.version>5.5.2</junit.jupiter.version>
         <junit.vintage.version>5.5.2</junit.vintage.version>
     </properties>
