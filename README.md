@@ -79,7 +79,7 @@ over an hour, with a good enough resolution to support later performing
 post-recording analysis on the collected data. Analysis can include
 computing, examining, and reporting of distribution by percentiles, linear
 or logarithmic value buckets, mean and standard deviation, or by any other
-means that can can be easily added by using the various iteration techniques
+means that can be easily added by using the various iteration techniques
 supported by the Histogram.
 In order to facilitate the accuracy needed for various post-recording
 analysis techniques, this example can maintain a resolution of ~1 usec
@@ -123,7 +123,7 @@ Synchronization and concurrent access
 ----------------------------------------------
 
 In the interest of keeping value recording cost to a minimum, the commonly
-used Histogram class and its IntHistogram and ShortHistogram variants are
+used Histogram class and it's IntHistogram and ShortHistogram variants are
 NOT internally synchronized, and do NOT use atomic variables. Callers
 wishing to make potentially concurrent, multi-threaded updates or queries
 against Histogram objects should either take care to externally synchronize
@@ -143,14 +143,14 @@ interval sampling.
 
 It is worth mentioning that since Histogram objects are additive, it is
 common practice to use per-thread non-synchronized histograms or
-SingleWriterRecorders, and using a summary/reporting thread to perform
+SingleWriterRecorders, and use a summary/reporting thread to perform
 histogram aggregation math across time and/or threads.  
 
 
 Iteration
 ----------------------------------------------
 
-Histograms supports multiple convenient forms of iterating through the
+Histograms support multiple convenient forms of iterating through the
 histogram data set, including linear, logarithmic, and percentile iteration
 mechanisms, as well as means for iterating through each recorded value or
 each possible value level. The iteration mechanisms are accessible through
