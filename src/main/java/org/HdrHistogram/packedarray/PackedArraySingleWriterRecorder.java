@@ -13,7 +13,7 @@ import org.HdrHistogram.WriterReaderPhaser;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Records increments and adds of integer values at indexes of a logical array of 64 bit signed integer values, and
+ * Records increments and adds of integer values at indexes of a logical array of 64-bit signed integer values, and
  * provides stable interval {@link PackedLongArray} samples from live recorded data without interrupting or stalling
  * active recording of values. Each interval array provided contains all values accumulated since the previous
  * interval array was taken.

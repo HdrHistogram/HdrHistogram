@@ -48,7 +48,7 @@ public class LinearIterator extends AbstractHistogramIterator implements Iterato
         if (super.hasNext()) {
             return true;
         }
-        // If the next iteration will not move to the next sub bucket index (which is empty if
+        // If the next iteration will not move to the next sub bucket index (which is empty
         // if we reached this point), then we are not yet done iterating (we want to iterate
         // until we are no longer on a value that has a count, rather than util we first reach
         // the last value that has a count. The difference is subtle but important)...

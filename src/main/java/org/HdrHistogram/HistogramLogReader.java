@@ -48,7 +48,7 @@ import java.util.zip.DataFormatException;
  * The log file may contain an optional indication of a starting time. Starting time
  * is indicated using a special comments starting with "#[StartTime: " and followed
  * by a number parse-able as a double, representing the start time (in seconds)
- * that may be added to timestamps in the file to determine an absolute
+ * that may be added to the timestamps in the file to determine an absolute
  * timestamp (e.g. since the epoch) for each interval.
  */
 public class HistogramLogReader implements Closeable {
@@ -103,7 +103,7 @@ public class HistogramLogReader implements Closeable {
             final double absoluteStartTimeStampSec = logTimeStampInSec + baseTimeSec;
             final double offsetStartTimeStampSec = absoluteStartTimeStampSec - startTimeSec;
 
-            final double intervalLengthSec = length; // Timestamp length is expect to be in seconds
+            final double intervalLengthSec = length; // Timestamp length is expected to be in seconds
             final double absoluteEndTimeStampSec = absoluteStartTimeStampSec + intervalLengthSec;
 
             final double startTimeStampToCheckRangeOn = absolute ? absoluteStartTimeStampSec : offsetStartTimeStampSec;
@@ -212,13 +212,13 @@ public class HistogramLogReader implements Closeable {
      * this method will return a null upon encountering a timestamp larger than
      * rangeEndTimeSec.
      * <p>
-     * The histogram returned will have it's timestamp set to the absolute
+     * The histogram returned will have its timestamp set to the absolute
      * timestamp calculated from adding the interval's indicated timestamp
      * value to the latest [optional] start time found in the log.
      * <p>
      * Upon encountering any unexpected format errors in reading the next
      * interval from the file, this method will return a null. Use {@link #hasNext} to determine
-     * whether or not additional intervals may be available for reading in the log input.
+     * whether additional intervals may be available for reading in the log input or not.
      *
      * @param startTimeSec The (non-absolute time) start of the expected
      *                     time range, in seconds.
@@ -243,7 +243,7 @@ public class HistogramLogReader implements Closeable {
      * this method will return a null upon encountering a timestamp larger than
      * rangeEndTimeSec.
      * <p>
-     * The histogram returned will have it's timestamp set to the absolute
+     * The histogram returned will have its timestamp set to the absolute
      * timestamp calculated from adding the interval's indicated timestamp
      * value to the latest [optional] start time found in the log.
      * <p>
@@ -254,7 +254,7 @@ public class HistogramLogReader implements Closeable {
      * <p>
      * Upon encountering any unexpected format errors in reading the next
      * interval from the file, this method will return a null. Use {@link #hasNext} to determine
-     * whether or not additional intervals may be available for reading in the log input.
+     * whether additional intervals may be available for reading in the log input or not.
      *
      * @param absoluteStartTimeSec The (absolute time) start of the expected
      *                             time range, in seconds.
@@ -273,7 +273,7 @@ public class HistogramLogReader implements Closeable {
      * an interval line was found, or null if not.
      * <p>Upon encountering any unexpected format errors in reading the next interval
      * from the input, this method will return a null. Use {@link #hasNext} to determine
-     * whether or not additional intervals may be available for reading in the log input.
+     * whether additional intervals may be available for reading in the log input or not.
      * @return a DecodedInterval, or a null if no appropriately formatted interval was found
      */
     public EncodableHistogram nextIntervalHistogram() {
@@ -292,7 +292,7 @@ public class HistogramLogReader implements Closeable {
     }
 
     /**
-     * Indicates whether or not additional intervals may exist in the log
+     * Indicates whether additional intervals may exist in the log or not
      * @return true if additional intervals may exist in the log
      */
     public boolean hasNext() {
