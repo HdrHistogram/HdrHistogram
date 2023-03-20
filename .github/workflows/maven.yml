@@ -29,7 +29,7 @@ jobs:
         os: [ubuntu-18.04]
         java: [8.0.252, 8, 11.0.7, 11]
       fail-fast: false
-      max-parallel: 5           
+      max-parallel: 6           
     name: Test Zing JDK ${{ matrix.java }}, ${{ matrix.os }}
 
     steps:
