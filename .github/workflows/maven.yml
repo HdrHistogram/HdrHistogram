@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest, windows-latest]
-        java: [8, 8.0.192, 9, 10, 11, 11.0.3, 12, 13, 13.0.4, 14, 15, 16, 17, 17.0.6, 18, 19, 20, 20-EA]
+        java: [8, 8.0.192, 9, 10, 11, 11.0.3, 12, 13, 13.0.4, 14, 15, 16, 17, 17.0.6, 18, 19]
       fail-fast: false
       max-parallel: 6           
     name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        java: [8.0.252, 8, 11.0.7, 11, 17, 17.0.6]
+        java: [8.0.352, 8, 11.0.17, 11, 17, 17.0.6]
       fail-fast: false
       max-parallel: 6           
     name: Test Zing JDK ${{ matrix.java }}, ${{ matrix.os }}
