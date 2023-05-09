@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * A packed-value, sparse array context used for storing 64 bit signed values.
+ * A packed-value, sparse array context used for storing 64-bit signed values.
  * <p>
  * An array context is optimised for tracking sparsely set (as in mostly zeros) values that tend to not make use of the
  * full 64 bit value range even when they are non-zero. The array context's internal representation is such that the
@@ -50,13 +50,13 @@ abstract class AbstractPackedArrayContext implements Serializable {
      * sets in the array, each corresponding to a byte in the overall value being stored. Set 0 contains the LSByte
      * of the value, and Set 7 contains the MSByte of the value.
      *
-     * The array contents is comprised of there types of entries:
+     * The array contents are comprised of their types of entries:
      *
      *  - The root indexes: A fixed size 8 short-words array of short indexes at the start of the array, containing
      *    the short-index of the root entry of each of the 8 set trees.
      *
      *  - Non-Leaf Entries: Variable sized, 2-18 short-words entries representing non-leaf entries in a set tree.
-     *    Non-Leaf entries comprise of a 2 short-word header containing a packed slot indicators bitmask and the
+     *    Non-Leaf entries comprised of a 2 short-word header containing a packed slot indicators bitmask and the
      *    (optional non-zero) index of previous version of the entry, followed by an array of 0-16 shortwords.
      *    The shortword found at a given slot in this array holds an index to an entry in the next level of
      *    the set tree.
@@ -98,7 +98,7 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *   when looking for the index to a lower level entry during a tree walk, the tree walking operation is
      *   restarted from the root.
      *
-     * - A Non-Leaf entry with an active (non zero index) previous version is never followed or expanded.
+     * - A Non-Leaf entry with an active (non-zero index) previous version is never followed or expanded.
      *   Instead, any thread encountering a Non-leaf entry with an active previous version will consolidate
      *   the previous version with the current one. the consolidation operation will clear (zero) the
      *   previousVersionIndex, which will then allow the caller to continue with whatever use the thread was
@@ -131,10 +131,10 @@ abstract class AbstractPackedArrayContext implements Serializable {
      *
      * - Concurrent consolidation: While expansion and consolidation are ongoing, other threads can be
      *   concurrently walking the set trees. Per the protocol stated here, any tree walk encountering a Non-Leaf
-     *   entry with an active previous version will consolidate the entry before using it. Consolidation can
-     *   of a given entry can occur concurrently by an an expanding thread and by multiple walking threads.
+     *   entry with an active previous version will consolidate the entry before using it. Consolidation
+     *   of a given entry can occur concurrently by an expanding thread and by multiple walking threads.
      *
-     * - Consolidation of a a previous version entry into a current one is done by:
+     * - Consolidation of a previous version entry into a current one is done by:
      *
      *      - For each non-zero index in the previous version entry, copy that index to the new associated
      *        entry slot in the entry, and CAS a zero in the old entry slot. If the CAS fails, repeat (including

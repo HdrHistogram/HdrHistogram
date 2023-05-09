@@ -110,7 +110,7 @@ public class PackedHistogram extends Histogram {
         if (oldNormalizedZeroIndex != 0) {
             // We need to shift the stuff from the zero index and up to the end of the array:
 
-            // When things are shifted in a packed array its not simple to identify the region shifted,
+            // When things are shifted in a packed array it's not simple to identify the region shifted,
             // so re-record everything from the old normalized indexes to the new normalized indexes:
 
             PackedLongArray newPackedCounts = new PackedLongArray(countsArrayLength, packedCounts.getPhysicalLength());
@@ -180,7 +180,7 @@ public class PackedHistogram extends Histogram {
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
-     *                               down to nearest power of 2.
+     *                               down to the nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant

@@ -61,7 +61,7 @@ public class SingleWriterDoubleRecorder implements DoubleValueRecorder, Interval
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
-     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     * @param packed Specifies whether the recorder will use a packed internal representation or not.
      */
     public SingleWriterDoubleRecorder(final int numberOfSignificantValueDigits, final boolean packed) {
         activeHistogram = packed ?

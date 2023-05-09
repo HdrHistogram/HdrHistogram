@@ -62,7 +62,7 @@ public class Recorder implements ValueRecorder, IntervalHistogramProvider<Histog
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
      *                                       decimal digits to which the histogram will maintain value resolution
      *                                       and separation. Must be a non-negative integer between 0 and 5.
-     * @param packed Specifies whether the recorder will uses a packed internal representation or not.
+     * @param packed Specifies whether the recorder will use a packed internal representation or not.
      */
     public Recorder(final int numberOfSignificantValueDigits, boolean packed) {
         activeHistogram = packed ?
@@ -108,7 +108,7 @@ public class Recorder implements ValueRecorder, IntervalHistogramProvider<Histog
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
-     *                               down to nearest power of 2.
+     *                               down to the nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant
