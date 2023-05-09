@@ -1585,10 +1585,9 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
             if (!isNonCompressedDoubleHistogramCookie(cookie)) {
                 throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
             }
-            DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+            return constructHistogramFromBuffer(cookie, buffer,
                     DoubleHistogram.class, internalCountsHistogramClass,
                     minBarForHighestToLowestValueRatio);
-            return histogram;
         } catch (DataFormatException ex) {
             throw new RuntimeException(ex);
         }
@@ -1627,10 +1626,9 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         if (!isCompressedDoubleHistogramCookie(cookie)) {
             throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
-        DoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+        return constructHistogramFromBuffer(cookie, buffer,
                 DoubleHistogram.class, internalCountsHistogramClass,
                 minBarForHighestToLowestValueRatio);
-        return histogram;
     }
 
     /**
@@ -1661,9 +1659,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         // e.g. the dynamic range that covers [0.9, 2.1) is 2.33x, which on it's own would require 4x range to
         // cover the contained order of magnitude. But (if 1.0 was a bucket boundary, for example, the range
         // will actually need to cover [0.5..1.0) [1.0..2.0) [2.0..4.0), mapping to an 8x internal dynamic range.
-        long internalHighestToLowestValueRatio =
-                1L << (findContainingBinaryOrderOfMagnitude(externalHighestToLowestValueRatio) + 1);
-        return internalHighestToLowestValueRatio;
+        return 1L << (findContainingBinaryOrderOfMagnitude(externalHighestToLowestValueRatio) + 1);
     }
 
     private long deriveIntegerValueRange(final long externalHighestToLowestValueRatio,
@@ -1677,9 +1673,8 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
         // all buckets. Compute the integer value range that will achieve this:
 
         long lowestTackingIntegerValue = AbstractHistogram.numberOfSubBuckets(numberOfSignificantValueDigits) / 2;
-        long integerValueRange = lowestTackingIntegerValue * internalHighestToLowestValueRatio;
 
-        return integerValueRange;
+        return lowestTackingIntegerValue * internalHighestToLowestValueRatio;
     }
 
     private long getLowestTrackingIntegerValue() {
@@ -1687,8 +1682,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
     }
 
     private static int findContainingBinaryOrderOfMagnitude(final long longNumber) {
-        int pow2ceiling = 64 - Long.numberOfLeadingZeros(longNumber); // smallest power of 2 containing value
-        return pow2ceiling;
+        return 64 - Long.numberOfLeadingZeros(longNumber);
     }
 
     private static int findContainingBinaryOrderOfMagnitude(final double doubleNumber) {

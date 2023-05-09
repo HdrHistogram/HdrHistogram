@@ -129,10 +129,9 @@ public class PackedConcurrentDoubleHistogram extends ConcurrentDoubleHistogram {
             if (!isNonCompressedDoubleHistogramCookie(cookie)) {
                 throw new IllegalArgumentException("The buffer does not contain a DoubleHistogram");
             }
-            PackedConcurrentDoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+            return constructHistogramFromBuffer(cookie, buffer,
                     PackedConcurrentDoubleHistogram.class, PackedConcurrentHistogram.class,
                     minBarForHighestToLowestValueRatio);
-            return histogram;
         } catch (DataFormatException ex) {
             throw new RuntimeException(ex);
         }
@@ -152,9 +151,8 @@ public class PackedConcurrentDoubleHistogram extends ConcurrentDoubleHistogram {
         if (!isCompressedDoubleHistogramCookie(cookie)) {
             throw new IllegalArgumentException("The buffer does not contain a compressed DoubleHistogram");
         }
-        PackedConcurrentDoubleHistogram histogram = constructHistogramFromBuffer(cookie, buffer,
+        return constructHistogramFromBuffer(cookie, buffer,
                 PackedConcurrentDoubleHistogram.class, PackedConcurrentHistogram.class,
                 minBarForHighestToLowestValueRatio);
-        return histogram;
     }
 }

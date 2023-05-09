@@ -85,42 +85,72 @@ public class HistogramLogProcessor extends Thread {
             boolean askedForHelp= false;
             try {
                 for (int i = 0; i < args.length; ++i) {
-                    if (args[i].equals("-csv")) {
-                        logFormatCsv = true;
-                    } else if (args[i].equals("-v")) {
-                        verbose = true;
-                    } else if (args[i].equals("-listtags")) {
-                        listTags = true;
-                    } else if (args[i].equals("-alltags")) {
-                        allTags = true;
-                    } else if (args[i].equals("-i")) {
-                        inputFileName = args[++i];              // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-tag")) {
-                        tag = args[++i];                        // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-mwp")) {
-                        movingWindowPercentileToReport = Double.parseDouble(args[++i]); // lgtm [java/index-out-of-bounds]
-                        movingWindow = true;
-                    } else if (args[i].equals("-mwpl")) {
-                        movingWindowLengthInMsec = Long.parseLong(args[++i]);   // lgtm [java/index-out-of-bounds]
-                        movingWindow = true;
-                    } else if (args[i].equals("-start")) {
-                        rangeStartTimeSec = Double.parseDouble(args[++i]);      // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-end")) {
-                        rangeEndTimeSec = Double.parseDouble(args[++i]);        // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-o")) {
-                        outputFileName = args[++i];                             // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-percentilesOutputTicksPerHalf")) {
-                        percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-outputValueUnitRatio")) {
-                        outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-correctLogWithKnownCoordinatedOmission")) {
-                        expectedIntervalForCoordinatedOmissionCorrection =
-                                Double.parseDouble(args[++i]);  // lgtm [java/index-out-of-bounds]
-                    } else if (args[i].equals("-h")) {
-                        askedForHelp = true;
-                        throw new Exception("Help: " + args[i]);
-                    } else {
-                        throw new Exception("Invalid args: " + args[i]);
+                    switch (args[i]) {
+                        case "-csv":
+                            logFormatCsv = true;
+                            break;
+
+                        case "-v":
+                            verbose = true;
+                            break;
+
+                        case "-listtags":
+                            listTags = true;
+                            break;
+
+                        case "-alltags":
+                            allTags = true;
+                            break;
+
+                        case "-i":
+                            inputFileName = args[++i];              // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-tag":
+                            tag = args[++i];                        // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-mwp":
+                            movingWindowPercentileToReport = Double.parseDouble(args[++i]); // lgtm [java/index-out-of-bounds]
+                            movingWindow = true;
+                            break;
+
+                        case "-mwpl":
+                            movingWindowLengthInMsec = Long.parseLong(args[++i]);   // lgtm [java/index-out-of-bounds]
+                            movingWindow = true;
+                            break;
+
+                        case "-start":
+                            rangeStartTimeSec = Double.parseDouble(args[++i]);      // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-end":
+                            rangeEndTimeSec = Double.parseDouble(args[++i]);        // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-o":
+                            outputFileName = args[++i];                             // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-percentilesOutputTicksPerHalf":
+                            percentilesOutputTicksPerHalf = Integer.parseInt(args[++i]);    // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-outputValueUnitRatio":
+                            outputValueUnitRatio = Double.parseDouble(args[++i]);   // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-correctLogWithKnownCoordinatedOmission":
+                            expectedIntervalForCoordinatedOmissionCorrection =
+                                    Double.parseDouble(args[++i]);  // lgtm [java/index-out-of-bounds]
+                            break;
+
+                        case "-h":
+                            askedForHelp = true;
+                            throw new Exception("Help: " + args[i]);
+
+                        default:
+                            throw new Exception("Invalid args: " + args[i]);
                     }
                 }
             } catch (Exception e) {
