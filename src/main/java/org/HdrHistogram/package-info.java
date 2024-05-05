@@ -5,7 +5,7 @@
  */
 
 /**
- * <h3>A High Dynamic Range (HDR) Histogram Package</h3>
+ * <h2>A High Dynamic Range (HDR) Histogram Package</h2>
  * <p>
  * An HdrHistogram histogram supports the recording and analyzing sampled data value counts across a configurable
  * integer value range with configurable value precision within the range. Value precision is expressed as the number

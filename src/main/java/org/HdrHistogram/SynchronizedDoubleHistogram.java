@@ -11,7 +11,7 @@ import java.io.PrintStream;
 import java.nio.ByteBuffer;
 
 /**
- * <h3>A floating point values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
+ * <h2>A floating point values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h2>
  * <p>
  * A {@link SynchronizedDoubleHistogram} is a variant of {@link org.HdrHistogram.DoubleHistogram} that is
  * synchronized as a whole, such that queries, copying, and addition operations are atomic with relation to

@@ -11,8 +11,8 @@ import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 
 /**
- * <h3>A floating point values High Dynamic Range (HDR) Histogram that uses a packed internal representation and
- * supports safe concurrent recording operations.</h3>
+ * <h2>A floating point values High Dynamic Range (HDR) Histogram that uses a packed internal representation and
+ * supports safe concurrent recording operations.</h2>
  * <p>
  * A {@link PackedConcurrentDoubleHistogram} is a variant of {@link DoubleHistogram} that guarantees
  * lossless recording of values into the histogram even when the histogram is updated by multiple threads, and

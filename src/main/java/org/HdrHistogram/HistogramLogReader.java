@@ -11,7 +11,7 @@ import java.io.*;
 import java.util.zip.DataFormatException;
 
 /**
- * A histogram log reader.
+ * <h2>A histogram log reader.</h2>
  * <p>
  * Histogram logs are used to capture full fidelity, per-time-interval
  * histograms of a recorded value.

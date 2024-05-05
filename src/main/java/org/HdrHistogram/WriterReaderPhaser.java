@@ -10,6 +10,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * <h2>A WriterReaderPhaser</h2>
+ * <p>
  * {@link WriterReaderPhaser} provides an asymmetric means for
  * synchronizing the execution of wait-free "writer" critical sections against
  * a "reader phase flip" that needs to make sure no writer critical sections

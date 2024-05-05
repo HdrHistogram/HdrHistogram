@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
 import java.util.zip.DataFormatException;
 
 /**
- * <h3>An integer values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h3>
+ * <h2>An integer values High Dynamic Range (HDR) Histogram that is synchronized as a whole</h2>
  * <p>
  * A {@link SynchronizedHistogram} is a variant of {@link Histogram} that is
  * synchronized as a whole, such that queries, copying, and addition operations are atomic with relation to
