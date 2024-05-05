@@ -8,7 +8,7 @@ import java.util.NoSuchElementException;
  * A Packed array of signed 64 bit values, and supports {@link #get get()}, {@link #set set()},
  * {@link #add add()} and {@link #increment increment()} operations on the logical contents of the array.
  */
-abstract class AbstractPackedLongArray implements Iterable<Long>, Serializable {
+abstract public class AbstractPackedLongArray implements Iterable<Long>, Serializable {
     /**
      * An {@link AbstractPackedLongArray} Uses {@link AbstractPackedArrayContext} to track
      * the array's logical contents. Contexts may be switched when a context requires resizing

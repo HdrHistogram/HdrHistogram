@@ -1160,7 +1160,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      * performed in steps that start at 0% and reduce their distance to 100% according to the
      * <i>percentileTicksPerHalfDistance</i> parameter, ultimately reaching 100% when all recorded histogram
      * values are exhausted.
-     * <p>
+     * <br>
      * @param percentileTicksPerHalfDistance The number of iteration steps per half-distance to 100%.
      * @return An {@link java.lang.Iterable}{@literal <}{@link DoubleHistogramIterationValue}{@literal >}
      * through the histogram using a
@@ -1349,7 +1349,6 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      * five (5) percentile reporting tick points.
      *
      * @param printStream    Stream into which the distribution will be output
-     * <p>
      * @param outputValueUnitScalingRatio    The scaling factor by which to divide histogram recorded values units in
      *                                     output
      */
@@ -1372,9 +1371,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      * <i>dumpTicksPerHalf</i> percentile reporting tick points.
      *
      * @param printStream    Stream into which the distribution will be output
-     * <p>
      * @param percentileTicksPerHalfDistance  The number of reporting points per exponentially decreasing half-distance
-     * <p>
      * @param outputValueUnitScalingRatio    The scaling factor by which to divide histogram recorded values units in
      *                                     output
      */
@@ -1390,9 +1387,7 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
      * <i>dumpTicksPerHalf</i> percentile reporting tick points.
      *
      * @param printStream    Stream into which the distribution will be output
-     * <p>
      * @param percentileTicksPerHalfDistance  The number of reporting points per exponentially decreasing half-distance
-     * <p>
      * @param outputValueUnitScalingRatio    The scaling factor by which to divide histogram recorded values units in
      *                                     output
      * @param useCsvFormat  Output in CSV format if true. Otherwise use plain text form.
