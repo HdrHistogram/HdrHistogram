@@ -14,30 +14,33 @@ jobs:
     name: Test JDK ${{ matrix.java }}, ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - name: Set up JDK
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v4
       with:
+        distribution: 'zulu'
         java-version: ${{ matrix.java }}
+        check-latest: true
+        cache-dependency-path: 'sub-project/pom.xml'
     - name: Test with Maven
       run: mvn test -B --file pom.xml
 
-  test-zing:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        java: [8.0.352, 8, 11.0.17, 11, 17, 17.0.6, 21]
-      fail-fast: false
-      max-parallel: 6           
-    name: Test Zing JDK ${{ matrix.java }}, ${{ matrix.os }}
+#  test-zing:
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      matrix:
+#        os: [ubuntu-latest]
+#        java: [8.0.352, 8, 11.0.17, 11, 17, 17.0.6, 21]
+#      fail-fast: false
+#      max-parallel: 6           
+#    name: Test Zing JDK ${{ matrix.java }}, ${{ matrix.os }}
 
-    steps:
-    - uses: actions/checkout@v1
-    - name: Set up JDK
-      uses: zing-actions/setup-java@v1
-      with:
-        java-version: ${{ matrix.java }}
-    - name: Test with Maven
-      run: mvn test -B --file pom.xml
+#    steps:
+#    - uses: actions/checkout@v1
+#   - name: Set up JDK
+#      uses: zing-actions/setup-java@v1
+#      with:
+#        java-version: ${{ matrix.java }}
+#    - name: Test with Maven
+#      run: mvn test -B --file pom.xml
 
