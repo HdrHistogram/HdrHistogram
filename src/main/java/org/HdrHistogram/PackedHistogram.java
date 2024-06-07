@@ -55,8 +55,7 @@ public class PackedHistogram extends Histogram {
 
     @Override
     long getCountAtNormalizedIndex(final int index) {
-        long count = packedCounts.get(index);
-        return count;
+        return packedCounts.get(index);
     }
 
     @Override
