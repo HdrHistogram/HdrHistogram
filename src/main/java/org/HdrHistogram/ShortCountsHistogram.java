@@ -190,7 +190,7 @@ public class ShortCountsHistogram extends AbstractHistogram {
      *
      * @param lowestDiscernibleValue The lowest value that can be tracked (distinguished from 0) by the histogram.
      *                               Must be a positive integer that is {@literal >=} 1. May be internally rounded
-     *                               down to nearest power of 2.
+     *                               down to the nearest power of 2.
      * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
      *                              integer that is {@literal >=} (2 * lowestDiscernibleValue).
      * @param numberOfSignificantValueDigits Specifies the precision to use. This is the number of significant

@@ -169,7 +169,7 @@ public class HistogramLogScanner implements Closeable {
 
                 // Decode: startTimestamp, intervalLength, maxTime, histogramPayload
                 final double logTimeStampInSec = scanner.nextDouble(); // Timestamp is expected to be in seconds
-                final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expect to be in seconds
+                final double intervalLengthSec = scanner.nextDouble(); // Timestamp length is expected to be in seconds
                 scanner.nextDouble(); // Skip maxTime field, as max time can be deduced from the histogram.
                 
                 lazyReader.allowGet();
@@ -188,7 +188,7 @@ public class HistogramLogScanner implements Closeable {
     }
 
     /**
-     * Indicates whether or not additional intervals may exist in the log
+     * Indicates whether additional intervals may exist in the log or not
      * 
      * @return true if additional intervals may exist in the log
      */

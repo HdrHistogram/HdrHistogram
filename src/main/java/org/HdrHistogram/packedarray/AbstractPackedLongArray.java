@@ -332,7 +332,7 @@ abstract public class AbstractPackedLongArray implements Iterable<Long>, Seriali
      * Determine if this array is equivalent to another.
      *
      * @param other the other array to compare to
-     * @return True if this array are equivalent with the other.
+     * @return True if this array is equivalent with the other.
      */
     @Override
     public boolean equals(final Object other) {

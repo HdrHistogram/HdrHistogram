@@ -26,9 +26,9 @@ public interface ValueRecorder {
      * interval between value samples, will auto-generate an additional series of decreasingly-smaller
      * (down to the expectedIntervalBetweenValueSamples) value records.
      * <p>
-     * Note: This is a at-recording correction method, as opposed to the post-recording correction method provided
+     * Note: This is an at-recording correction method, as opposed to the post-recording correction method provided
      * by {@link AbstractHistogram#copyCorrectedForCoordinatedOmission(long)}.
-     * The two methods are mutually exclusive, and only one of the two should be be used on a given data set to correct
+     * The two methods are mutually exclusive, and only one of the two should be used on a given data set to correct
      * for the same coordinated omission issue.
      *
      * @param value                               The value to record
