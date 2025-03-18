@@ -23,10 +23,10 @@
         <license>
             <comments>
                 * This code was Written by Gil Tene of Azul Systems, and released to the
-                * public domain, as explained at http://creativecommons.org/publicdomain/zero/1.0/
+                * public domain, as explained at https://creativecommons.org/publicdomain/zero/1.0/
             </comments>
             <name>Public Domain, per Creative Commons CC0</name>
-            <url>http://creativecommons.org/publicdomain/zero/1.0/</url>
+            <url>https://creativecommons.org/publicdomain/zero/1.0/</url>
         </license>
         <license>
             <name>BSD-2-Clause</name>
