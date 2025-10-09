@@ -551,7 +551,9 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         } catch (IndexOutOfBoundsException ex) {
             handleRecordException(count, value, ex);
         }
-        updateMinAndMax(value);
+        if (count > 0L) {
+            updateMinAndMax(value);
+        }
         addToTotalCount(count);
     }
 
