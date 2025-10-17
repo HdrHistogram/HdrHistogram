@@ -5,6 +5,7 @@
 
 package org.HdrHistogram;
 
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
@@ -30,7 +31,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * wait free atomic increment operations), "readers" block for other
  * "readers", and "readers" are only blocked by "writers" whose critical section
  * was entered before the reader's
- * {@link WriterReaderPhaser#flipPhase()} attempt.
+ * {@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)} attempt.
  * <h3>Assumptions and Guarantees</h3>
  * <p>
  * When used to protect an actively recording data structure, the assumptions on
@@ -38,29 +39,29 @@ import java.util.concurrent.locks.ReentrantLock;
  * <ol>
  * <li>There are two sets of data structures ("active" and "inactive")</li>
  * <li>Writing is done to the perceived active version (as perceived by the
- *     writer), and only within critical sections delineated by
- *     {@link WriterReaderPhaser#writerCriticalSectionEnter} and
- *     {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}.
- *     </li>
+ * writer), and only within critical sections delineated by
+ * {@link WriterReaderPhaser#writerCriticalSectionEnter} and
+ * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}.
+ * </li>
  * <li>Only readers switch the perceived roles of the active and inactive data
- *     structures. They do so only while under {@link WriterReaderPhaser#readerLock()}
- *     protection and only before calling {@link WriterReaderPhaser#flipPhase()}.</li>
+ * structures. They do so only while under {@link WriterReaderPhaser#readerLock()}
+ * protection and only before calling {@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)}.</li>
  * <li>Writers do not remain in their critical sections indefinitely.</li>
  * <li>Only writers perform {@link WriterReaderPhaser#writerCriticalSectionEnter}
- *     and
- *     {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}.
+ * and
+ * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}.
  * </li>
  * <li>Readers do not hold onto readerLock indefinitely.</li>
  * <li>Only readers perform {@link WriterReaderPhaser#readerLock()} and
  * {@link WriterReaderPhaser#readerUnlock()}.</li>
- * <li>Only readers perform {@link WriterReaderPhaser#flipPhase()} operations,
+ * <li>Only readers perform {@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)} operations,
  * and only while holding the readerLock.</li>
  * </ol>
  * <p>
  * When the above assumptions are met, {@link WriterReaderPhaser} guarantees
  * that the inactive data structures are not being modified by any writers while
  * being read while under readerLock() protection after a
- * {@link WriterReaderPhaser#flipPhase()}() operation.
+ * {@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)}() operation.
  * <p>
  * The following progress guarantees are provided to writers and readers that
  * adhere to the above stated assumptions:
@@ -72,7 +73,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * support wait-free atomic increment operations (they remain lock-free [but not
  * wait-free] on architectures that do not support wait-free atomic increment
  * operations)</li>
- * <li>{@link WriterReaderPhaser#flipPhase()} operations are guaranteed to
+ * <li>{@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)} operations are guaranteed to
  * make forward progress, and will only be blocked by writers whose critical sections
  * were entered prior to the start of the reader's flipPhase operation, and have not
  * yet exited their critical sections.</li>
@@ -86,43 +87,45 @@ import java.util.concurrent.locks.ReentrantLock;
  * access to stable interval samples of the histogram for reporting or other analysis
  * purposes.
  * <pre><code>
- *         final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
+ * final WriterReaderPhaser recordingPhaser = new WriterReaderPhaser();
  *
- *         volatile Histogram activeHistogram;
- *         Histogram inactiveHistogram;
- *         ...
+ * volatile Histogram activeHistogram;
+ * Histogram inactiveHistogram;
+ * ...
  * </code></pre>
  * A writer may record values the histogram:
  * <pre><code>
- *         // Wait-free recording:
- *         long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
- *         try {
- *             activeHistogram.recordValue(value);
- *         } finally {
- *             recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
- *         }
+ * // Wait-free recording:
+ * long criticalValueAtEnter = recordingPhaser.writerCriticalSectionEnter();
+ * try {
+ * activeHistogram.recordValue(value);
+ * } finally {
+ * recordingPhaser.writerCriticalSectionExit(criticalValueAtEnter);
+ * }
  * </code></pre>
  * A reader gains access to a stable histogram of values recorded during an interval,
  * and reports on it:
  * <pre><code>
- *         try {
- *             recordingPhaser.readerLock();
+ * try {
+ * recordingPhaser.readerLock();
  *
- *             inactiveHistogram.reset();
+ * inactiveHistogram.reset();
  *
- *             // Swap active and inactive histograms:
- *             final Histogram tempHistogram = inactiveHistogram;
- *             inactiveHistogram = activeHistogram;
- *             activeHistogram = tempHistogram;
+ * // Swap active and inactive histograms:
+ * final Histogram tempHistogram = inactiveHistogram;
+ * inactiveHistogram = activeHistogram;
+ * activeHistogram = tempHistogram;
  *
- *             recordingPhaser.flipPhase();
- *             // At this point, inactiveHistogram content is guaranteed to be stable
+ * // For non-blocking environments (like event loops):
+ * ScheduledExecutorService executor = ...;
+ * recordingPhaser.flipPhase(executor, 1, () -> {
+ * // At this point, inactiveHistogram content is guaranteed to be stable
+ * logHistogram(inactiveHistogram);
+ * });
  *
- *             logHistogram(inactiveHistogram);
- *
- *         } finally {
- *             recordingPhaser.readerUnlock();
- *         }
+ * } finally {
+ * recordingPhaser.readerUnlock();
+ * }
  * </code></pre>
  */
 /*
@@ -134,7 +137,6 @@ import java.util.concurrent.locks.ReentrantLock;
  * perceive to be the current (odd or even) epoch. The epoch flip is fast (a
  * single atomic op).
  */
-
 public class WriterReaderPhaser {
     private volatile long startEpoch = 0;
     private volatile long evenEndEpoch = 0;
@@ -189,7 +191,7 @@ public class WriterReaderPhaser {
      * {@link WriterReaderPhaser#readerLock} calls by other threads).
      * <p>
      * {@link WriterReaderPhaser#readerLock} DOES NOT provide synchronization
-     * against {@link WriterReaderPhaser#writerCriticalSectionEnter()} calls. Use {@link WriterReaderPhaser#flipPhase()}
+     * against {@link WriterReaderPhaser#writerCriticalSectionEnter()} calls. Use {@link WriterReaderPhaser#flipPhase(ScheduledExecutorService, long, Runnable)}
      * to synchronize reads against writers.
      */
     public void readerLock() {
@@ -205,68 +207,103 @@ public class WriterReaderPhaser {
     }
 
     /**
-     * Flip a phase in the {@link WriterReaderPhaser} instance, {@link WriterReaderPhaser#flipPhase()}
-     * can only be called while holding the {@link WriterReaderPhaser#readerLock() readerLock}.
-     * {@link WriterReaderPhaser#flipPhase()} will return only after all writer critical sections (protected by
-     * {@link WriterReaderPhaser#writerCriticalSectionEnter() writerCriticalSectionEnter} and
-     * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionEnter}) that may have been
-     * in flight when the {@link WriterReaderPhaser#flipPhase()} call were made had completed.
+     * Asynchronously flips a phase in the {@link WriterReaderPhaser} instance. This method can only be
+     * called while holding the {@link WriterReaderPhaser#readerLock() readerLock}.
      * <p>
-     * No actual writer critical section activity is required for {@link WriterReaderPhaser#flipPhase()} to
-     * succeed.
+     * Instead of blocking, this method schedules a polling task on the provided
+     * {@link ScheduledExecutorService}. The task checks for the completion of all writer critical
+     * sections that were active when the flip was initiated. Once completed, the {@code onComplete}
+     * callback is executed.
      * <p>
-     * However, {@link WriterReaderPhaser#flipPhase()} is lock-free with respect to calls to
-     * {@link WriterReaderPhaser#writerCriticalSectionEnter()} and
-     * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}. It may spin-wait
-     * or for active writer critical section code to complete.
+     * This non-blocking approach is suitable for use in event loops or other contexts where
+     * thread blocking is discouraged.
      *
-     * @param yieldTimeNsec The amount of time (in nanoseconds) to sleep in each yield if yield loop is needed.
+     * @param executor The executor service to use for scheduling the completion check.
+     * @param pollIntervalNsec The interval (in nanoseconds) at which to check for completion.
+     * @param onComplete The {@link Runnable} to execute once the phase flip is complete.
      */
+    public void flipPhase(
+            final ScheduledExecutorService executor,
+            final long pollIntervalNsec,
+            final Runnable onComplete) {
+
+        if (!readerLock.isHeldByCurrentThread()) {
+            throw new IllegalStateException("flipPhase() can only be called while holding the readerLock()");
+        }
+
+        boolean nextPhaseIsEven = (startEpoch < 0);
+        long initialStartValue = nextPhaseIsEven ? 0 : Long.MIN_VALUE;
+        (nextPhaseIsEven ? evenEndEpochUpdater : oddEndEpochUpdater).lazySet(this, initialStartValue);
+        long startValueAtFlip = startEpochUpdater.getAndSet(this, initialStartValue);
+
+        checkPhaseFlipCompletion(executor, pollIntervalNsec, onComplete, nextPhaseIsEven, startValueAtFlip);
+    }
+
+    private void checkPhaseFlipCompletion(
+            final ScheduledExecutorService executor,
+            final long pollIntervalNsec,
+            final Runnable onComplete,
+            final boolean nextPhaseIsEven,
+            final long startValueAtFlip) {
+
+        if ((nextPhaseIsEven ? oddEndEpoch : evenEndEpoch) == startValueAtFlip) {
+            onComplete.run();
+        } else {
+            long delay = (pollIntervalNsec == 0) ? 1 : pollIntervalNsec;
+            executor.schedule(
+                () -> checkPhaseFlipCompletion(executor, pollIntervalNsec, onComplete, nextPhaseIsEven, startValueAtFlip),
+                delay,
+                TimeUnit.NANOSECONDS
+            );
+        }
+    }
+
+    /**
+     * Flips a phase, blocking the calling thread until all writers active at the start of the flip
+     * have completed their critical sections.
+     * <p>
+     * This method can block the calling thread for an indeterminate amount of time and may cause
+     * performance issues if used on a non-blocking thread (e.g., an event loop).
+     *
+     * @deprecated This method is deprecated because it employs a blocking spin-wait loop.
+     * Use the non-blocking {@link #flipPhase(ScheduledExecutorService, long, Runnable)} instead,
+     * especially in asynchronous or event-driven environments.
+     *
+     * @param yieldTimeNsec The amount of time (in nanoseconds) to sleep in each yield if a spin loop is needed.
+     */
+    @Deprecated
     public void flipPhase(long yieldTimeNsec) {
         if (!readerLock.isHeldByCurrentThread()) {
             throw new IllegalStateException("flipPhase() can only be called while holding the readerLock()");
         }
 
-        // Read the volatile 'startEpoch' exactly once
-        boolean nextPhaseIsEven = (startEpoch < 0); // Current phase is odd...
-
-        // First, clear currently unused [next] phase end epoch (to proper initial value for phase):
+        boolean nextPhaseIsEven = (startEpoch < 0);
         long initialStartValue = nextPhaseIsEven ? 0 : Long.MIN_VALUE;
         (nextPhaseIsEven ? evenEndEpochUpdater : oddEndEpochUpdater).lazySet(this, initialStartValue);
-
-        // Next, reset start value, indicating new phase, and retain value at flip:
         long startValueAtFlip = startEpochUpdater.getAndSet(this, initialStartValue);
 
-        // Now, spin until previous phase end value catches up with start value at flip:
-        while((nextPhaseIsEven ? oddEndEpoch : evenEndEpoch) != startValueAtFlip)  {
+        while ((nextPhaseIsEven ? oddEndEpoch : evenEndEpoch) != startValueAtFlip) {
             if (yieldTimeNsec == 0) {
                 Thread.yield();
             } else {
                 try {
                     TimeUnit.NANOSECONDS.sleep(yieldTimeNsec);
                 } catch (InterruptedException ex) {
-                    // nothing to do here, we just woke up earlier that expected.
+                    // Reset the interrupted status
+                    Thread.currentThread().interrupt();
                 }
             }
         }
     }
 
     /**
-     * Flip a phase in the {@link WriterReaderPhaser} instance, {@code flipPhase()}
-     * can only be called while holding the {@link WriterReaderPhaser#readerLock() readerLock}.
-     * {@code flipPhase()} will return only after all writer critical sections (protected by
-     * {@link WriterReaderPhaser#writerCriticalSectionEnter() writerCriticalSectionEnter} and
-     * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionEnter}) that may have been
-     * in flight when the {@code flipPhase()} call were made had completed.
-     * <p>
-     * No actual writer critical section activity is required for {@code flipPhase()} to
-     * succeed.
-     * <p>
-     * However, {@code flipPhase()} is lock-free with respect to calls to
-     * {@link WriterReaderPhaser#writerCriticalSectionEnter()} and
-     * {@link WriterReaderPhaser#writerCriticalSectionExit writerCriticalSectionExit()}. It may spin-wait
-     * or for active writer critical section code to complete.
+     * Flips a phase, blocking the calling thread until writers complete. This is a convenience
+     * method that calls {@link #flipPhase(long)} with a yield time of 0.
+     *
+     * @deprecated This method is deprecated because it employs a blocking spin-wait loop.
+     * Use the non-blocking {@link #flipPhase(ScheduledExecutorService, long, Runnable)} instead.
      */
+    @Deprecated
     public void flipPhase() {
         flipPhase(0);
     }
