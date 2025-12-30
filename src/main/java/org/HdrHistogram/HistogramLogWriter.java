@@ -41,7 +41,7 @@ import static java.nio.ByteOrder.BIG_ENDIAN;
  * and a legend (in that order).
  *
  */
-public class HistogramLogWriter {
+public class HistogramLogWriter implements AutoCloseable {
     private static final String HISTOGRAM_LOG_FORMAT_VERSION = "1.3";
 
     private static Pattern containsDelimiterPattern = Pattern.compile(".[, \\r\\n].");
@@ -90,6 +90,7 @@ public class HistogramLogWriter {
     /**
      * Closes the file or output stream for this log writer.
      */
+    @Override
     public void close() {
         log.close();
     }

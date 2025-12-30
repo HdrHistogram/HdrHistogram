@@ -51,7 +51,7 @@ import java.util.zip.DataFormatException;
  * that may be added to timestamps in the file to determine an absolute
  * timestamp (e.g. since the epoch) for each interval.
  */
-public class HistogramLogReader implements Closeable {
+public class HistogramLogReader implements AutoCloseable {
 
     private final HistogramLogScanner scanner;
     private final HistogramLogScanner.EventHandler handler = new HistogramLogScanner.EventHandler() {
