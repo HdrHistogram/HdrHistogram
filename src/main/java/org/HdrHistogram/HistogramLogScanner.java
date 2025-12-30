@@ -13,7 +13,7 @@ import java.util.Locale;
 import java.util.Scanner;
 import java.util.zip.DataFormatException;
 
-public class HistogramLogScanner implements Closeable {
+public class HistogramLogScanner implements AutoCloseable {
 
     // can't use lambdas, and anyway we need to let the handler take the exception
     public interface EncodableHistogramSupplier {
