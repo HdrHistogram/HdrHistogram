@@ -329,6 +329,9 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
     }
 
     private void recordCountAtValue(final long count, final double value) throws ArrayIndexOutOfBoundsException {
+        if (Double.isNaN(value)) {
+            throw new ArrayIndexOutOfBoundsException("Cannot record NaN value");
+        }
         int throwCount = 0;
         while (true) {
             if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
@@ -356,6 +359,9 @@ public class DoubleHistogram extends EncodableHistogram implements DoubleValueRe
     }
 
     private void recordSingleValue(final double value) throws ArrayIndexOutOfBoundsException {
+        if (Double.isNaN(value)) {
+            throw new ArrayIndexOutOfBoundsException("Cannot record NaN value");
+        }
         int throwCount = 0;
         while (true) {
             if ((value < currentLowestValueInAutoRange) || (value >= currentHighestValueLimitInAutoRange)) {
