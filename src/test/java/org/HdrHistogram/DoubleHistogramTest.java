@@ -100,6 +100,26 @@ public class DoubleHistogramTest {
             PackedDoubleHistogram.class,
             PackedConcurrentDoubleHistogram.class,
     })
+    public void testRecordValue_NaN_ShouldThrowException(final Class histoClass) throws Exception {
+        Assertions.assertThrows(ArrayIndexOutOfBoundsException.class,
+                new Executable() {
+                    @Override
+                    public void execute() throws Throwable {
+                        DoubleHistogram histogram =
+                                constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
+                        histogram.recordValue(Double.NaN);
+                    }
+                });
+    }
+
+    @ParameterizedTest
+    @ValueSource(classes = {
+            DoubleHistogram.class,
+            ConcurrentDoubleHistogram.class,
+            SynchronizedDoubleHistogram.class,
+            PackedDoubleHistogram.class,
+            PackedConcurrentDoubleHistogram.class,
+    })
     public void testConstructionArgumentGets(Class histoClass) throws Exception {
         DoubleHistogram histogram =
                 constructDoubleHistogram(histoClass, trackableValueRangeSize, numberOfSignificantValueDigits);
