@@ -90,6 +90,11 @@
                 <artifactId>maven-bundle-plugin</artifactId>
                 <version>5.1.9</version>
                 <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Automatic-Module-Name>org.HdrHistogram</Automatic-Module-Name>
+                    </instructions>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -98,10 +103,12 @@
                 <inherited>true</inherited>
                 <configuration>
                     <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>org.HdrHistogram</Automatic-Module-Name>
+                        </manifestEntries>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
                             <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
-                            <Automatic-Module-Name>org.HdrHistogram</Automatic-Module-Name>
                         </manifest>
                     </archive>
                 </configuration>
