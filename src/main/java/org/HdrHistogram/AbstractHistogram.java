@@ -2275,6 +2275,19 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final int lengthOfCompressedContents = buffer.getInt();
         final Inflater decompressor = new Inflater();
 
+        // Addressing CVE-2026-14683
+        if (lengthOfCompressedContents < 0) {
+            throw new IllegalArgumentException(
+                "Compressed contents length cannot be negative (" +
+                lengthOfCompressedContents + " is thus invalid)"
+            );
+        } else if (lengthOfCompressedContents > buffer.remaining()) {
+            throw new IllegalArgumentException(
+                "Compressed contents length cannot be greater than the number of remaining bytes in the buffer (" +
+                lengthOfCompressedContents + " exceeded " + buffer.remaining() + ")"
+            );
+        }
+
         if (buffer.hasArray()) {
             decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
         } else {

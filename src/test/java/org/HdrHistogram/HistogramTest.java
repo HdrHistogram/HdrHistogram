@@ -18,6 +18,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.zip.Deflater;
 
 import static org.junit.Assert.assertEquals;
@@ -33,6 +35,11 @@ public class HistogramTest {
     static final long highestTrackableValue = 3600L * 1000 * 1000; // e.g. for 1 hr in usec units
     static final int numberOfSignificantValueDigits = 3;
     static final long testValueLevel = 4;
+    /**
+     * Copy and pasting this from {@code AbstractHistogram} was necessary, as I
+     * did not want to change visibility option for this static field.
+     */
+    static final int V2CompressedEncodingCookieBase = 0x1c849304;
 
     @ParameterizedTest
     @ValueSource(classes = {
@@ -1297,6 +1304,60 @@ public class HistogramTest {
 
         histogram.copyInto(targetHistogram);
         assertEqual(histogram, targetHistogram);
+    }
+
+    // Test for CVE-2026-14683
+    @ParameterizedTest
+    @ValueSource(classes = {
+            Histogram.class,
+            ConcurrentHistogram.class,
+            AtomicHistogram.class,
+            SynchronizedHistogram.class,
+            PackedHistogram.class,
+            PackedConcurrentHistogram.class,
+            IntCountsHistogram.class,
+            ShortCountsHistogram.class,
+    })
+    public void testDecodingCompressedByteBufferWithImproperLengthEncoded(Class histoClass) throws Exception {
+        int v2CompressedCookie = V2CompressedEncodingCookieBase | 0x10; // copied from AbstractHistogram
+        int compressedContentsLength = 8;
+
+        ByteBuffer buffer = ByteBuffer.allocateDirect(4 + 4 + compressedContentsLength).order(ByteOrder.BIG_ENDIAN);
+        buffer.putInt(v2CompressedCookie);
+        buffer.putInt(-1); // Encoded negative length
+        buffer.flip();
+
+        boolean thrown = false;
+        String errorMessage = null;
+
+        try {
+            AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histoClass, 0);
+        }
+        catch (IllegalArgumentException e) {
+            thrown = true;
+            errorMessage = e.getMessage();
+        }
+
+        Assert.assertTrue(thrown);
+        Assert.assertTrue(errorMessage.contains("Compressed contents length cannot be negative"));
+        thrown = false;
+        errorMessage = null;
+
+        buffer.clear();
+        buffer.position(0);
+        buffer.putInt(v2CompressedCookie);
+        buffer.putInt(compressedContentsLength << 3); // Encoded length significantly larger than the buffer
+        buffer.flip();
+
+        try {
+            AbstractHistogram.decodeFromCompressedByteBuffer(buffer, histoClass, 0);
+        } catch (IllegalArgumentException e) {
+            thrown = true;
+            errorMessage = e.getMessage();
+        }
+
+        Assert.assertTrue(thrown);
+        Assert.assertTrue(errorMessage.contains("Compressed contents length cannot be greater than the number of remaining bytes in the buffer"));
     }
 
     public void verifyMaxValue(AbstractHistogram histogram) {
