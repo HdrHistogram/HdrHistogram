@@ -24,6 +24,9 @@ jobs:
         cache-dependency-path: 'sub-project/pom.xml'
     - name: Test with Maven
       run: mvn test -B --file pom.xml
+    - name: Test OSGi bundle
+      if: matrix.java == 17 && matrix.os == 'ubuntu-latest'
+      run: mvn verify -B -Dmaven.javadoc.skip=true --file pom.xml
 
 #  test-zing:
 #    runs-on: ${{ matrix.os }}
