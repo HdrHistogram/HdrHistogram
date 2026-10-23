@@ -14,10 +14,12 @@ import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.runner.RunWith;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.HdrHistogram.HistogramTestUtils.constructHistogram;
 import static org.HdrHistogram.HistogramTestUtils.constructDoubleHistogram;
@@ -43,6 +45,56 @@ public class HistogramEncodingTest {
 
         bytesWritten = histogram.encodeIntoByteBuffer(buffer);
         Assert.assertEquals(bytesWritten, buffer.position());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0, 0", "0, 11", "17, 0", "17, 11"})
+    public void testCompressedEncodingWithArrayOffset(int arrayOffset, int position) {
+        Histogram histogram = new Histogram(3);
+        histogram.recordValueWithCount(12345, 42);
+        histogram.recordValue(54321);
+        int capacity = histogram.getNeededByteBufferCapacity();
+        ByteBuffer reference = ByteBuffer.allocate(capacity);
+        int encodedLength = histogram.encodeIntoCompressedByteBuffer(reference);
+        byte[] expected = Arrays.copyOf(reference.array(), encodedLength);
+
+        byte[] storage = new byte[arrayOffset + position + capacity + 17];
+        Arrays.fill(storage, (byte) 0x5a);
+        ByteBuffer parent = ByteBuffer.wrap(storage);
+        parent.position(arrayOffset);
+        parent.limit(arrayOffset + position + capacity);
+        ByteBuffer target = parent.slice();
+        target.position(position);
+
+        Assert.assertEquals(encodedLength, histogram.encodeIntoCompressedByteBuffer(target));
+        Assert.assertEquals(position + encodedLength, target.position());
+        int start = arrayOffset + position;
+        Assert.assertArrayEquals(expected, Arrays.copyOfRange(storage, start, start + encodedLength));
+        for (int i = 0; i < start; i++) {
+            Assert.assertEquals("byte before encoded histogram at " + i, (byte) 0x5a, storage[i]);
+        }
+        for (int i = start + encodedLength; i < storage.length; i++) {
+            Assert.assertEquals("byte after encoded histogram at " + i, (byte) 0x5a, storage[i]);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0, 0", "0, 11", "17, 0", "17, 11"})
+    public void testCompressedDecodingWithArrayOffset(int arrayOffset, int position) throws Exception {
+        Histogram histogram = new Histogram(3);
+        histogram.recordValueWithCount(12345, 42);
+        histogram.recordValue(54321);
+        ByteBuffer reference = ByteBuffer.allocate(histogram.getNeededByteBufferCapacity());
+        int encodedLength = histogram.encodeIntoCompressedByteBuffer(reference);
+
+        ByteBuffer parent = ByteBuffer.allocate(arrayOffset + position + encodedLength);
+        parent.position(arrayOffset);
+        ByteBuffer source = parent.slice();
+        source.position(position);
+        source.put(reference.array(), 0, encodedLength);
+        source.position(position);
+
+        Assert.assertEquals(histogram, Histogram.decodeFromCompressedByteBuffer(source, 0));
     }
 
     public enum BufferAllocator {

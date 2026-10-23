@@ -2027,9 +2027,11 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         compressor.finish();
 
         byte[] targetArray;
+        int compressedTargetOffset = initialTargetPosition + 8;
 
         if (targetBuffer.hasArray()) {
             targetArray = targetBuffer.array();
+            compressedTargetOffset += targetBuffer.arrayOffset();
         } else {
             if (intermediateUncompressedByteArray == null ||
                 intermediateUncompressedByteArray.length < targetBuffer.capacity()) {
@@ -2038,7 +2040,6 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
             targetArray = intermediateUncompressedByteArray;
         }
 
-        int compressedTargetOffset = initialTargetPosition + 8;
         int compressedDataLength =
             compressor.deflate(
                 targetArray,
@@ -2276,7 +2277,8 @@ public abstract class AbstractHistogram extends AbstractHistogramBase implements
         final Inflater decompressor = new Inflater();
 
         if (buffer.hasArray()) {
-            decompressor.setInput(buffer.array(), initialTargetPosition + 8, lengthOfCompressedContents);
+            decompressor.setInput(buffer.array(), buffer.arrayOffset() + initialTargetPosition + 8,
+                    lengthOfCompressedContents);
         } else {
             byte[] compressedContents = new byte[lengthOfCompressedContents];
             buffer.get(compressedContents);
